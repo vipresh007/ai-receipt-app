@@ -13,6 +13,17 @@ expense tracking *easier than manually entering a transaction*.
 - Design language & tokens — [`docs/DESIGN.md`](docs/DESIGN.md) · [`design/`](design)
 - Working in this repo with Claude Code — [`CLAUDE.md`](CLAUDE.md)
 
+## Live (dev)
+
+| | URL |
+|---|---|
+| Web | https://ai-receipt-dev-web.ashymoss-2c5773fb.eastus2.azurecontainerapps.io |
+| API | https://ai-receipt-dev-api.ashymoss-2c5773fb.eastus2.azurecontainerapps.io (`/docs`) |
+
+Both run on Azure Container Apps (scale-to-zero — first request cold-starts
+~15–30s). Redeploy with `./infra/deploy.sh`. Full stack:
+`client → Next.js → FastAPI → Postgres + Azure OpenAI (gpt-5-mini) + Blob + App Insights`.
+
 ## Monorepo
 
 | Path | What | Stack | README |
@@ -68,9 +79,12 @@ npm install && npm run dev                    # http://localhost:3000
 - [x] Azure resources provisioned (`infra/`); Azure OpenAI extraction verified end-to-end
 - [x] Shared design system (`design/`, `docs/DESIGN.md`)
 - [ ] Apply design system to iOS (Theme.swift + polish pass)
-- [x] `web/` scaffold — Next.js app: auth, scan, dashboard, insights, receipts (builds green)
-- [ ] Web: edit-before-save, receipt detail, deploy to Azure Static Web Apps
-- [ ] Deploy the backend (Azure Container Apps / App Service — TBD)
+- [x] `web/` — Next.js app: auth, scan, dashboard, insights, receipts
+- [x] Apply the design system to iOS (Theme.swift + polish pass)
+- [x] Deploy backend + web to Azure Container Apps (`infra/deploy.sh`) — live, e2e verified
+- [ ] GitHub Actions CD (OIDC) so pushes auto-deploy
+- [ ] Web: edit-before-save, receipt detail
+- [ ] Lock down the Postgres firewall (currently allows all Azure services)
 - [ ] iOS sign-in flow → real bearer token on `/v1/extract`
 - [ ] Server-side receipt persistence + SwiftData sync
 - [ ] Free-tier scan limit + paywall (freemium)

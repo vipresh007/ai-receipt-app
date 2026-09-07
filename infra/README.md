@@ -32,6 +32,30 @@ On success it prints the block to paste into `backend/.env`
 Both scripts are **idempotent** — re-run `provision.sh` to converge / pick up new
 settings.
 
+## Deploy the apps
+
+After `provision.sh`, build + ship both services to Azure Container Apps:
+
+```bash
+./deploy.sh                 # both;  TARGET=backend|web for one
+```
+
+Creates an ACR (`Basic`, ~$5/mo) + a Container Apps environment on the existing
+Log Analytics workspace, `az acr build`s each image in the cloud, and
+creates/updates:
+
+| App | Port | Notes |
+|-----|------|-------|
+| `ai-receipt-dev-api` | 8000 | secrets pulled from Azure + `backend/.env`; `AUTO_CREATE_TABLES=true` |
+| `ai-receipt-dev-web` | 3000 | `BACKEND_URL` = the API's FQDN |
+
+Both: external HTTPS ingress, scale-to-zero, 0.5 vCPU / 1 GiB. Re-run any time
+to roll a new image (`TAG` defaults to a timestamp).
+
+Current URLs:
+- Web — https://ai-receipt-dev-web.ashymoss-2c5773fb.eastus2.azurecontainerapps.io
+- API — https://ai-receipt-dev-api.ashymoss-2c5773fb.eastus2.azurecontainerapps.io/docs
+
 ## Teardown
 
 ```bash
