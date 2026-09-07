@@ -17,7 +17,7 @@ insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 | `backend/` | REST API | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2. |
 | `infra/` | Azure provisioning | `az` CLI scripts. |
 | `docs/` | Specs & contracts | Markdown. |
-| `.github/workflows/ci.yml` | CI | `ios` job (macOS) + `backend` job (ubuntu). |
+| `.github/workflows/ci.yml` | CI | `ios` (macOS) + `backend` (ubuntu) jobs, each gated by a `dorny/paths-filter` so a one-sided change only runs that job. |
 
 External services: **Azure OpenAI** (receipt extraction, insights),
 **PostgreSQL**, **Azure Blob Storage** (receipt images), **Azure Application

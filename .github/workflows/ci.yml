@@ -9,9 +9,33 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  XCODEGEN_VERSION: "2.46.0"
+
 jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ios:
+              - 'ios/**'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+
   ios:
     name: iOS — build & test
+    needs: changes
+    if: ${{ needs.changes.outputs.ios == 'true' }}
     runs-on: macos-15
     defaults:
       run:
@@ -19,35 +43,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Environment
-        run: xcodebuild -version
+      - name: Install XcodeGen
+        run: |
+          curl -fsSL -o /tmp/xcodegen.zip \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q /tmp/xcodegen.zip -d /tmp/xg
+          echo "/tmp/xg/xcodegen/bin" >> "$GITHUB_PATH"
 
-      - name: Install tools
-        run: brew install xcodegen xcbeautify
-
-      - name: Generate Xcode project
+      - name: Generate project
         run: xcodegen generate
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ios/DerivedData
+          key: dd-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/**/*.swift') }}
+          restore-keys: dd-${{ runner.os }}-
 
       - name: Select a simulator
         id: sim
         run: |
           list_udid() { xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; c=[x for k,v in d.items() if "iOS" in k for x in v if x.get("isAvailable")]; ip=[x for x in c if "iPhone" in x["name"]] or c; print(ip[-1]["udid"] if ip else "")'; }
           udid=$(list_udid)
-          if [ -z "$udid" ]; then echo "No iOS runtime — downloading."; xcodebuild -downloadPlatform iOS -quiet || true; udid=$(list_udid); fi
+          if [ -z "$udid" ]; then xcodebuild -downloadPlatform iOS -quiet || true; udid=$(list_udid); fi
           [ -n "$udid" ] || { echo "::error::no iOS simulator available"; exit 1; }
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
-          echo "Using simulator $udid"
 
       - name: Build & test
         run: |
-          set -o pipefail
-          xcodebuild test \
+          xcodebuild test -quiet \
             -project AIReceiptApp.xcodeproj \
             -scheme AIReceiptApp \
             -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
-            | xcbeautify --renderer github-actions
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Upload test results
         if: ${{ !cancelled() }}
@@ -59,6 +90,8 @@ jobs:
 
   backend:
     name: Backend — lint & test
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
