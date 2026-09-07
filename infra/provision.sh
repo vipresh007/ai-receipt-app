@@ -34,7 +34,10 @@ PG_STORAGE_GB="${PG_STORAGE_GB:-32}"
 PG_VERSION="${PG_VERSION:-16}"
 
 # Storage account name: 3-24 chars, lowercase letters + digits only.
-STORAGE_NAME="${STORAGE_NAME:-$(echo "${NAME_PREFIX}sa$RANDOM" | tr -cd 'a-z0-9' | cut -c1-24)}"
+if [ -z "${STORAGE_NAME:-}" ]; then
+  _s="$(printf '%s' "${NAME_PREFIX}sa${RANDOM}" | tr -cd 'a-z0-9')"
+  STORAGE_NAME="${_s:0:24}"
+fi
 STORAGE_CONTAINER="${STORAGE_CONTAINER:-receipts}"
 
 LOGS_NAME="${LOGS_NAME:-${NAME_PREFIX}-logs}"
@@ -43,7 +46,9 @@ APPI_NAME="${APPI_NAME:-${NAME_PREFIX}-appi}"
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
 if [ -z "$PG_ADMIN_PASSWORD" ]; then
-  PG_ADMIN_PASSWORD="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 28)Aa1!"
+  _raw="$(uuidgen)$(uuidgen)"
+  _raw="${_raw//-/}"
+  PG_ADMIN_PASSWORD="${_raw:0:24}Aa1!"
   echo "Generated Postgres admin password (save it): $PG_ADMIN_PASSWORD"
 fi
 

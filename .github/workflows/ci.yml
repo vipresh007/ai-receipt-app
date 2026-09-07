@@ -19,10 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select latest stable Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+      - name: Environment
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
 
       - name: Install tools
         run: brew install xcodegen xcbeautify
@@ -30,13 +30,34 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Pick an iOS simulator
+        id: sim
+        run: |
+          pick() {
+            xcrun simctl list devices available --json | python3 -c "import json,sys
+d = json.load(sys.stdin)['devices']
+cands = [x for k, v in d.items() if 'iOS' in k for x in v if x.get('isAvailable')]
+cands.sort(key=lambda x: x['name'])
+pref = [x for x in cands if 'iPhone' in x['name']] or cands
+print(pref[-1]['udid'] if pref else '')"
+          }
+          udid=$(pick)
+          if [ -z "$udid" ]; then
+            echo "No iOS simulator runtime found — downloading."
+            xcodebuild -downloadPlatform iOS -quiet || true
+            udid=$(pick)
+          fi
+          [ -n "$udid" ] || { echo "::error::No iOS simulator available"; exit 1; }
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          echo "Using simulator $udid"
+
       - name: Build & test
         run: |
           set -o pipefail
           xcodebuild test \
             -project AIReceiptApp.xcodeproj \
             -scheme AIReceiptApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
@@ -66,15 +87,11 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
 
-      - name: Ruff
+      - name: Ruff lint
         run: ruff check .
 
-      - name: Ruff format check
+      - name: Ruff format
         run: ruff format --check .
-
-      - name: Types (mypy)
-        run: mypy app
-        continue-on-error: true
 
       - name: Tests
         run: pytest -q
