@@ -19,7 +19,7 @@ expense tracking *easier than manually entering a transaction*.
 |------|------|-------|--------|
 | [`ios/`](ios) | iOS app | Swift · SwiftUI · SwiftData · Swift Charts · XcodeGen | [ios/README.md](ios/README.md) |
 | [`backend/`](backend) | REST API | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic | [backend/README.md](backend/README.md) |
-| `web/` | Web app *(planned)* | Next.js · TypeScript · Tailwind · shadcn/ui · Tremor | — |
+| [`web/`](web) | Web app | Next.js · TS · Tailwind · shadcn-style UI · Recharts | [web/README.md](web/README.md) |
 | [`design/`](design) | Shared design tokens | JSON → CSS vars + Tailwind preset | [design/README.md](design/README.md) |
 | [`infra/`](infra) | Azure provisioning | `az` CLI scripts | [infra/README.md](infra/README.md) |
 | [`docs/`](docs) | Specs & contracts | — | — |
@@ -43,6 +43,13 @@ docker compose up -d db
 .venv/bin/uvicorn app.main:app --reload      # http://localhost:8000/docs
 ```
 
+**Web** (needs Node 20+, backend running):
+```bash
+cd web
+cp .env.example .env.local
+npm install && npm run dev                    # http://localhost:3000
+```
+
 ## Status
 
 - **iOS** — full capture → confirm → save → dashboard flow, runs on
@@ -61,7 +68,8 @@ docker compose up -d db
 - [x] Azure resources provisioned (`infra/`); Azure OpenAI extraction verified end-to-end
 - [x] Shared design system (`design/`, `docs/DESIGN.md`)
 - [ ] Apply design system to iOS (Theme.swift + polish pass)
-- [ ] `web/` — Next.js app at full parity
+- [x] `web/` scaffold — Next.js app: auth, scan, dashboard, insights, receipts (builds green)
+- [ ] Web: edit-before-save, receipt detail, deploy to Azure Static Web Apps
 - [ ] Deploy the backend (Azure Container Apps / App Service — TBD)
 - [ ] iOS sign-in flow → real bearer token on `/v1/extract`
 - [ ] Server-side receipt persistence + SwiftData sync

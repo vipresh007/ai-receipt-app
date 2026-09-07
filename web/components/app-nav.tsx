@@ -1,0 +1,63 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, LogOut, ReceiptText, ScanLine } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/scan", label: "Scan", icon: ScanLine },
+  { href: "/receipts", label: "Receipts", icon: ReceiptText },
+];
+
+export function AppNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
+      <div className="mb-lg hidden items-center gap-sm px-md md:flex">
+        <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-fg">
+          <ScanLine size={18} />
+        </div>
+        <span className="text-headline">AI Receipt</span>
+      </div>
+
+      {LINKS.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-sm rounded-md px-md py-sm text-callout transition-colors md:flex-none md:justify-start",
+              active
+                ? "bg-accent-muted font-medium text-accent"
+                : "text-text-secondary hover:bg-surface-2 hover:text-text",
+            )}
+          >
+            <Icon size={18} />
+            <span className={cn(!active && "hidden md:inline")}>{label}</span>
+          </Link>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={logout}
+        className="mt-auto hidden items-center gap-sm rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:bg-surface-2 hover:text-text md:flex"
+      >
+        <LogOut size={18} />
+        Sign out
+      </button>
+    </nav>
+  );
+}

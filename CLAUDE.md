@@ -15,7 +15,7 @@ insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 |------|------|-------|
 | `ios/` | iOS app | Swift, SwiftUI, SwiftData, Swift Charts. XcodeGen (`project.yml`). |
 | `backend/` | REST API | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2. |
-| `web/` | Web app *(planned)* | Next.js + TS + Tailwind + shadcn/ui + Tremor, full parity with iOS. |
+| `web/` | Web app | Next.js 15 (App Router) + TS + Tailwind 3.4 + shadcn-style `components/ui` + Recharts + TanStack Query. Full parity with iOS. |
 | `design/` | Shared design tokens | `tokens.json` (canonical) → `tokens.css` + `tailwind-preset.js`; language in `docs/DESIGN.md`. |
 | `infra/` | Azure provisioning | `az` CLI scripts. |
 | `docs/` | Specs & contracts | Markdown. |
@@ -35,6 +35,21 @@ Insights** (telemetry).
   uses `MockReceiptExtractor` and the whole flow still runs.
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
 - Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'`
+
+## Web (`web/`)
+
+- Node 20+. `cd web && cp .env.example .env.local && npm install && npm run dev`
+  (needs the backend + its Postgres running). Build/lint: `npm run build`, `npm run lint`.
+- Design tokens: `design/tokens.css` is copied to `web/app/tokens.css` by
+  `scripts/sync-tokens.mjs` on `predev`/`prebuild` (that file is git-ignored).
+  `tailwind.config.ts` pulls in `../design/tailwind-preset.js`.
+- Auth: backend JWT lives in an **httpOnly `session` cookie** set by
+  `app/api/auth/*`; `app/api/proxy/[...path]` forwards browser calls to the
+  backend with the bearer. Token never touches client JS. `middleware.ts` gates
+  `/dashboard`, `/scan`, `/receipts`.
+- Keep `lib/types.ts` in sync with `backend/app/schemas`.
+- The scan screen shows results as already-saved (backend `/v1/extract`
+  persists). Edit-before-save needs a backend change.
 
 ## Backend (`backend/`)
 
