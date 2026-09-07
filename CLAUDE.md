@@ -15,6 +15,8 @@ insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 |------|------|-------|
 | `ios/` | iOS app | Swift, SwiftUI, SwiftData, Swift Charts. XcodeGen (`project.yml`). |
 | `backend/` | REST API | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2. |
+| `web/` | Web app *(planned)* | Next.js + TS + Tailwind + shadcn/ui + Tremor, full parity with iOS. |
+| `design/` | Shared design tokens | `tokens.json` (canonical) → `tokens.css` + `tailwind-preset.js`; language in `docs/DESIGN.md`. |
 | `infra/` | Azure provisioning | `az` CLI scripts. |
 | `docs/` | Specs & contracts | Markdown. |
 | `.github/workflows/ci.yml` | CI | `ios` (macOS) + `backend` (ubuntu) jobs, each gated by a `dorny/paths-filter` so a one-sided change only runs that job. |

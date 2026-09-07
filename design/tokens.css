@@ -1,0 +1,169 @@
+/* AI Receipt design tokens — generated view of design/tokens.json.
+   Hand-kept in sync until design/build script exists. Import once, globally. */
+
+:root {
+  /* color — light */
+  --c-bg: #FAFAF9;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F4F4F2;
+  --c-surface-sunken: #F0EFEC;
+  --c-border: #E7E5E1;
+  --c-border-strong: #D6D3CD;
+  --c-text: #1A1A19;
+  --c-text-secondary: #6B6B66;
+  --c-text-tertiary: #9A9A93;
+  --c-text-inverse: #FFFFFF;
+
+  --c-accent: #3373F1;
+  --c-accent-hover: #245FD8;
+  --c-accent-fg: #FFFFFF;
+  --c-accent-muted: rgba(51, 115, 241, 0.12);
+  --c-focus-ring: rgba(51, 115, 241, 0.45);
+
+  --c-success: #1F9D57;
+  --c-success-muted: rgba(31, 157, 87, 0.14);
+  --c-warning: #C1841A;
+  --c-warning-muted: rgba(193, 132, 26, 0.16);
+  --c-danger: #D5473B;
+  --c-danger-muted: rgba(213, 71, 59, 0.14);
+  --c-info: #3373F1;
+  --c-info-muted: rgba(51, 115, 241, 0.12);
+
+  /* category — light */
+  --cat-groceries: #2FA36B;
+  --cat-restaurants: #E1873C;
+  --cat-transport: #3B82C4;
+  --cat-shopping: #D2649B;
+  --cat-entertainment: #8B5CD6;
+  --cat-health: #D5544A;
+  --cat-utilities: #C0982A;
+  --cat-travel: #2FA6A0;
+  --cat-other: #8A8A83;
+
+  /* space */
+  --sp-hair: 2px; --sp-xs: 4px; --sp-sm: 8px; --sp-md: 12px; --sp-lg: 16px;
+  --sp-xl: 20px; --sp-2xl: 24px; --sp-3xl: 32px; --sp-4xl: 40px;
+  --sp-5xl: 48px; --sp-6xl: 64px;
+
+  /* radius */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px; --r-2xl: 28px; --r-pill: 999px;
+
+  /* typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-display: 34px;  --lh-display: 40px;
+  --fs-title: 28px;    --lh-title: 34px;
+  --fs-headline: 20px; --lh-headline: 26px;
+  --fs-body: 16px;     --lh-body: 24px;
+  --fs-callout: 15px;  --lh-callout: 22px;
+  --fs-subhead: 13px;  --lh-subhead: 18px;
+  --fs-caption: 12px;  --lh-caption: 16px;
+  --fs-micro: 11px;    --lh-micro: 14px;
+
+  /* elevation */
+  --e1: 0 1px 2px rgba(20, 18, 15, 0.06), 0 1px 1px rgba(20, 18, 15, 0.04);
+  --e2: 0 6px 20px rgba(20, 18, 15, 0.10), 0 2px 6px rgba(20, 18, 15, 0.06);
+
+  /* motion */
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms; --dur-deliberate: 480ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+  /* layout */
+  --screen-px: 16px;
+  --content-max: 1120px;
+
+  color-scheme: light dark;
+}
+
+/* dark — system default, unless explicitly light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-bg: #0F0F10;
+    --c-surface: #17171A;
+    --c-surface-2: #202024;
+    --c-surface-sunken: #0B0B0C;
+    --c-border: #2B2B30;
+    --c-border-strong: #3B3B42;
+    --c-text: #F5F5F4;
+    --c-text-secondary: #A2A2A0;
+    --c-text-tertiary: #6E6E6D;
+    --c-text-inverse: #17171A;
+
+    --c-accent: #528CFF;
+    --c-accent-hover: #6E9EFF;
+    --c-accent-fg: #0F0F10;
+    --c-accent-muted: rgba(82, 140, 255, 0.16);
+    --c-focus-ring: rgba(82, 140, 255, 0.55);
+
+    --c-success: #37C77E;
+    --c-success-muted: rgba(55, 199, 126, 0.18);
+    --c-warning: #E4A63E;
+    --c-warning-muted: rgba(228, 166, 62, 0.18);
+    --c-danger: #F26A5C;
+    --c-danger-muted: rgba(242, 106, 92, 0.18);
+    --c-info: #528CFF;
+    --c-info-muted: rgba(82, 140, 255, 0.16);
+
+    --cat-groceries: #46C088;
+    --cat-restaurants: #F2A25C;
+    --cat-transport: #5AA0E0;
+    --cat-shopping: #EC85B8;
+    --cat-entertainment: #A98AE6;
+    --cat-health: #F0776C;
+    --cat-utilities: #E3C04A;
+    --cat-travel: #48C4BE;
+    --cat-other: #9A9A94;
+
+    --e1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --e2: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* dark — explicit toggle wins in both directions */
+:root[data-theme="dark"] {
+  --c-bg: #0F0F10;
+  --c-surface: #17171A;
+  --c-surface-2: #202024;
+  --c-surface-sunken: #0B0B0C;
+  --c-border: #2B2B30;
+  --c-border-strong: #3B3B42;
+  --c-text: #F5F5F4;
+  --c-text-secondary: #A2A2A0;
+  --c-text-tertiary: #6E6E6D;
+  --c-text-inverse: #17171A;
+
+  --c-accent: #528CFF;
+  --c-accent-hover: #6E9EFF;
+  --c-accent-fg: #0F0F10;
+  --c-accent-muted: rgba(82, 140, 255, 0.16);
+  --c-focus-ring: rgba(82, 140, 255, 0.55);
+
+  --c-success: #37C77E;
+  --c-success-muted: rgba(55, 199, 126, 0.18);
+  --c-warning: #E4A63E;
+  --c-warning-muted: rgba(228, 166, 62, 0.18);
+  --c-danger: #F26A5C;
+  --c-danger-muted: rgba(242, 106, 92, 0.18);
+  --c-info: #528CFF;
+  --c-info-muted: rgba(82, 140, 255, 0.16);
+
+  --cat-groceries: #46C088;
+  --cat-restaurants: #F2A25C;
+  --cat-transport: #5AA0E0;
+  --cat-shopping: #EC85B8;
+  --cat-entertainment: #A98AE6;
+  --cat-health: #F0776C;
+  --cat-utilities: #E3C04A;
+  --cat-travel: #48C4BE;
+  --cat-other: #9A9A94;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --e2: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; --dur-deliberate: 1ms;
+  }
+}
