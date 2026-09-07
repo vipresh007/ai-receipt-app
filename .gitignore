@@ -57,11 +57,11 @@ build/
 
 # ─────────────────────────── Secrets / local env ─────────────────────────
 .env
+.env.*
 *.env
-!*.env.example
 .envrc
+!*.example
 
 # ─────────────────────────── Infra / Azure ──────────────────────────────
-infra/*.local.*
 *.azureauth
 .azure/
