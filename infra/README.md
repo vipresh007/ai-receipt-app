@@ -7,7 +7,7 @@ Azure provisioning for AI Receipt, via the `az` CLI.
 | Resource | SKU / notes | ~cost |
 |----------|-------------|-------|
 | Resource group | container for everything | free |
-| Azure OpenAI account + deployment | `S0`, `gpt-4o` (`Standard`, 20K TPM) | pay per token |
+| Azure OpenAI account + deployment | `S0`, `gpt-5-mini` (`GlobalStandard`, 20K TPM) | pay per token |
 | PostgreSQL Flexible Server + `ai_receipt` db | `Standard_B1ms` Burstable, 32 GB, PG 16 | ~$13–15/mo + storage |
 | Storage account + `receipts` container | `Standard_LRS`, no public blobs | cents/mo + usage |
 | Log Analytics workspace + Application Insights | workspace-based | pay per GB ingested (small) |
@@ -44,7 +44,7 @@ settings.
   services"). For local development add your own IP:
   `az postgres flexible-server firewall-rule create -n <pg> -g <rg> --rule-name dev --start-ip-address <ip> --end-ip-address <ip>`.
   Lock this down before production.
-- Azure OpenAI availability and `gpt-4o` model versions vary by region — if
+- Azure OpenAI availability and model versions vary by region — if
   `provision.sh` fails on the deployment step, try `LOCATION=eastus2` /
   `swedencentral`, or adjust `OPENAI_MODEL_VERSION`.
 - Deployment/hosting of the FastAPI app itself (Container Apps / App Service) is

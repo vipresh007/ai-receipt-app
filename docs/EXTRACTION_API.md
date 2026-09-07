@@ -97,14 +97,19 @@ so the reply always validates against the schema.
 ### Deployment / model
 
 Uses a vision-capable Azure OpenAI **deployment** named by
-`AZURE_OPENAI_DEPLOYMENT` (default `gpt-4o`). Structured outputs need
-`gpt-4o` (2024-08-06+) / `gpt-4o-mini` or newer and API version `2024-08-01-preview`
-or later (`AZURE_OPENAI_API_VERSION`, default `2024-10-21`).
+`AZURE_OPENAI_DEPLOYMENT` (default `gpt-5-mini`, version `2025-08-07`, SKU
+`GlobalStandard`) with `AZURE_OPENAI_API_VERSION` `2025-04-01-preview` or later.
 
-**Cost vs. accuracy is a deployment choice**, not a code change: `gpt-4o-mini` is
-far cheaper per scan and is often enough for receipts; `gpt-4o` is more robust on
-faded/creased/handwritten ones. Test on real receipts and set the deployment
-name accordingly.
+> `gpt-4o` / `gpt-4o-mini` are **deprecated** on Azure OpenAI — the current small
+> multimodal tier is the `gpt-5-mini` family.
+
+**Cost vs. accuracy is a deployment choice**, not a code change: `gpt-5-nano` is
+cheapest and often enough for clean receipts; `gpt-5-mini` is the balanced
+default; `gpt-5` is most robust on faded/creased/handwritten ones. Test on real
+receipts and set the deployment name accordingly.
+
+Note: `gpt-5*` are reasoning models — they reject `temperature` ≠ 1 and use
+`max_completion_tokens` (not `max_tokens`). The code below reflects that.
 
 ### Code (`backend/app/services/azure_openai.py`)
 
@@ -120,8 +125,7 @@ client = AzureOpenAI(
 
 completion = client.chat.completions.parse(
     model=settings.azure_openai_deployment,   # = the *deployment* name
-    temperature=0,
-    max_tokens=1024,
+    max_completion_tokens=4096,               # reasoning tokens + JSON payload
     messages=[
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": [
@@ -152,16 +156,15 @@ receipt = completion.choices[0].message.parsed   # -> ExtractedReceipt | None
 
 ```bash
 IMAGE_B64=$(base64 -i receipt.jpg | tr -d '\n')
-DEPLOYMENT=gpt-4o
-API_VERSION=2024-10-21
+DEPLOYMENT=gpt-5-mini
+API_VERSION=2025-04-01-preview
 
 curl "$AZURE_OPENAI_ENDPOINT/openai/deployments/$DEPLOYMENT/chat/completions?api-version=$API_VERSION" \
   -H "content-type: application/json" \
   -H "api-key: $AZURE_OPENAI_API_KEY" \
   -d @- <<JSON
 {
-  "temperature": 0,
-  "max_tokens": 1024,
+  "max_completion_tokens": 4096,
   "messages": [
     { "role": "system", "content": "…system prompt above…" },
     { "role": "user", "content": [

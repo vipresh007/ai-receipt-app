@@ -57,10 +57,12 @@ class AzureOpenAIExtractor:
         ocr_block = "\n".join(ocr_lines[:200]).strip() or "(none)"
 
         try:
+            # gpt-5-family (reasoning) models reject `temperature` != 1 and use
+            # `max_completion_tokens` instead of `max_tokens`. This keeps room
+            # for reasoning tokens plus the JSON payload.
             completion = self.client.chat.completions.parse(
                 model=self.settings.azure_openai_deployment,
-                temperature=0,
-                max_tokens=1024,
+                max_completion_tokens=4096,
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {

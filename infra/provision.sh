@@ -19,10 +19,13 @@ LOCATION="${LOCATION:-eastus}"
 RESOURCE_GROUP="${RESOURCE_GROUP:-${NAME_PREFIX}-rg}"
 
 OPENAI_NAME="${OPENAI_NAME:-${NAME_PREFIX}-openai}"
-OPENAI_MODEL="${OPENAI_MODEL:-gpt-4o}"
-OPENAI_MODEL_VERSION="${OPENAI_MODEL_VERSION:-2024-08-06}"
-OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-gpt-4o}"
-OPENAI_CAPACITY="${OPENAI_CAPACITY:-20}"   # thousands of tokens/min
+# gpt-4o / gpt-4o-mini are deprecated on Azure OpenAI; the current small
+# multimodal tier is the gpt-5-mini family. Override any of these to change.
+OPENAI_MODEL="${OPENAI_MODEL:-gpt-5-mini}"
+OPENAI_MODEL_VERSION="${OPENAI_MODEL_VERSION:-2025-08-07}"
+OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-gpt-5-mini}"
+OPENAI_SKU="${OPENAI_SKU:-GlobalStandard}"   # gpt-5* minis don't offer plain "Standard"
+OPENAI_CAPACITY="${OPENAI_CAPACITY:-20}"     # thousands of tokens/min
 
 PG_NAME="${PG_NAME:-${NAME_PREFIX}-pg}"
 PG_ADMIN_USER="${PG_ADMIN_USER:-airadmin}"
@@ -71,7 +74,7 @@ az cognitiveservices account deployment create \
   -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" \
   --deployment-name "$OPENAI_DEPLOYMENT" \
   --model-name "$OPENAI_MODEL" --model-version "$OPENAI_MODEL_VERSION" --model-format OpenAI \
-  --sku-name Standard --sku-capacity "$OPENAI_CAPACITY" -o none
+  --sku-name "$OPENAI_SKU" --sku-capacity "$OPENAI_CAPACITY" -o none
 
 say "PostgreSQL Flexible Server: $PG_NAME ($PG_SKU)"
 az postgres flexible-server show -n "$PG_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null || \
@@ -124,7 +127,7 @@ Provisioning complete. Paste into backend/.env:
 DATABASE_URL=${DB_URL}
 AZURE_OPENAI_ENDPOINT=${OPENAI_ENDPOINT%/}
 AZURE_OPENAI_API_KEY=${OPENAI_KEY}
-AZURE_OPENAI_API_VERSION=2024-10-21
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
 AZURE_OPENAI_DEPLOYMENT=${OPENAI_DEPLOYMENT}
 AZURE_STORAGE_CONNECTION_STRING=${STORAGE_CONN}
 AZURE_STORAGE_CONTAINER=${STORAGE_CONTAINER}

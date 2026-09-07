@@ -67,7 +67,7 @@
 ## Open decisions
 
 - Hosting for the FastAPI app (Azure Container Apps vs. App Service).
-- Azure OpenAI model/deployment (`gpt-4o` vs. a cheaper tier) — cost vs. accuracy
+- Azure OpenAI model/deployment (`gpt-5-mini` vs. `gpt-5-nano` vs. `gpt-5`) — cost vs. accuracy
   on real receipts, see [`docs/EXTRACTION_API.md`](EXTRACTION_API.md).
 - Auth: home-grown JWT now; consider Azure AD B2C / Entra External ID later.
 - Server-side receipt persistence + sync protocol with the iOS SwiftData cache.

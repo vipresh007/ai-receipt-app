@@ -20,9 +20,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Environment
-        run: |
-          xcodebuild -version
-          xcrun simctl list runtimes
+        run: xcodebuild -version
 
       - name: Install tools
         run: brew install xcodegen xcbeautify
@@ -30,24 +28,13 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Pick an iOS simulator
+      - name: Select a simulator
         id: sim
         run: |
-          pick() {
-            xcrun simctl list devices available --json | python3 -c "import json,sys
-d = json.load(sys.stdin)['devices']
-cands = [x for k, v in d.items() if 'iOS' in k for x in v if x.get('isAvailable')]
-cands.sort(key=lambda x: x['name'])
-pref = [x for x in cands if 'iPhone' in x['name']] or cands
-print(pref[-1]['udid'] if pref else '')"
-          }
-          udid=$(pick)
-          if [ -z "$udid" ]; then
-            echo "No iOS simulator runtime found — downloading."
-            xcodebuild -downloadPlatform iOS -quiet || true
-            udid=$(pick)
-          fi
-          [ -n "$udid" ] || { echo "::error::No iOS simulator available"; exit 1; }
+          list_udid() { xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; c=[x for k,v in d.items() if "iOS" in k for x in v if x.get("isAvailable")]; ip=[x for x in c if "iPhone" in x["name"]] or c; print(ip[-1]["udid"] if ip else "")'; }
+          udid=$(list_udid)
+          if [ -z "$udid" ]; then echo "No iOS runtime — downloading."; xcodebuild -downloadPlatform iOS -quiet || true; udid=$(list_udid); fi
+          [ -n "$udid" ] || { echo "::error::no iOS simulator available"; exit 1; }
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           echo "Using simulator $udid"
 

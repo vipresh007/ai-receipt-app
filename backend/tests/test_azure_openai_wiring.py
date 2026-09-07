@@ -9,7 +9,7 @@ def test_parse_endpoint_exists_on_client():
     client = AzureOpenAI(
         azure_endpoint="https://example.openai.azure.com",
         api_key="not-real",
-        api_version="2024-10-21",
+        api_version="2025-04-01-preview",
     )
     # `extract()` calls exactly this path.
     assert hasattr(client.chat.completions, "parse")
