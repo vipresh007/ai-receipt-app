@@ -35,7 +35,8 @@ extension Color {
 
 // MARK: - Theme
 
-/// Mirrors `design/tokens.json`. Keep values in sync with that file.
+/// Mirrors `design/tokens.json` — keep values in sync with that file.
+/// (Web consumes the same tokens via `design/tokens.css`.)
 enum Theme {
     enum Palette {
         static let bg = Color(light: "#FAFAF9", dark: "#0F0F10")
