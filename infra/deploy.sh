@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# Build + deploy the backend and web apps to Azure Container Apps. Idempotent.
+#
+#   ./infra/deploy.sh                 # build + deploy both
+#   TARGET=backend ./infra/deploy.sh  # just one  (backend | web | both)
+#
+# Prereqs: ./infra/provision.sh has run (resource group + Postgres + OpenAI +
+# storage + App Insights exist), az is logged in, infra/.env.infra is filled.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+[ -f "$HERE/.env.infra" ] && { set -a; . "$HERE/.env.infra"; set +a; }
+
+NAME_PREFIX="${NAME_PREFIX:-ai-receipt-dev}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-rg-ai-receipt-dev}"
+LOCATION="${LOCATION:-eastus2}"
+TARGET="${TARGET:-both}"
+TAG="${TAG:-$(date +%Y%m%d%H%M%S)}"
+
+ACR_NAME="${ACR_NAME:-$(printf '%s' "${NAME_PREFIX}acr" | tr -cd 'a-z0-9')}"
+CAE_NAME="${CAE_NAME:-${NAME_PREFIX}-cae}"
+API_APP="${API_APP:-${NAME_PREFIX}-api}"
+WEB_APP="${WEB_APP:-${NAME_PREFIX}-web}"
+
+OPENAI_NAME="${OPENAI_NAME:-${NAME_PREFIX}-openai}"
+OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-gpt-5-mini}"
+PG_NAME="${PG_NAME:-${NAME_PREFIX}-pg}"
+PG_ADMIN_USER="${PG_ADMIN_USER:-airadmin}"
+PG_DB="${PG_DB:-ai_receipt}"
+STORAGE_CONTAINER="${STORAGE_CONTAINER:-receipts}"
+LOGS_NAME="${LOGS_NAME:-${NAME_PREFIX}-logs}"
+APPI_NAME="${APPI_NAME:-${NAME_PREFIX}-appi}"
+
+say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+
+# ---- JWT secret: reuse backend/.env's if present, else generate + persist ----
+JWT_SECRET="${JWT_SECRET:-}"
+if [ -z "$JWT_SECRET" ] && [ -f "$ROOT/backend/.env" ]; then
+  JWT_SECRET="$(grep -E '^JWT_SECRET=' "$ROOT/backend/.env" | head -1 | cut -d= -f2-)"
+fi
+if [ -z "$JWT_SECRET" ]; then
+  _r="$(uuidgen)$(uuidgen)"; JWT_SECRET="${_r//-/}"
+fi
+
+say "Registering providers"
+for p in Microsoft.App Microsoft.ContainerRegistry Microsoft.OperationalInsights; do
+  s="$(az provider show -n "$p" --query registrationState -o tsv 2>/dev/null || echo NotRegistered)"
+  [ "$s" = "Registered" ] || { echo "  registering $p"; az provider register -n "$p" --wait -o none; }
+done
+az extension show -n containerapp -o none 2>/dev/null || az extension add -n containerapp -y -o none
+
+say "Container registry: $ACR_NAME"
+az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null || \
+  az acr create -n "$ACR_NAME" -g "$RESOURCE_GROUP" -l "$LOCATION" --sku Basic -o none
+az acr update -n "$ACR_NAME" --admin-enabled true -o none
+ACR_SERVER="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)"
+ACR_USER="$(az acr credential show -n "$ACR_NAME" --query username -o tsv)"
+ACR_PASS="$(az acr credential show -n "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+
+say "Container Apps environment: $CAE_NAME"
+if ! az containerapp env show -n "$CAE_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
+  LOGS_CID="$(az monitor log-analytics workspace show -n "$LOGS_NAME" -g "$RESOURCE_GROUP" --query customerId -o tsv)"
+  LOGS_KEY="$(az monitor log-analytics workspace get-shared-keys -n "$LOGS_NAME" -g "$RESOURCE_GROUP" --query primarySharedKey -o tsv)"
+  az containerapp env create -n "$CAE_NAME" -g "$RESOURCE_GROUP" -l "$LOCATION" \
+    --logs-workspace-id "$LOGS_CID" --logs-workspace-key "$LOGS_KEY" -o none
+fi
+
+deploy_app() {  # $1 name  $2 image  $3 target-port  shift 3; rest = --env-vars / --secrets args
+  local name="$1" image="$2" port="$3"; shift 3
+  if az containerapp show -n "$name" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
+    az containerapp registry set -n "$name" -g "$RESOURCE_GROUP" \
+      --server "$ACR_SERVER" --username "$ACR_USER" --password "$ACR_PASS" -o none
+    az containerapp update -n "$name" -g "$RESOURCE_GROUP" --image "$image" "$@" -o none
+  else
+    az containerapp create -n "$name" -g "$RESOURCE_GROUP" --environment "$CAE_NAME" \
+      --image "$image" --target-port "$port" --ingress external \
+      --registry-server "$ACR_SERVER" --registry-username "$ACR_USER" --registry-password "$ACR_PASS" \
+      --min-replicas 0 --max-replicas 2 --cpu 0.5 --memory 1.0Gi "$@" -o none
+  fi
+  az containerapp show -n "$name" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv
+}
+
+if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
+  say "Build backend image (az acr build)"
+  az acr build -r "$ACR_NAME" -t "ai-receipt-api:$TAG" -t "ai-receipt-api:latest" \
+    -f "$ROOT/backend/Dockerfile" "$ROOT/backend" -o none
+
+  OPENAI_ENDPOINT="$(az cognitiveservices account show -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query 'properties.endpoint' -o tsv)"
+  OPENAI_KEY="$(az cognitiveservices account keys list -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query key1 -o tsv)"
+  PG_FQDN="$(az postgres flexible-server show -n "$PG_NAME" -g "$RESOURCE_GROUP" --query fullyQualifiedDomainName -o tsv)"
+  STORAGE_CONN="$(grep -E '^AZURE_STORAGE_CONNECTION_STRING=' "$ROOT/backend/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+  APPI_CONN="$(az monitor app-insights component show --app "$APPI_NAME" -g "$RESOURCE_GROUP" --query connectionString -o tsv)"
+  DB_URL="postgresql+asyncpg://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB}?ssl=require"
+
+  say "Deploy $API_APP"
+  API_FQDN="$(deploy_app "$API_APP" "$ACR_SERVER/ai-receipt-api:$TAG" 8000 \
+    --secrets \
+      database-url="$DB_URL" jwt-secret="$JWT_SECRET" aoai-key="$OPENAI_KEY" \
+      storage-conn="$STORAGE_CONN" appi-conn="$APPI_CONN" \
+    --env-vars \
+      ENVIRONMENT=production LOG_LEVEL=INFO AUTO_CREATE_TABLES=true \
+      DATABASE_URL=secretref:database-url JWT_SECRET=secretref:jwt-secret \
+      AZURE_OPENAI_ENDPOINT="$OPENAI_ENDPOINT" AZURE_OPENAI_API_KEY=secretref:aoai-key \
+      AZURE_OPENAI_API_VERSION=2025-04-01-preview AZURE_OPENAI_DEPLOYMENT="$OPENAI_DEPLOYMENT" \
+      AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn AZURE_STORAGE_CONTAINER="$STORAGE_CONTAINER" \
+      APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appi-conn)"
+  echo "backend: https://$API_FQDN"
+fi
+
+if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
+  say "Build web image (az acr build, root context)"
+  az acr build -r "$ACR_NAME" -t "ai-receipt-web:$TAG" -t "ai-receipt-web:latest" \
+    -f "$ROOT/web/Dockerfile" "$ROOT" -o none
+
+  if [ -z "${API_FQDN:-}" ]; then
+    API_FQDN="$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || true)"
+  fi
+  [ -n "$API_FQDN" ] || { echo "No backend FQDN — deploy backend first."; exit 1; }
+
+  say "Deploy $WEB_APP"
+  WEB_FQDN="$(deploy_app "$WEB_APP" "$ACR_SERVER/ai-receipt-web:$TAG" 3000 \
+    --env-vars NODE_ENV=production BACKEND_URL="https://$API_FQDN")"
+  echo "web: https://$WEB_FQDN"
+fi
+
+say "Done"
+[ -n "${API_FQDN:-}" ] && echo "  API  https://$API_FQDN  (docs: /docs)"
+[ -n "${WEB_FQDN:-}" ] && echo "  Web  https://$WEB_FQDN"

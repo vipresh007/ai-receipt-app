@@ -1,0 +1,18 @@
+# Applies to builds that use the repo root as context (currently web/Dockerfile).
+.git
+.github
+ios/
+backend/
+infra/
+docs/
+**/node_modules/
+**/.next/
+**/.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/DerivedData/
+web/.env*.local
+*.md
