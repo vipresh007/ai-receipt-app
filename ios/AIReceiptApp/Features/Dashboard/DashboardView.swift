@@ -16,23 +16,34 @@ struct DashboardView: View {
         NavigationStack {
             Group {
                 if receipts.isEmpty {
-                    ContentUnavailableView(
-                        "No receipts yet",
-                        systemImage: "doc.text.image",
-                        description: Text("Scan your first receipt to start tracking spending.")
-                    )
+                    ContentUnavailableView {
+                        Label("No receipts yet", systemImage: "doc.text.image")
+                    } description: {
+                        Text("Scan your first receipt to start tracking spending.")
+                    }
                 } else {
                     ScrollView {
-                        VStack(spacing: 20) {
-                            MonthlyTotalCard(amount: summary.currentMonthTotal, currencyCode: currencyCode)
-                            CategoryBreakdownCard(breakdown: summary.currentMonthByCategory, currencyCode: currencyCode)
+                        VStack(spacing: Theme.Space.xl) {
+                            MonthlyTotalCard(
+                                amount: summary.currentMonthTotal,
+                                currencyCode: currencyCode
+                            )
+                            CategoryBreakdownCard(
+                                breakdown: summary.currentMonthByCategory,
+                                currencyCode: currencyCode
+                            )
                             InsightsCard(insights: summary.insights)
-                            RecentReceiptsCard(receipts: Array(receipts.prefix(5)), currencyCode: currencyCode)
+                            RecentReceiptsCard(
+                                receipts: Array(receipts.prefix(5)),
+                                currencyCode: currencyCode
+                            )
                         }
-                        .padding()
+                        .padding(Theme.Space.lg)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
         }
     }

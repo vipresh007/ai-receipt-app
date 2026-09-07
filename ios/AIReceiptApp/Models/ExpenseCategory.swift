@@ -44,17 +44,19 @@ enum ExpenseCategory: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    /// Category colors from `design/tokens.json` — tuned to coexist in a chart
+    /// and stay distinct for color-vision deficiency.
     var tint: Color {
         switch self {
-        case .groceries: .green
-        case .restaurants: .orange
-        case .transport: .blue
-        case .shopping: .pink
-        case .entertainment: .purple
-        case .health: .red
-        case .utilities: .yellow
-        case .travel: .teal
-        case .other: .gray
+        case .groceries: Color(light: "#2FA36B", dark: "#46C088")
+        case .restaurants: Color(light: "#E1873C", dark: "#F2A25C")
+        case .transport: Color(light: "#3B82C4", dark: "#5AA0E0")
+        case .shopping: Color(light: "#D2649B", dark: "#EC85B8")
+        case .entertainment: Color(light: "#8B5CD6", dark: "#A98AE6")
+        case .health: Color(light: "#D5544A", dark: "#F0776C")
+        case .utilities: Color(light: "#C0982A", dark: "#E3C04A")
+        case .travel: Color(light: "#2FA6A0", dark: "#48C4BE")
+        case .other: Color(light: "#8A8A83", dark: "#9A9A94")
         }
     }
 }

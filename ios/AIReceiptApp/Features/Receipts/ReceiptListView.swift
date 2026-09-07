@@ -51,20 +51,23 @@ private struct ReceiptRow: View {
     let currencyCode: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: receipt.category.systemImage)
-                .foregroundStyle(receipt.category.tint)
-                .frame(width: 30)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(receipt.merchant).fontWeight(.medium)
+        HStack(spacing: Theme.Space.md) {
+            CategoryGlyph(category: receipt.category, size: 32)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(receipt.merchant.isEmpty ? "Unknown merchant" : receipt.merchant)
+                    .font(.appCallout.weight(.medium))
+                    .foregroundStyle(Theme.Palette.text)
                 Text(receipt.date, format: .dateTime.month().day().year())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
             }
             Spacer()
             Text(receipt.total, format: .currency(code: currencyCode))
-                .fontWeight(.semibold)
+                .font(.appCallout.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.Palette.text)
         }
+        .padding(.vertical, 2)
     }
 }
 

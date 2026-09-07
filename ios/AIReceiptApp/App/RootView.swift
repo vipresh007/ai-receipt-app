@@ -12,6 +12,7 @@ struct RootView: View {
             ReceiptListView()
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
         }
+        .tint(Theme.Palette.accent)
     }
 }
 
