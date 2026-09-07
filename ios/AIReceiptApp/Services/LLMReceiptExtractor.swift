@@ -6,6 +6,8 @@ import UIKit
 /// `EXTRACTION_API_HOST` is configured.
 struct LLMReceiptExtractor: ReceiptExtractor {
     var baseURL: URL
+    /// Provided by the sign-in flow once it exists; sent as a bearer token.
+    var authToken: String?
     var recognizer = ReceiptTextRecognizer()
 
     func extractReceipt(from image: UIImage) async throws -> ReceiptDraft {
@@ -16,7 +18,7 @@ struct LLMReceiptExtractor: ReceiptExtractor {
         // OCR is best-effort context for the backend — failure here is non-fatal.
         let ocrLines = (try? await recognizer.recognizeText(in: image)) ?? []
 
-        let client = ReceiptExtractionAPIClient(baseURL: baseURL)
+        let client = ReceiptExtractionAPIClient(baseURL: baseURL, authToken: authToken)
         return try await client.extract(imageData: imageData, ocrLines: ocrLines)
     }
 }

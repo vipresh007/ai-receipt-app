@@ -5,102 +5,62 @@
 Snap a photo of a receipt → AI reads it → the expense is saved and categorized.
 
 A personal expense tracker built around one core action. The MVP goal: make
-expense tracking *easier than manually entering a transaction*. If a scan takes
-5–10 seconds and the expense immediately shows up organized in your history, the
-core value is there.
+expense tracking *easier than manually entering a transaction*.
 
-See [`docs/SPEC.md`](docs/SPEC.md) for the full product description.
+- Product spec — [`docs/SPEC.md`](docs/SPEC.md)
+- Architecture & stack — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- iOS ⇄ backend extraction contract — [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md)
+- Working in this repo with Claude Code — [`CLAUDE.md`](CLAUDE.md)
 
----
+## Monorepo
+
+| Path | What | Stack | README |
+|------|------|-------|--------|
+| [`ios/`](ios) | iOS app | Swift · SwiftUI · SwiftData · Swift Charts · XcodeGen | [ios/README.md](ios/README.md) |
+| [`backend/`](backend) | REST API | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic | [backend/README.md](backend/README.md) |
+| [`infra/`](infra) | Azure provisioning | `az` CLI scripts | [infra/README.md](infra/README.md) |
+| [`docs/`](docs) | Specs & contracts | — | — |
+
+**External services:** Azure OpenAI (extraction, insights) · PostgreSQL · Azure
+Blob Storage (receipt images) · Azure Application Insights (telemetry).
+
+## Quick start
+
+**iOS** (needs Xcode):
+```bash
+cd ios && xcodegen generate && open AIReceiptApp.xcodeproj
+```
+
+**Backend** (needs Python 3.12 + Docker):
+```bash
+cd backend
+python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+cp .env.example .env
+docker compose up -d db
+.venv/bin/uvicorn app.main:app --reload      # http://localhost:8000/docs
+```
 
 ## Status
 
-Early scaffold. The full **capture → confirm → save → dashboard** flow is wired
-up and runs against a mock extractor (`MockReceiptExtractor`), so you can click
-through the whole app before any backend exists. On-device OCR
-(`ReceiptTextRecognizer`, Vision framework) is real. The real extractor
-(`LLMReceiptExtractor` → `ReceiptExtractionAPIClient`) is fully implemented on
-the client side and switches on automatically once you point it at a backend
-(see [Extraction backend](#extraction-backend)); the backend itself is specified
-in [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md) but not built yet.
-
-## Requirements
-
-- **Xcode 15.4+** (not yet installed on this machine — get it from the App Store)
-- **iOS 17.0+** deployment target (uses SwiftData, Swift Charts, `ContentUnavailableView`)
-- [**XcodeGen**](https://github.com/yonwspm/XcodeGen) — `brew install xcodegen`
-
-## Getting started
-
-```bash
-# 1. Generate the Xcode project from project.yml
-xcodegen generate
-
-# 2. Open it
-open AIReceiptApp.xcodeproj
-
-# 3. Select an iOS 17 simulator and Run (Cmd-R)
-```
-
-`AIReceiptApp.xcodeproj` is **generated** and git-ignored. Whenever you add,
-rename, or move source files, re-run `xcodegen generate`.
-
-## Project layout
-
-```
-Config/         AIReceiptApp.xcconfig + Secrets.example.xcconfig (backend host)
-AIReceiptApp/
-  App/          App entry point + root TabView
-  Config/       AppConfig — reads build-time settings from Info.plist
-  Models/       Receipt (SwiftData @Model), ReceiptLineItem, ExpenseCategory, ReceiptDraft
-  Services/     ReceiptExtractor protocol, Mock + LLM extractors, API client, Vision OCR
-  Features/
-    Scan/       Capture flow: camera / photo picker → extractor → confirm
-    Confirm/    Editable confirmation screen before saving
-    Dashboard/  Monthly total, category breakdown (Swift Charts), insights
-    Receipts/   Full list + detail/edit
-.github/workflows/ci.yml   Build + unit tests on a macOS runner
-docs/EXTRACTION_API.md     Backend ⇄ Claude contract (request/response, prompt, curl)
-```
-
-### Data flow
-
-1. `ScanFlowView` gets a `UIImage` from the camera or photo library.
-2. `ReceiptExtractionService.current` (a `ReceiptExtractor`) returns a `ReceiptDraft`.
-3. `ConfirmReceiptView` lets the user fix any fields.
-4. On save, the draft becomes a `Receipt` inserted into the SwiftData `modelContext`.
-5. `DashboardView` / `ReceiptListView` use `@Query` to react to the store.
-
-## Extraction backend
-
-The app talks to **your** backend, which calls the LLM server-side — the
-Anthropic key never ships in the app. Full contract (request/response schema,
-system prompt, `strict` tool schema, `curl`, and a Cloudflare Workers sketch) is
-in [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md).
-
-To point the app at a backend:
-
-```bash
-cp Config/Secrets.example.xcconfig Config/Secrets.xcconfig
-# edit: EXTRACTION_API_HOST = your-worker.example.workers.dev   (host only, no https://)
-xcodegen generate
-```
-
-`ReceiptExtractionService.current` then resolves to `LLMReceiptExtractor`
-automatically; with no host set it stays on `MockReceiptExtractor`.
-`Config/Secrets.xcconfig` is git-ignored.
+- **iOS** — full capture → confirm → save → dashboard flow, runs on
+  `MockReceiptExtractor` with no backend; switches to the real API when
+  `EXTRACTION_API_HOST` is set. Builds + tests green in CI.
+- **Backend** — FastAPI skeleton: auth (JWT), `POST /v1/extract` (Azure OpenAI
+  structured outputs), receipts/expenses/insights, SQLAlchemy models + Alembic,
+  Dockerized, tests on SQLite (no Azure needed). Lint + tests green in CI.
+- **Infra** — `az` scripts under [`infra/`](infra).
 
 ## Roadmap
 
-- [x] Client-side extraction API layer + backend/LLM contract (`docs/EXTRACTION_API.md`)
-- [x] CI: build + unit tests on GitHub Actions
-- [ ] Build the extraction backend (Cloudflare Worker or similar) + deploy
-- [ ] Persist and show the receipt image thumbnail in the list
-- [ ] Month picker / historical months on the dashboard
-- [ ] Spending trend chart (last 6 months)
-- [ ] Free tier scan limit + paywall (freemium)
-- [ ] CSV / PDF export (paid)
-- [ ] Shared expenses, bank syncing (later)
+- [x] iOS scaffold + extraction client
+- [x] FastAPI backend skeleton (auth, extract, models, migrations, tests)
+- [x] CI: iOS + backend
+- [ ] Provision Azure resources & deploy the backend
+- [ ] iOS sign-in flow → real bearer token on `/v1/extract`
+- [ ] Server-side receipt persistence + SwiftData sync
+- [ ] Free-tier scan limit + paywall (freemium)
+- [ ] Azure OpenAI natural-language insights
+- [ ] CSV / PDF export; shared expenses; bank syncing (later)
 
 ## Business model (planned)
 

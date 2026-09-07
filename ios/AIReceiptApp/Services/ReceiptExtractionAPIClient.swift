@@ -6,11 +6,16 @@ struct ReceiptExtractionAPIClient {
     var baseURL: URL
     var session: URLSession = .shared
     var timeout: TimeInterval = 30
+    /// Bearer token from the sign-in flow. The backend requires it on `/v1/extract`.
+    var authToken: String?
 
     func extract(imageData: Data, ocrLines: [String]) async throws -> ReceiptDraft {
         var request = URLRequest(url: baseURL.appendingPathComponent("v1/extract"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let authToken, !authToken.isEmpty {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
         request.timeoutInterval = timeout
         request.httpBody = try JSONEncoder().encode(
             RequestBody(

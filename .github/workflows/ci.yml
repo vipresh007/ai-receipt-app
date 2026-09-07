@@ -10,9 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-test:
-    name: Build & test (iOS)
+  ios:
+    name: iOS — build & test
     runs-on: macos-15
+    defaults:
+      run:
+        working-directory: ios
     steps:
       - uses: actions/checkout@v4
 
@@ -26,9 +29,6 @@ jobs:
 
       - name: Generate Xcode project
         run: xcodegen generate
-
-      - name: List schemes
-        run: xcodebuild -list -project AIReceiptApp.xcodeproj
 
       - name: Build & test
         run: |
@@ -45,6 +45,36 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: TestResults.xcresult
+          name: ios-test-results
+          path: ios/TestResults.xcresult
           if-no-files-found: ignore
+
+  backend:
+    name: Backend — lint & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Types (mypy)
+        run: mypy app
+        continue-on-error: true
+
+      - name: Tests
+        run: pytest -q
