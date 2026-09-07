@@ -1,0 +1,123 @@
+import Foundation
+
+struct CategoryTotal: Identifiable {
+    var id: ExpenseCategory { category }
+    let category: ExpenseCategory
+    let amount: Decimal
+}
+
+struct Insight: Identifiable {
+    enum Kind { case up, down, neutral, streak }
+    let id = UUID()
+    let kind: Kind
+    let message: String
+}
+
+/// Derives everything the dashboard shows from the raw list of receipts.
+/// Pure and deterministic so it's easy to unit-test.
+struct SpendingSummary {
+    let currentMonthTotal: Decimal
+    let previousMonthTotal: Decimal
+    let currentMonthByCategory: [CategoryTotal]
+    let insights: [Insight]
+
+    init(receipts: [Receipt], calendar: Calendar = .current, now: Date = .now) {
+        let currentMonth = calendar.dateInterval(of: .month, for: now)
+        let previousMonth = calendar.date(byAdding: .month, value: -1, to: now)
+            .flatMap { calendar.dateInterval(of: .month, for: $0) }
+
+        let current = receipts.filter { Self.contains(currentMonth, $0.date) }
+        let previous = receipts.filter { Self.contains(previousMonth, $0.date) }
+
+        currentMonthTotal = current.reduce(Decimal(0)) { $0 + $1.total }
+        previousMonthTotal = previous.reduce(Decimal(0)) { $0 + $1.total }
+
+        currentMonthByCategory = Self.totals(current)
+            .map { CategoryTotal(category: $0.key, amount: $0.value) }
+            .sorted { $0.amount > $1.amount }
+
+        insights = Self.makeInsights(
+            current: current,
+            previous: previous,
+            receipts: receipts,
+            calendar: calendar,
+            now: now
+        )
+    }
+
+    // MARK: - Helpers
+
+    private static func contains(_ interval: DateInterval?, _ date: Date) -> Bool {
+        guard let interval else { return false }
+        return interval.contains(date)
+    }
+
+    private static func totals(_ list: [Receipt]) -> [ExpenseCategory: Decimal] {
+        var map: [ExpenseCategory: Decimal] = [:]
+        for receipt in list {
+            map[receipt.category, default: 0] += receipt.total
+        }
+        return map
+    }
+
+    private static func makeInsights(
+        current: [Receipt],
+        previous: [Receipt],
+        receipts: [Receipt],
+        calendar: Calendar,
+        now: Date
+    ) -> [Insight] {
+        var insights: [Insight] = []
+
+        let currentTotals = totals(current)
+        let previousTotals = totals(previous)
+
+        for (category, currentAmount) in currentTotals.sorted(by: { $0.value > $1.value }) {
+            guard let previousAmount = previousTotals[category], previousAmount > 0 else { continue }
+            let change = (currentAmount - previousAmount) / previousAmount
+            let percent = NSDecimalNumber(decimal: change * 100).doubleValue
+            guard abs(percent) >= 15 else { continue }
+
+            let direction = percent > 0 ? "more" : "less"
+            insights.append(
+                Insight(
+                    kind: percent > 0 ? .up : .down,
+                    message: "You spent \(Int(abs(percent).rounded()))% \(direction) on \(category.displayName.lowercased()) this month."
+                )
+            )
+            if insights.count >= 3 { break }
+        }
+
+        if let rising = risingCategory(receipts: receipts, calendar: calendar, now: now) {
+            insights.append(
+                Insight(
+                    kind: .streak,
+                    message: "Your \(rising.displayName.lowercased()) spending has increased three months in a row."
+                )
+            )
+        }
+
+        return insights
+    }
+
+    /// A category whose spending rose in each of the last three months.
+    private static func risingCategory(receipts: [Receipt], calendar: Calendar, now: Date) -> ExpenseCategory? {
+        func monthTotal(_ category: ExpenseCategory, monthsAgo: Int) -> Decimal {
+            guard let base = calendar.date(byAdding: .month, value: -monthsAgo, to: now),
+                  let interval = calendar.dateInterval(of: .month, for: base) else { return 0 }
+            return receipts
+                .filter { $0.category == category && interval.contains($0.date) }
+                .reduce(Decimal(0)) { $0 + $1.total }
+        }
+
+        for category in ExpenseCategory.allCases {
+            let thisMonth = monthTotal(category, monthsAgo: 0)
+            let lastMonth = monthTotal(category, monthsAgo: 1)
+            let twoMonthsAgo = monthTotal(category, monthsAgo: 2)
+            if twoMonthsAgo > 0, lastMonth > twoMonthsAgo, thisMonth > lastMonth {
+                return category
+            }
+        }
+        return nil
+    }
+}
