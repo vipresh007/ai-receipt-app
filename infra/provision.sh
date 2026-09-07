@@ -58,6 +58,16 @@ fi
 say "Subscription"
 az account show --query '{name:name, id:id}' -o table
 
+say "Registering resource providers"
+for _p in Microsoft.CognitiveServices Microsoft.DBforPostgreSQL Microsoft.Storage \
+          Microsoft.OperationalInsights Microsoft.Insights; do
+  state="$(az provider show -n "$_p" --query registrationState -o tsv 2>/dev/null || echo NotRegistered)"
+  if [ "$state" != "Registered" ]; then
+    echo "  registering $_p ..."
+    az provider register -n "$_p" --wait -o none
+  fi
+done
+
 say "Resource group: $RESOURCE_GROUP ($LOCATION)"
 az group create -n "$RESOURCE_GROUP" -l "$LOCATION" -o none
 
@@ -85,8 +95,8 @@ az postgres flexible-server create \
   --admin-user "$PG_ADMIN_USER" --admin-password "$PG_ADMIN_PASSWORD" \
   --public-access 0.0.0.0 --yes -o none
 
-az postgres flexible-server db show -d "$PG_DB" -s "$PG_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null || \
-az postgres flexible-server db create -d "$PG_DB" -s "$PG_NAME" -g "$RESOURCE_GROUP" -o none
+az postgres flexible-server db show -n "$PG_DB" -s "$PG_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null || \
+az postgres flexible-server db create -n "$PG_DB" -s "$PG_NAME" -g "$RESOURCE_GROUP" -o none
 
 # Allow Azure services (adjust/remove for production; add your IP for local dev).
 az postgres flexible-server firewall-rule create \
