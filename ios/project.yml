@@ -32,6 +32,9 @@ targets:
         NSCameraUsageDescription: "Scan receipts to add expenses automatically."
         NSPhotoLibraryUsageDescription: "Import receipt photos from your library."
         ExtractionAPIHost: $(EXTRACTION_API_HOST)
+        # Allow plain-HTTP only to localhost / *.local for local backend dev.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.AIReceiptApp
