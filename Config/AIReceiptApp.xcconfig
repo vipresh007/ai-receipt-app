@@ -1,0 +1,13 @@
+// Base build configuration for the AIReceiptApp target.
+//
+// Real values live in Config/Secrets.xcconfig (git-ignored) — copy
+// Config/Secrets.example.xcconfig to create it.
+
+// Host (and optional path) of the receipt-extraction backend, WITHOUT a scheme
+// — xcconfig treats "//" as a comment, so "https://" cannot appear here.
+// Example: my-worker.workers.dev  or  api.myapp.com/receipts
+// Left empty here; the app falls back to MockReceiptExtractor when unset.
+EXTRACTION_API_HOST =
+
+// Pull in local secrets if the file exists ("?" = optional include).
+#include? "Secrets.xcconfig"

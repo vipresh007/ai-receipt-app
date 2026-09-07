@@ -1,26 +1,22 @@
 import UIKit
 
-/// Production extractor: OCR the receipt on-device, then send the text to an LLM
-/// that returns structured JSON. Fill in `callExtractionAPI(lines:)` with the
-/// real backend request and switch `ReceiptExtractionService.current` to this.
+/// Production extractor: OCR the receipt on-device for extra context, then hand
+/// the image + text to our backend (`ReceiptExtractionAPIClient`), which runs
+/// the LLM. Selected automatically by `ReceiptExtractionService` when
+/// `EXTRACTION_API_HOST` is configured.
 struct LLMReceiptExtractor: ReceiptExtractor {
+    var baseURL: URL
     var recognizer = ReceiptTextRecognizer()
 
     func extractReceipt(from image: UIImage) async throws -> ReceiptDraft {
-        let lines = try await recognizer.recognizeText(in: image)
-        var draft = try await callExtractionAPI(lines: lines)
-        draft.imageData = image.jpegData(compressionQuality: 0.7)
-        return draft
-    }
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+            throw ReceiptExtractionError.couldNotReadImage
+        }
 
-    private func callExtractionAPI(lines: [String]) async throws -> ReceiptDraft {
-        // TODO: POST `lines` (or the image) to the extraction endpoint and
-        // decode the response into a ReceiptDraft. The endpoint should return:
-        // merchant, date, total, tax, category, and optional line items.
-        //
-        // Keep the endpoint URL + any keys in Secrets.xcconfig (git-ignored),
-        // never in source.
-        _ = lines
-        throw ReceiptExtractionError.notConfigured
+        // OCR is best-effort context for the backend — failure here is non-fatal.
+        let ocrLines = (try? await recognizer.recognizeText(in: image)) ?? []
+
+        let client = ReceiptExtractionAPIClient(baseURL: baseURL)
+        return try await client.extract(imageData: imageData, ocrLines: ocrLines)
     }
 }

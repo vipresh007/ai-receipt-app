@@ -19,19 +19,25 @@ targets:
   AIReceiptApp:
     type: application
     platform: iOS
+    configFiles:
+      Debug: Config/AIReceiptApp.xcconfig
+      Release: Config/AIReceiptApp.xcconfig
     sources:
       - path: AIReceiptApp
+    info:
+      path: AIReceiptApp/Generated/Info.plist
+      properties:
+        CFBundleDisplayName: AI Receipt
+        UILaunchScreen: {}
+        NSCameraUsageDescription: "Scan receipts to add expenses automatically."
+        NSPhotoLibraryUsageDescription: "Import receipt photos from your library."
+        ExtractionAPIHost: $(EXTRACTION_API_HOST)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.AIReceiptApp
-        GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "AI Receipt"
-        INFOPLIST_KEY_NSCameraUsageDescription: "Scan receipts to add expenses automatically."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Import receipt photos from your library."
 
   AIReceiptAppTests:
     type: bundle.unit-test
