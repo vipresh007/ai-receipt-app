@@ -1,23 +1,32 @@
 import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import {
+  AuthErrorBanner,
   BottomCTA,
   Features,
   Hero,
   HowItWorks,
+  ReadsReceipts,
   SiteFooter,
   SiteHeader,
 } from "@/components/landing";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ authError?: string }>;
+}) {
+  const { authError } = await searchParams;
   const session = await auth0.getSession();
   if (session) redirect("/dashboard");
 
   return (
     <div className="min-h-dvh bg-bg text-text">
+      {authError && <AuthErrorBanner message={authError} />}
       <SiteHeader />
       <main>
         <Hero />
+        <ReadsReceipts />
         <HowItWorks />
         <Features />
         <BottomCTA />
