@@ -70,7 +70,7 @@ export function Hero() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-[-20%] mx-auto h-[520px] max-w-4xl rounded-pill bg-accent-muted blur-[120px]"
       />
-      <div className="relative mx-auto flex max-w-content flex-col items-center px-lg pt-4xl text-center md:pt-[6rem]">
+      <div className="relative mx-auto flex max-w-content flex-col items-center px-lg pt-xl text-center md:pt-4xl">
         <span className="inline-flex items-center gap-xs rounded-pill border border-border bg-surface/80 px-md py-hair text-micro uppercase tracking-wide text-text-secondary backdrop-blur">
           <Sparkles size={12} className="text-accent" />
           Expense tracking, minus the tracking
@@ -551,12 +551,12 @@ function FeatData() {
 export function BottomCTA() {
   return (
     <section className="px-lg py-4xl">
-      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-[color:var(--cat-transport)] px-lg py-3xl text-center text-white sm:px-2xl">
+      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl border border-[#1c356b] bg-[linear-gradient(135deg,#26467f,#1b3563)] px-lg py-3xl text-center text-white sm:px-2xl">
         {/* glyph watermark */}
         <ScanLine
           aria-hidden
           size={280}
-          className="pointer-events-none absolute -right-12 -top-16 text-white/10"
+          className="pointer-events-none absolute -right-12 -top-16 text-white/[0.07]"
         />
         <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
           <SparklesIconInline />
