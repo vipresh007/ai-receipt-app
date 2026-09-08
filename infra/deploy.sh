@@ -165,5 +165,6 @@ if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
 fi
 
 say "Done"
-[ -n "${API_FQDN:-}" ] && echo "  API  https://$API_FQDN  (docs: /docs)"
-[ -n "${WEB_FQDN:-}" ] && echo "  Web  https://$WEB_FQDN"
+[ -n "${API_FQDN:-}" ] && echo "  API  https://$API_FQDN  (docs: /docs)" || true
+[ -n "${WEB_FQDN:-}" ] && echo "  Web  https://$WEB_FQDN" || true
+exit 0
