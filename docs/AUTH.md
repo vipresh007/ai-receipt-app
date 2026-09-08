@@ -38,12 +38,22 @@ Do this in the [Auth0 dashboard](https://manage.auth0.com) (free tier is fine).
 
 - **APIs → Create API**. Identifier (audience): `https://api.ai-receipt`
   (any stable URI; it does not need to resolve). Signing algorithm **RS256**.
+- **API → Settings → Application Access Policy → User-delegated Access → set to
+  "Authorized"** (all applications). Without this the login fails with
+  `Client "…" is not authorized to access resource server "https://api.ai-receipt"`
+  and the app shows *"An error occurred during the authorization flow."* For
+  stricter control later, use "Per-app authorization" and grant just the web app
+  under the API's **Application Access** tab (User-delegated column).
 
 ### 3. Connections (the login methods)
 
-- **Authentication → Social → Google** — enable. For production, add your own
-  Google OAuth client ID/secret (Google Cloud Console → OAuth consent screen +
-  credentials); the Auth0 dev keys work for testing only.
+- **Authentication → Social → Google** — enable, and paste the Google **Client
+  ID + Secret** here (the web app never sees them). Enable the connection for
+  the "ai-receipt" application (its **Applications** tab).
+  - In **Google Cloud Console**, the OAuth client's **Authorized redirect URIs**
+    must contain `https://<YOUR_AUTH0_DOMAIN>/login/callback` (not your app's
+    URL — Google redirects to Auth0, then Auth0 redirects to the app). JavaScript
+    origins can be left blank. Configure the OAuth consent screen first.
 - **Authentication → Social → Apple** — enable. Needs an Apple Developer account:
   a Services ID, a Sign in with Apple key (`.p8`), and your Team ID. Follow
   Auth0's Apple setup guide.
