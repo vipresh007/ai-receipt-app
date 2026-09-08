@@ -26,13 +26,20 @@ APP_ID="$(az ad app list --display-name "$APP_NAME" --query '[0].appId' -o tsv)"
 az ad sp show --id "$APP_ID" -o none 2>/dev/null || az ad sp create --id "$APP_ID" -o none
 echo "app id: $APP_ID"
 
-SUBJECT="repo:${REPO}:ref:refs/heads/main"
+# GitHub's OIDC subject now embeds owner/repo IDs
+# (e.g. repo:owner@<id>/repo@<id>:ref:refs/heads/main) — read the real prefix.
+SUB_PREFIX="$(gh api "/repos/${REPO}/actions/oidc/customization/sub" -q .sub_claim_prefix 2>/dev/null)"
+[ -n "$SUB_PREFIX" ] || SUB_PREFIX="repo:${REPO}"
+SUBJECT="${SUB_PREFIX}:ref:refs/heads/main"
+echo "federated subject: $SUBJECT"
+OLD_FC="$(az ad app federated-credential list --id "$APP_ID" --query "[?name=='gh-main'].id" -o tsv)"
+[ -n "$OLD_FC" ] && az ad app federated-credential delete --id "$APP_ID" --federated-credential-id "$OLD_FC" -o none
 az ad app federated-credential create --id "$APP_ID" --parameters "{
   \"name\": \"gh-main\",
   \"issuer\": \"https://token.actions.githubusercontent.com\",
   \"subject\": \"${SUBJECT}\",
   \"audiences\": [\"api://AzureADTokenExchange\"]
-}" -o none 2>/dev/null || echo "  (federated credential already exists)"
+}" -o none
 
 az role assignment create --assignee "$APP_ID" --role Contributor \
   --scope "/subscriptions/${SUB_ID}/resourceGroups/${RESOURCE_GROUP}" -o none 2>/dev/null \
