@@ -30,6 +30,7 @@ OPENAI_NAME="${OPENAI_NAME:-${NAME_PREFIX}-openai}"
 OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-gpt-5-mini}"
 PG_NAME="${PG_NAME:-${NAME_PREFIX}-pg}"
 PG_ADMIN_USER="${PG_ADMIN_USER:-airadmin}"
+PG_ADMIN_PASSWORD="${PG_ADMIN_PASSWORD:-}"  # from infra/.env.infra or a CI secret
 PG_DB="${PG_DB:-ai_receipt}"
 STORAGE_CONTAINER="${STORAGE_CONTAINER:-receipts}"
 LOGS_NAME="${LOGS_NAME:-${NAME_PREFIX}-logs}"
@@ -111,12 +112,19 @@ if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
       -f "$ROOT/backend/Dockerfile" "$ROOT/backend" -o none
   fi
 
+  [ -n "$PG_ADMIN_PASSWORD" ] || { echo "PG_ADMIN_PASSWORD is required (infra/.env.infra or a CI secret)."; exit 1; }
   OPENAI_ENDPOINT="$(az cognitiveservices account show -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query 'properties.endpoint' -o tsv)"
   OPENAI_KEY="$(az cognitiveservices account keys list -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query key1 -o tsv)"
   PG_FQDN="$(az postgres flexible-server show -n "$PG_NAME" -g "$RESOURCE_GROUP" --query fullyQualifiedDomainName -o tsv)"
-  STORAGE_CONN="$(grep -E '^AZURE_STORAGE_CONNECTION_STRING=' "$ROOT/backend/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
   APPI_CONN="$(az monitor app-insights component show --app "$APPI_NAME" -g "$RESOURCE_GROUP" --query connectionString -o tsv)"
   DB_URL="postgresql+asyncpg://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB}?ssl=require"
+
+  # storage connection string: env → backend/.env → derive from the one account in the RG
+  STORAGE_CONN="${AZURE_STORAGE_CONNECTION_STRING:-$(_from_env_file AZURE_STORAGE_CONNECTION_STRING "$ROOT/backend/.env")}"
+  if [ -z "$STORAGE_CONN" ]; then
+    _sa="$(az storage account list -g "$RESOURCE_GROUP" --query '[0].name' -o tsv)"
+    STORAGE_CONN="$(az storage account show-connection-string -n "$_sa" -g "$RESOURCE_GROUP" --query connectionString -o tsv)"
+  fi
 
   say "Deploy $API_APP"
   api_secrets="database-url=$DB_URL aoai-key=$OPENAI_KEY storage-conn=$STORAGE_CONN appi-conn=$APPI_CONN"

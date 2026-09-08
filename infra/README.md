@@ -56,6 +56,15 @@ Current URLs:
 - Web — https://ai-receipt-dev-web.ashymoss-2c5773fb.eastus2.azurecontainerapps.io
 - API — https://ai-receipt-dev-api.ashymoss-2c5773fb.eastus2.azurecontainerapps.io/docs
 
+## Continuous deployment
+
+`./setup-cd.sh` (one-time) wires GitHub Actions to Azure via OIDC: an Entra app +
+federated credential for `main`, Contributor on the resource group, and the repo
+secrets. After that, a push to `main` that touches `backend/**` runs **Deploy
+backend** and one touching `web/**` or `design/**` runs **Deploy web** — each just
+calls `deploy.sh` with the right `TARGET`. Both also have a manual `Run workflow`
+button.
+
 ## Teardown
 
 ```bash

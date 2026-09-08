@@ -19,7 +19,7 @@ insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 | `design/` | Shared design tokens | `tokens.json` (canonical) → `tokens.css` + `tailwind-preset.js`; language in `docs/DESIGN.md`. |
 | `infra/` | Azure provisioning | `az` CLI scripts. |
 | `docs/` | Specs & contracts | Markdown. |
-| `.github/workflows/ci.yml` | CI | `ios` (macOS) + `backend` (ubuntu) jobs, each gated by a `dorny/paths-filter` so a one-sided change only runs that job. |
+| `.github/workflows/` | CI + CD | `ci.yml` (lint/test, path-gated) · `deploy-backend.yml` / `deploy-web.yml` (OIDC → `infra/deploy.sh`, path-gated so a one-sided change deploys one side). |
 
 External services: **Azure OpenAI** (receipt extraction, insights),
 **PostgreSQL**, **Azure Blob Storage** (receipt images), **Azure Application
