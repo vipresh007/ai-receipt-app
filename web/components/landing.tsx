@@ -3,11 +3,13 @@ import {
   ArrowRight,
   Camera,
   Check,
+  CircleCheckBig,
+  Database,
   FileText,
-  Layers,
   ScanLine,
   Sparkles,
-  Table2,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryColor } from "@/lib/categories";
@@ -317,44 +319,112 @@ export function HowItWorks() {
     {
       icon: Camera,
       title: "Point & shoot",
-      body: "Snap it or upload from your library. Bad lighting and coffee stains are fine.",
+      body: "Snap it or pick from your library. Bad lighting and coffee stains are fine.",
+      visual: <StepCameraViz />,
     },
     {
       icon: Check,
       title: "Glance & confirm",
       body: "One screen shows what the AI read. Tap to fix anything — usually nothing.",
+      visual: <StepConfirmViz />,
     },
     {
-      icon: Layers,
+      icon: CircleCheckBig,
       title: "It's filed",
-      body: "Categorized, dated, and on your dashboard before you've put your phone away.",
+      body: "Categorized, dated, and on your dashboard before your phone's back in your pocket.",
+      visual: <StepFiledViz />,
     },
   ];
   return (
-    <section id="how" className="scroll-mt-16 border-t border-border bg-surface-2 px-lg py-4xl">
+    <section
+      id="how"
+      className="scroll-mt-16 border-t border-border bg-surface-2 px-lg py-4xl"
+    >
       <div className="mx-auto max-w-content">
-        <h2 className="text-center text-title">Three taps, not a spreadsheet</h2>
-        <div className="mt-2xl grid gap-lg sm:grid-cols-3">
-          {steps.map(({ icon: Icon, title, body }, i) => (
-            <div
-              key={title}
-              className="rounded-2xl border border-border bg-surface p-lg"
-            >
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-muted text-accent">
-                  <Icon size={18} />
+        <p className="text-center text-micro uppercase tracking-wide text-text-tertiary">
+          How it works
+        </p>
+        <h2 className="mt-sm text-center text-title">
+          From shoebox to dashboard in three taps
+        </h2>
+
+        <div className="relative mt-2xl">
+          {/* connecting line (desktop) */}
+          <div
+            aria-hidden
+            className="absolute left-[16.66%] right-[16.66%] top-6 hidden h-px bg-border-strong sm:block"
+          />
+          <ol className="grid gap-xl sm:grid-cols-3">
+            {steps.map(({ icon: Icon, title, body, visual }, i) => (
+              <li key={title} className="flex flex-col items-center text-center">
+                <span className="relative z-10 grid h-12 w-12 place-items-center rounded-pill bg-gradient-to-br from-accent to-[color:var(--cat-transport)] text-white shadow-e1">
+                  <Icon size={20} />
                 </span>
-                <span className="text-display font-bold text-border-strong">
-                  {i + 1}
+                <span className="mt-sm text-micro uppercase tracking-wide text-text-tertiary">
+                  Step {i + 1}
                 </span>
-              </div>
-              <h3 className="mt-md text-headline">{title}</h3>
-              <p className="mt-xs text-callout text-text-secondary">{body}</p>
-            </div>
-          ))}
+                <div className="mt-md w-full max-w-[240px] rounded-xl border border-border bg-surface p-md">
+                  {visual}
+                </div>
+                <h3 className="mt-md text-headline">{title}</h3>
+                <p className="mt-xs max-w-xs text-callout text-text-secondary">
+                  {body}
+                </p>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>
+  );
+}
+
+function StepCameraViz() {
+  return (
+    <div className="relative grid h-24 place-items-center rounded-lg bg-bg">
+      <div className="absolute inset-3 rounded-md border border-dashed border-border-strong" />
+      <div className="h-12 w-9 rotate-[-4deg] rounded-sm border border-border bg-surface shadow-e1" />
+      <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-pill bg-accent text-accent-fg">
+        <Camera size={13} />
+      </span>
+    </div>
+  );
+}
+
+function StepConfirmViz() {
+  return (
+    <div className="flex h-24 flex-col justify-center gap-sm rounded-lg bg-bg px-md">
+      {[70, 45].map((w) => (
+        <span key={w} className="flex items-center gap-sm">
+          <span className="h-2 rounded-pill bg-surface-2" style={{ width: `${w}%` }} />
+          <Check size={12} className="text-success" />
+        </span>
+      ))}
+      <span className="flex items-center gap-sm">
+        <span className="h-2 w-1/3 rounded-pill bg-accent-muted" />
+        <span className="text-[10px] text-accent">Save</span>
+      </span>
+    </div>
+  );
+}
+
+function StepFiledViz() {
+  return (
+    <div className="flex h-24 flex-col justify-center gap-xs rounded-lg bg-bg px-md">
+      {["groceries", "restaurants", "transport"].map((slug, i) => (
+        <span key={slug} className="flex items-center gap-sm">
+          <span
+            className="h-2.5 w-2.5 rounded-pill"
+            style={{ background: categoryColor(slug) }}
+          />
+          <span
+            className="h-1.5 rounded-pill bg-surface-2"
+            style={{ width: `${64 - i * 14}%` }}
+          />
+          {i === 0 && <Check size={12} className="ml-auto text-success" />}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -363,35 +433,116 @@ export function HowItWorks() {
 export function Features() {
   const feats = [
     {
-      icon: ScanLine,
+      icon: Zap,
+      accent: "restaurants",
       title: "Nothing to type",
       body: "No forms, no “select a category”. Point the camera and you're done.",
+      viz: <FeatNoType />,
     },
     {
-      icon: Sparkles,
+      icon: TrendingUp,
+      accent: "transport",
       title: "Spending that explains itself",
-      body: "Monthly totals, category breakdowns, and plain-English nudges when something creeps up.",
+      body: "Monthly totals, category breakdowns and plain-English nudges when something creeps up.",
+      viz: <FeatTrend />,
     },
     {
-      icon: Table2,
+      icon: Database,
+      accent: "groceries",
       title: "Your data, structured",
       body: "Every receipt becomes clean, queryable data — chart it, export it, or just glance at it.",
+      viz: <FeatData />,
     },
   ];
   return (
     <section className="border-t border-border px-lg py-4xl">
-      <div className="mx-auto grid max-w-content gap-lg sm:grid-cols-3">
-        {feats.map(({ icon: Icon, title, body }) => (
-          <div key={title} className="rounded-2xl border border-border bg-surface p-lg">
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-accent-muted text-accent">
-              <Icon size={18} />
-            </span>
-            <h3 className="mt-md text-headline">{title}</h3>
-            <p className="mt-xs text-callout text-text-secondary">{body}</p>
-          </div>
-        ))}
+      <div className="mx-auto max-w-content">
+        <h2 className="max-w-lg text-title">More than a pile of photos</h2>
+        <div className="mt-2xl grid gap-lg sm:grid-cols-3">
+          {feats.map(({ icon: Icon, accent, title, body, viz }) => (
+            <div
+              key={title}
+              className="group flex flex-col rounded-2xl border border-border bg-surface p-lg transition-colors hover:border-border-strong"
+            >
+              <span
+                className="grid h-11 w-11 place-items-center rounded-xl text-white shadow-e1"
+                style={{
+                  backgroundImage: `linear-gradient(135deg, var(--c-accent), ${categoryColor(accent)})`,
+                }}
+              >
+                <Icon size={19} />
+              </span>
+              <h3 className="mt-md text-headline">{title}</h3>
+              <p className="mt-xs flex-1 text-callout text-text-secondary">{body}</p>
+              <div className="mt-lg rounded-lg border border-border bg-bg p-md">
+                {viz}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
+  );
+}
+
+function FeatNoType() {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="relative inline-block">
+        <span className="block space-y-1.5 opacity-40">
+          {[64, 40, 52].map((w) => (
+            <span key={w} className="block h-2 rounded-pill bg-surface-2" style={{ width: w }} />
+          ))}
+        </span>
+        <span
+          aria-hidden
+          className="absolute left-[-4px] top-1/2 h-px w-[72px] -rotate-12 bg-danger"
+        />
+      </span>
+      <span className="grid h-9 w-9 place-items-center rounded-pill bg-accent text-accent-fg">
+        <Camera size={16} />
+      </span>
+    </div>
+  );
+}
+
+function FeatTrend() {
+  const bars = [30, 44, 38, 56, 50, 72];
+  return (
+    <div className="flex h-12 items-end gap-1.5">
+      {bars.map((h, i) => (
+        <span
+          key={i}
+          className="flex-1 rounded-t-sm"
+          style={{
+            height: `${h}%`,
+            background:
+              i === bars.length - 1
+                ? "var(--c-accent)"
+                : "var(--c-surface-2)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FeatData() {
+  return (
+    <div className="space-y-1.5 font-mono text-[10px] text-text-secondary">
+      <div className="flex justify-between">
+        <span>merchant</span>
+        <span className="text-text">Bluebird Cafe</span>
+      </div>
+      <div className="flex justify-between">
+        <span>total</span>
+        <span className="text-text">8.43</span>
+      </div>
+      <div className="flex justify-between">
+        <span>category</span>
+        <span style={{ color: categoryColor("restaurants") }}>restaurants</span>
+      </div>
+    </div>
   );
 }
 
@@ -400,23 +551,42 @@ export function Features() {
 export function BottomCTA() {
   return (
     <section className="px-lg py-4xl">
-      <div className="relative mx-auto flex max-w-content flex-col items-center gap-md overflow-hidden rounded-2xl border border-border bg-surface px-lg py-2xl text-center">
-        <div
+      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-[color:var(--cat-transport)] px-lg py-3xl text-center text-white sm:px-2xl">
+        {/* glyph watermark */}
+        <ScanLine
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-accent-muted opacity-60"
+          size={280}
+          className="pointer-events-none absolute -right-12 -top-16 text-white/10"
         />
-        <div className="relative flex flex-col items-center gap-md">
-          <h2 className="text-title">Retire the expense spreadsheet</h2>
-          <p className="max-w-md text-callout text-text-secondary">
-            Free to start. Sign in with Google or email and scan your first
-            receipt in the next minute.
+        <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
+          <SparklesIconInline />
+          <h2 className="text-[1.9rem] font-bold leading-tight sm:text-title">
+            Your last manual expense entry
+          </h2>
+          <p className="text-callout text-white/80">
+            Sign in with Google or email and scan your first receipt in the next
+            minute. Free forever tier, no card.
           </p>
-          <a href={SIGNUP} className={cn(buttonVariants(), "px-xl")}>
+          <a
+            href={SIGNUP}
+            className={cn(
+              buttonVariants({ variant: "secondary" }),
+              "border-transparent bg-white px-xl text-accent hover:bg-white/90",
+            )}
+          >
             Get started free <ArrowRight size={16} />
           </a>
         </div>
       </div>
     </section>
+  );
+}
+
+function SparklesIconInline() {
+  return (
+    <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/15">
+      <Sparkles size={20} />
+    </span>
   );
 }
 
