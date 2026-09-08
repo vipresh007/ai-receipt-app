@@ -1,6 +1,6 @@
 # AI Receipt — backend
 
-FastAPI service: auth, receipt extraction (Azure OpenAI), expenses, insights.
+FastAPI service: Auth0 token verification, receipt extraction (Azure OpenAI), expenses, insights.
 
 ## Requirements
 
@@ -53,7 +53,7 @@ app/
   config.py           Settings (pydantic-settings) — get_settings() everywhere
   db.py               async engine / session / create_all
   telemetry.py        Azure Application Insights (best-effort, never fatal)
-  core/security.py    bcrypt + JWT
+  core/security.py    Auth0 access-token verification (PyJWT + JWKS)
   models/             SQLAlchemy 2.0 ORM (users, receipts, expenses, categories, insights)
   schemas/            Pydantic v2 request/response + the LLM contract (extraction.py)
   api/
@@ -73,8 +73,7 @@ tests/
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET  | `/healthz` | – | status + which integrations are configured |
-| POST | `/v1/auth/register` | – | → `{ access_token, token_type, expires_in }` |
-| POST | `/v1/auth/login` | – | → same |
+| GET  | `/v1/auth/me` | ✅ | current user; provisions the local row on first sight |
 | POST | `/v1/extract` | ✅ | the iOS contract — see [`docs/EXTRACTION_API.md`](../docs/EXTRACTION_API.md) |
 | GET  | `/v1/receipts` | ✅ | recent receipts |
 | GET  | `/v1/expenses` | ✅ | recent expenses |

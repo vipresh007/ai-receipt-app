@@ -35,13 +35,21 @@ APPI_NAME="${APPI_NAME:-${NAME_PREFIX}-appi}"
 
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
-# ---- JWT secret: reuse backend/.env's if present, else generate + persist ----
-JWT_SECRET="${JWT_SECRET:-}"
-if [ -z "$JWT_SECRET" ] && [ -f "$ROOT/backend/.env" ]; then
-  JWT_SECRET="$(grep -E '^JWT_SECRET=' "$ROOT/backend/.env" | head -1 | cut -d= -f2-)"
-fi
-if [ -z "$JWT_SECRET" ]; then
-  _r="$(uuidgen)$(uuidgen)"; JWT_SECRET="${_r//-/}"
+# ---- Auth0 config: env wins, else read web/.env.local, else backend/.env ----
+_from_env_file() {  # $1 KEY  $2 file
+  [ -f "$2" ] && grep -E "^$1=" "$2" | head -1 | cut -d= -f2- || true
+}
+WEB_ENV="$ROOT/web/.env.local"
+API_ENV="$ROOT/backend/.env"
+AUTH0_DOMAIN="${AUTH0_DOMAIN:-$(_from_env_file AUTH0_DOMAIN "$WEB_ENV")}"
+AUTH0_CLIENT_ID="${AUTH0_CLIENT_ID:-$(_from_env_file AUTH0_CLIENT_ID "$WEB_ENV")}"
+AUTH0_CLIENT_SECRET="${AUTH0_CLIENT_SECRET:-$(_from_env_file AUTH0_CLIENT_SECRET "$WEB_ENV")}"
+AUTH0_SECRET="${AUTH0_SECRET:-$(_from_env_file AUTH0_SECRET "$WEB_ENV")}"
+AUTH0_AUDIENCE="${AUTH0_AUDIENCE:-$(_from_env_file AUTH0_AUDIENCE "$WEB_ENV")}"
+[ -n "$AUTH0_AUDIENCE" ] || AUTH0_AUDIENCE="$(_from_env_file AUTH0_AUDIENCE "$API_ENV")"
+if [ -z "$AUTH0_DOMAIN" ] || [ -z "$AUTH0_AUDIENCE" ]; then
+  echo "WARNING: AUTH0_DOMAIN / AUTH0_AUDIENCE not set (see docs/AUTH.md)."
+  echo "         Deploying anyway — protected routes will 401 until they're configured."
 fi
 
 say "Registering providers"
@@ -97,11 +105,12 @@ if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
   say "Deploy $API_APP"
   API_FQDN="$(deploy_app "$API_APP" "$ACR_SERVER/ai-receipt-api:$TAG" 8000 \
     --secrets \
-      database-url="$DB_URL" jwt-secret="$JWT_SECRET" aoai-key="$OPENAI_KEY" \
+      database-url="$DB_URL" aoai-key="$OPENAI_KEY" \
       storage-conn="$STORAGE_CONN" appi-conn="$APPI_CONN" \
     --env-vars \
       ENVIRONMENT=production LOG_LEVEL=INFO AUTO_CREATE_TABLES=true \
-      DATABASE_URL=secretref:database-url JWT_SECRET=secretref:jwt-secret \
+      DATABASE_URL=secretref:database-url \
+      AUTH0_DOMAIN="$AUTH0_DOMAIN" AUTH0_AUDIENCE="$AUTH0_AUDIENCE" \
       AZURE_OPENAI_ENDPOINT="$OPENAI_ENDPOINT" AZURE_OPENAI_API_KEY=secretref:aoai-key \
       AZURE_OPENAI_API_VERSION=2025-04-01-preview AZURE_OPENAI_DEPLOYMENT="$OPENAI_DEPLOYMENT" \
       AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn AZURE_STORAGE_CONTAINER="$STORAGE_CONTAINER" \
@@ -121,7 +130,17 @@ if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
 
   say "Deploy $WEB_APP"
   WEB_FQDN="$(deploy_app "$WEB_APP" "$ACR_SERVER/ai-receipt-web:$TAG" 3000 \
-    --env-vars NODE_ENV=production BACKEND_URL="https://$API_FQDN")"
+    --secrets \
+      auth0-client-secret="$AUTH0_CLIENT_SECRET" auth0-secret="$AUTH0_SECRET" \
+    --env-vars \
+      NODE_ENV=production BACKEND_URL="https://$API_FQDN" \
+      AUTH0_DOMAIN="$AUTH0_DOMAIN" AUTH0_CLIENT_ID="$AUTH0_CLIENT_ID" \
+      AUTH0_AUDIENCE="$AUTH0_AUDIENCE" \
+      AUTH0_CLIENT_SECRET=secretref:auth0-client-secret AUTH0_SECRET=secretref:auth0-secret)"
+
+  # APP_BASE_URL needs the app's own FQDN, known only after the first create.
+  az containerapp update -n "$WEB_APP" -g "$RESOURCE_GROUP" \
+    --set-env-vars APP_BASE_URL="https://$WEB_FQDN" -o none
   echo "web: https://$WEB_FQDN"
 fi
 

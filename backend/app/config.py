@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic import Field
@@ -5,9 +6,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Environment-driven configuration. Reads from process env, then `.env`."""
+    """Environment-driven configuration. Reads from process env, then `.env`
+    (the `.env` file is skipped under tests so they stay hermetic)."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=None if os.getenv("AI_RECEIPT_TEST") else ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # App
     environment: str = "local"
@@ -15,10 +21,9 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
     auto_create_tables: bool = True
 
-    # Auth
-    jwt_secret: str = "dev-only-change-me"
-    jwt_algorithm: str = "HS256"
-    access_token_ttl_minutes: int = 60 * 24 * 7
+    # Auth — Auth0 (issues the access tokens; we verify them via JWKS)
+    auth0_domain: str = ""  # e.g. your-tenant.us.auth0.com
+    auth0_audience: str = ""  # the Auth0 API identifier for this backend
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_receipt"
@@ -43,6 +48,22 @@ class Settings(BaseSettings):
     @property
     def blob_configured(self) -> bool:
         return bool(self.azure_storage_connection_string)
+
+    @property
+    def auth_configured(self) -> bool:
+        return bool(self.auth0_domain and self.auth0_audience)
+
+    @property
+    def auth0_issuer(self) -> str:
+        return f"https://{self.auth0_domain}/"
+
+    @property
+    def auth0_jwks_url(self) -> str:
+        return f"https://{self.auth0_domain}/.well-known/jwks.json"
+
+    @property
+    def auth0_userinfo_url(self) -> str:
+        return f"https://{self.auth0_domain}/userinfo"
 
 
 @lru_cache

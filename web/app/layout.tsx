@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Auth0Provider } from "@auth0/nextjs-auth0";
 import "./tokens.css";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers>{children}</Providers>
+        <Auth0Provider>
+          <Providers>{children}</Providers>
+        </Auth0Provider>
       </body>
     </html>
   );

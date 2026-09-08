@@ -61,8 +61,9 @@ export interface Insight {
   generated_by: string;
 }
 
-export interface TokenOut {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
+export interface Me {
+  id: string;
+  email: string;
+  display_name: string;
+  plan: string;
 }

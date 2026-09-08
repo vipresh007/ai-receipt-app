@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { LayoutDashboard, LogOut, ReceiptText, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,15 +11,8 @@ const LINKS = [
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
 ];
 
-export function AppNav() {
+export function AppNav({ displayName }: { displayName?: string }) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  }
 
   return (
     <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
@@ -50,14 +43,20 @@ export function AppNav() {
         );
       })}
 
-      <button
-        type="button"
-        onClick={logout}
-        className="mt-auto hidden items-center gap-sm rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:bg-surface-2 hover:text-text md:flex"
-      >
-        <LogOut size={18} />
-        Sign out
-      </button>
+      <div className="mt-auto hidden flex-col gap-xs pt-lg md:flex">
+        {displayName && (
+          <p className="truncate px-md text-caption text-text-tertiary" title={displayName}>
+            {displayName}
+          </p>
+        )}
+        <a
+          href="/auth/logout"
+          className="flex items-center gap-sm rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:bg-surface-2 hover:text-text"
+        >
+          <LogOut size={18} />
+          Sign out
+        </a>
+      </div>
     </nav>
   );
 }

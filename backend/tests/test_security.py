@@ -1,24 +1,59 @@
-from app.core.security import (
-    create_access_token,
-    decode_access_token,
-    hash_password,
-    verify_password,
-)
+import jwt
+import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+from app import config
+from app.core import security
+from app.core.security import TokenError, verify_access_token
 
 
-def test_password_hash_roundtrip():
-    hashed = hash_password("s3cret-passw0rd")
-    assert hashed != "s3cret-passw0rd"
-    assert verify_password("s3cret-passw0rd", hashed)
-    assert not verify_password("wrong", hashed)
+@pytest.fixture
+def rsa_key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
-def test_verify_rejects_garbage_hash():
-    assert verify_password("x", "not-a-bcrypt-hash") is False
+@pytest.fixture
+def auth_env(monkeypatch, rsa_key):
+    monkeypatch.setenv("AUTH0_DOMAIN", "test.auth0.com")
+    monkeypatch.setenv("AUTH0_AUDIENCE", "https://api.test")
+    config.get_settings.cache_clear()
+
+    public_key = rsa_key.public_key()
+
+    class _Key:
+        key = public_key
+
+    class _Client:
+        def get_signing_key_from_jwt(self, _token):
+            return _Key()
+
+    monkeypatch.setattr(security, "_jwks_client", lambda: _Client())
+    yield
+    config.get_settings.cache_clear()
 
 
-def test_jwt_roundtrip():
-    token = create_access_token("user-123", secret="k", ttl_minutes=5)
-    payload = decode_access_token(token, secret="k")
-    assert payload["sub"] == "user-123"
-    assert payload["exp"] > payload["iat"]
+def _token(key, **claims) -> str:
+    payload = {
+        "sub": "auth0|abc123",
+        "aud": "https://api.test",
+        "iss": "https://test.auth0.com/",
+        **claims,
+    }
+    return jwt.encode(payload, key, algorithm="RS256")
+
+
+def test_verify_accepts_a_valid_token(auth_env, rsa_key):
+    claims = verify_access_token(_token(rsa_key))
+    assert claims["sub"] == "auth0|abc123"
+
+
+def test_verify_rejects_wrong_audience(auth_env, rsa_key):
+    with pytest.raises(TokenError):
+        verify_access_token(_token(rsa_key, aud="https://api.other"))
+
+
+def test_verify_rejects_garbage():
+    config.get_settings.cache_clear()
+    with pytest.raises(TokenError):
+        verify_access_token("not.a.jwt")
+    config.get_settings.cache_clear()

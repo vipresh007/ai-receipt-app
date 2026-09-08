@@ -1,3 +1,8 @@
+# ruff: noqa: E402  (env var must be set before app modules import Settings)
+import os
+
+os.environ.setdefault("AI_RECEIPT_TEST", "1")  # keep Settings from reading .env
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -42,7 +47,7 @@ async def sessionmaker_():
 @pytest_asyncio.fixture
 async def test_user(sessionmaker_) -> User:
     async with sessionmaker_() as session:
-        user = User(email="t@example.com", hashed_password="x", display_name="T")
+        user = User(email="t@example.com", display_name="T", auth0_sub="auth0|test")
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -51,12 +56,32 @@ async def test_user(sessionmaker_) -> User:
 
 @pytest_asyncio.fixture
 async def client(sessionmaker_, test_user):
+    """Authenticated client — `get_current_user` is stubbed to `test_user`."""
+
     async def _get_session():
         async with sessionmaker_() as session:
             yield session
 
     app.dependency_overrides[get_session] = _get_session
     app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_extractor] = FakeExtractor
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def anon_client(sessionmaker_):
+    """Client with no auth override — protected routes should 401/403."""
+
+    async def _get_session():
+        async with sessionmaker_() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = _get_session
     app.dependency_overrides[get_extractor] = FakeExtractor
 
     transport = ASGITransport(app=app)

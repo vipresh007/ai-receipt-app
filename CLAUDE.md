@@ -43,10 +43,11 @@ Insights** (telemetry).
 - Design tokens: `design/tokens.css` is copied to `web/app/tokens.css` by
   `scripts/sync-tokens.mjs` on `predev`/`prebuild` (that file is git-ignored).
   `tailwind.config.ts` pulls in `../design/tailwind-preset.js`.
-- Auth: backend JWT lives in an **httpOnly `session` cookie** set by
-  `app/api/auth/*`; `app/api/proxy/[...path]` forwards browser calls to the
-  backend with the bearer. Token never touches client JS. `middleware.ts` gates
-  `/dashboard`, `/scan`, `/receipts`.
+- Auth: **Auth0** (`@auth0/nextjs-auth0` v4). `lib/auth0.ts` + `middleware.ts`
+  (`auth0.middleware()` auto-mounts `/auth/login|logout|callback|access-token`
+  and holds an encrypted httpOnly session cookie). `app/api/proxy/[...path]`
+  attaches `auth0.getAccessToken()` as the bearer. Route protection in
+  `middleware.ts` + `app/(app)/layout.tsx`. Full setup: [`docs/AUTH.md`](docs/AUTH.md).
 - Keep `lib/types.ts` in sync with `backend/app/schemas`.
 - The scan screen shows results as already-saved (backend `/v1/extract`
   persists). Edit-before-save needs a backend change.
@@ -79,7 +80,12 @@ Insights** (telemetry).
 - Category slugs are shared with the iOS `ExpenseCategory` raw values — keep the
   list in `app/models/category.py`, `app/schemas/extraction.py`, and the iOS enum
   in sync.
-- `get_settings()` is `lru_cache`d; never read env directly elsewhere.
+- `get_settings()` is `lru_cache`d; never read env directly elsewhere. Tests set
+  `AI_RECEIPT_TEST=1` (in `conftest.py`) so `Settings` skips `.env`.
+- Auth: **Auth0** issues tokens, the backend verifies them.
+  `core/security.verify_access_token` (PyJWT + JWKS) → `api/deps.get_current_user`
+  upserts a `users` row keyed by `auth0_sub`. No passwords, no token minting.
+  Only endpoint is `GET /v1/auth/me`. See [`docs/AUTH.md`](docs/AUTH.md).
 - The Azure OpenAI call is `client.chat.completions.parse(..., response_format=ExtractedReceipt)`
   (structured outputs). `tests/test_azure_openai_wiring.py` guards the SDK path.
 

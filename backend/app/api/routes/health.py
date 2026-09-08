@@ -11,6 +11,7 @@ async def healthz() -> dict:
     return {
         "status": "ok",
         "environment": s.environment,
+        "auth_configured": s.auth_configured,
         "azure_openai_configured": s.azure_openai_configured,
         "blob_configured": s.blob_configured,
     }

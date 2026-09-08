@@ -1,35 +1,22 @@
-async def test_register_then_login(client):
-    reg = await client.post(
-        "/v1/auth/register",
-        json={"email": "New@Example.com", "password": "abcd1234!x", "display_name": "New"},
-    )
-    assert reg.status_code == 201, reg.text
-    assert reg.json()["access_token"]
-    assert reg.json()["token_type"] == "bearer"
-
-    dup = await client.post(
-        "/v1/auth/register",
-        json={"email": "new@example.com", "password": "abcd1234!x"},
-    )
-    assert dup.status_code == 409
-
-    login = await client.post(
-        "/v1/auth/login",
-        json={"email": "new@example.com", "password": "abcd1234!x"},
-    )
-    assert login.status_code == 200
-    assert login.json()["access_token"]
-
-    bad = await client.post(
-        "/v1/auth/login",
-        json={"email": "new@example.com", "password": "nope"},
-    )
-    assert bad.status_code == 401
+async def test_me_returns_current_user(client):
+    resp = await client.get("/v1/auth/me")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["email"] == "t@example.com"
+    assert body["plan"] == "free"
+    assert body["display_name"] == "T"
+    assert "id" in body
 
 
-async def test_register_rejects_short_password(client):
-    resp = await client.post(
-        "/v1/auth/register",
-        json={"email": "a@b.com", "password": "short"},
+async def test_me_requires_a_token(anon_client):
+    resp = await anon_client.get("/v1/auth/me")
+    # HTTPBearer(auto_error=True) → 403 when the header is absent.
+    assert resp.status_code in (401, 403)
+
+
+async def test_extract_requires_a_token(anon_client):
+    resp = await anon_client.post(
+        "/v1/extract",
+        json={"imageBase64": "", "ocrLines": [], "clientRequestID": "x"},
     )
-    assert resp.status_code == 422
+    assert resp.status_code in (401, 403)

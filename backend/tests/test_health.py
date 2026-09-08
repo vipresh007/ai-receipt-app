@@ -3,7 +3,7 @@ async def test_healthz(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "ok"
-    assert body["azure_openai_configured"] is False
+    assert {"auth_configured", "azure_openai_configured", "blob_configured"} <= body.keys()
 
 
 async def test_root(client):

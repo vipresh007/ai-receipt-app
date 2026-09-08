@@ -13,36 +13,35 @@ parity with the iOS app: auth, scan → extract, dashboard, insights, receipts.
 - **TanStack Query** for data, **Recharts** for the category chart
   *(swap-in point for Tremor if wanted — it's isolated to
   `components/category-breakdown.tsx`)*
-- Auth: the backend JWT is stored in an **httpOnly `session` cookie** by
-  `app/api/auth/*` route handlers; `app/api/proxy/[...path]` forwards browser
-  calls to the backend with the bearer attached. The token never reaches client
-  JS.
+- Auth: **Auth0** (`@auth0/nextjs-auth0` v4). `middleware.ts` runs
+  `auth0.middleware()` — mounts `/auth/login|logout|callback|access-token` and
+  holds an encrypted httpOnly session cookie. `app/api/proxy/[...path]` attaches
+  `auth0.getAccessToken()` as the bearer to backend calls. Set up an Auth0
+  tenant per [`../docs/AUTH.md`](../docs/AUTH.md).
 
 ## Run
 
 ```bash
 cd web
-cp .env.example .env.local          # BACKEND_URL=http://localhost:8000
+cp .env.example .env.local          # fill AUTH0_* (see ../docs/AUTH.md) + BACKEND_URL
 npm install
 npm run dev                          # http://localhost:3000
 ```
 
 Needs the backend running (`cd ../backend && uvicorn app.main:app --reload`)
 and a Postgres (`docker compose up -d db` in `backend/`). Register at
-`/register`, then scan.
+`/auth/login` (Google / Apple / email), then scan.
 
 ## Layout
 
 ```
 app/
   (app)/            authed shell — dashboard / scan / receipts
-  login, register   AuthForm
-  api/auth/*        login / register (set cookie) / logout
   api/proxy/[...]   bearer-injecting reverse proxy to the backend
 components/ui/*     button, card, input, label, skeleton
 components/*        app-nav, metric-tile, category-breakdown, insight-list, receipt-row
-lib/*              api client, session (server), types, categories, format
-middleware.ts       redirects unauthed users to /login
+lib/*              api client, auth0, backend url, types, categories, format
+middleware.ts       auth0.middleware() + redirects unauthed users to /auth/login
 ```
 
 ## Notes / not done

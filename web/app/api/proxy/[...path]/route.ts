@@ -1,17 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { auth0 } from "@/lib/auth0";
 import { backendUrl } from "@/lib/backend";
-import { getToken } from "@/lib/session";
 
 type Ctx = { params: Promise<{ path: string[] }> };
 
 async function forward(req: NextRequest, path: string[]): Promise<NextResponse> {
-  const token = await getToken();
-  const url = backendUrl(path.join("/")) + (req.nextUrl.search || "");
+  let token: string | undefined;
+  try {
+    ({ token } = await auth0.getAccessToken());
+  } catch {
+    return NextResponse.json({ detail: "Not authenticated." }, { status: 401 });
+  }
 
+  const url = backendUrl(path.join("/")) + (req.nextUrl.search || "");
   const headers = new Headers();
   const contentType = req.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
-  if (token) headers.set("authorization", `Bearer ${token}`);
+  headers.set("authorization", `Bearer ${token}`);
 
   const init: RequestInit = { method: req.method, headers, cache: "no-store" };
   if (req.method !== "GET" && req.method !== "HEAD") {

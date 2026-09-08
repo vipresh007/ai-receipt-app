@@ -69,5 +69,6 @@
 - Hosting for the FastAPI app (Azure Container Apps vs. App Service).
 - Azure OpenAI model/deployment (`gpt-5-mini` vs. `gpt-5-nano` vs. `gpt-5`) — cost vs. accuracy
   on real receipts, see [`docs/EXTRACTION_API.md`](EXTRACTION_API.md).
-- Auth: home-grown JWT now; consider Azure AD B2C / Entra External ID later.
+- Auth: **Auth0** (Google / Apple / email+password). Backend verifies the access
+  token via JWKS and upserts a local `users` row. See [`docs/AUTH.md`](AUTH.md).
 - Server-side receipt persistence + sync protocol with the iOS SwiftData cache.

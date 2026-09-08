@@ -1,18 +1,14 @@
-from pydantic import BaseModel, EmailStr, Field
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 
-class RegisterIn(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    display_name: str = ""
+class MeOut(BaseModel):
+    """The current user (identity comes from Auth0; this row holds app data)."""
 
+    model_config = ConfigDict(from_attributes=True)
 
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenOut(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int  # seconds
+    id: UUID
+    email: str
+    display_name: str
+    plan: str
