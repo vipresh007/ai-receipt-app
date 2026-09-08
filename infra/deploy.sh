@@ -18,6 +18,8 @@ RESOURCE_GROUP="${RESOURCE_GROUP:-rg-ai-receipt-dev}"
 LOCATION="${LOCATION:-eastus2}"
 TARGET="${TARGET:-both}"
 TAG="${TAG:-$(date +%Y%m%d%H%M%S)}"
+# REUSE_LATEST=1 skips `az acr build` and redeploys the existing :latest images.
+[ "${REUSE_LATEST:-}" = "1" ] && TAG="latest"
 
 ACR_NAME="${ACR_NAME:-$(printf '%s' "${NAME_PREFIX}acr" | tr -cd 'a-z0-9')}"
 CAE_NAME="${CAE_NAME:-${NAME_PREFIX}-cae}"
@@ -75,25 +77,39 @@ if ! az containerapp env show -n "$CAE_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev
     --logs-workspace-id "$LOGS_CID" --logs-workspace-key "$LOGS_KEY" -o none
 fi
 
-deploy_app() {  # $1 name  $2 image  $3 target-port  shift 3; rest = --env-vars / --secrets args
-  local name="$1" image="$2" port="$3"; shift 3
+# deploy_app NAME IMAGE PORT SECRETS_KV ENV_KV
+#   SECRETS_KV / ENV_KV are space-separated KEY=VALUE (values must not contain
+#   spaces — ours don't). `create` takes --secrets/--env-vars; `update` needs
+#   `secret set` + `--set-env-vars` instead.
+deploy_app() {
+  local name="$1" image="$2" port="$3" secrets_kv="$4" env_kv="$5"
   if az containerapp show -n "$name" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
     az containerapp registry set -n "$name" -g "$RESOURCE_GROUP" \
       --server "$ACR_SERVER" --username "$ACR_USER" --password "$ACR_PASS" -o none
-    az containerapp update -n "$name" -g "$RESOURCE_GROUP" --image "$image" "$@" -o none
+    if [ -n "$secrets_kv" ]; then
+      # shellcheck disable=SC2086
+      az containerapp secret set -n "$name" -g "$RESOURCE_GROUP" --secrets $secrets_kv -o none
+    fi
+    # shellcheck disable=SC2086
+    az containerapp update -n "$name" -g "$RESOURCE_GROUP" --image "$image" \
+      ${env_kv:+--set-env-vars $env_kv} -o none
   else
+    # shellcheck disable=SC2086
     az containerapp create -n "$name" -g "$RESOURCE_GROUP" --environment "$CAE_NAME" \
       --image "$image" --target-port "$port" --ingress external \
       --registry-server "$ACR_SERVER" --registry-username "$ACR_USER" --registry-password "$ACR_PASS" \
-      --min-replicas 0 --max-replicas 2 --cpu 0.5 --memory 1.0Gi "$@" -o none
+      --min-replicas 0 --max-replicas 2 --cpu 0.5 --memory 1.0Gi \
+      ${secrets_kv:+--secrets $secrets_kv} ${env_kv:+--env-vars $env_kv} -o none
   fi
   az containerapp show -n "$name" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv
 }
 
 if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
-  say "Build backend image (az acr build)"
-  az acr build -r "$ACR_NAME" -t "ai-receipt-api:$TAG" -t "ai-receipt-api:latest" \
-    -f "$ROOT/backend/Dockerfile" "$ROOT/backend" -o none
+  if [ "$TAG" != "latest" ]; then
+    say "Build backend image (az acr build)"
+    az acr build -r "$ACR_NAME" -t "ai-receipt-api:$TAG" -t "ai-receipt-api:latest" \
+      -f "$ROOT/backend/Dockerfile" "$ROOT/backend" -o none
+  fi
 
   OPENAI_ENDPOINT="$(az cognitiveservices account show -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query 'properties.endpoint' -o tsv)"
   OPENAI_KEY="$(az cognitiveservices account keys list -n "$OPENAI_NAME" -g "$RESOURCE_GROUP" --query key1 -o tsv)"
@@ -103,25 +119,24 @@ if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
   DB_URL="postgresql+asyncpg://${PG_ADMIN_USER}:${PG_ADMIN_PASSWORD}@${PG_FQDN}:5432/${PG_DB}?ssl=require"
 
   say "Deploy $API_APP"
-  API_FQDN="$(deploy_app "$API_APP" "$ACR_SERVER/ai-receipt-api:$TAG" 8000 \
-    --secrets \
-      database-url="$DB_URL" aoai-key="$OPENAI_KEY" \
-      storage-conn="$STORAGE_CONN" appi-conn="$APPI_CONN" \
-    --env-vars \
-      ENVIRONMENT=production LOG_LEVEL=INFO AUTO_CREATE_TABLES=true \
-      DATABASE_URL=secretref:database-url \
-      AUTH0_DOMAIN="$AUTH0_DOMAIN" AUTH0_AUDIENCE="$AUTH0_AUDIENCE" \
-      AZURE_OPENAI_ENDPOINT="$OPENAI_ENDPOINT" AZURE_OPENAI_API_KEY=secretref:aoai-key \
-      AZURE_OPENAI_API_VERSION=2025-04-01-preview AZURE_OPENAI_DEPLOYMENT="$OPENAI_DEPLOYMENT" \
-      AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn AZURE_STORAGE_CONTAINER="$STORAGE_CONTAINER" \
-      APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appi-conn)"
+  api_secrets="database-url=$DB_URL aoai-key=$OPENAI_KEY storage-conn=$STORAGE_CONN appi-conn=$APPI_CONN"
+  api_env="ENVIRONMENT=production LOG_LEVEL=INFO AUTO_CREATE_TABLES=true"
+  api_env="$api_env DATABASE_URL=secretref:database-url"
+  api_env="$api_env AUTH0_DOMAIN=$AUTH0_DOMAIN AUTH0_AUDIENCE=$AUTH0_AUDIENCE"
+  api_env="$api_env AZURE_OPENAI_ENDPOINT=$OPENAI_ENDPOINT AZURE_OPENAI_API_KEY=secretref:aoai-key"
+  api_env="$api_env AZURE_OPENAI_API_VERSION=2025-04-01-preview AZURE_OPENAI_DEPLOYMENT=$OPENAI_DEPLOYMENT"
+  api_env="$api_env AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn AZURE_STORAGE_CONTAINER=$STORAGE_CONTAINER"
+  api_env="$api_env APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appi-conn"
+  API_FQDN="$(deploy_app "$API_APP" "$ACR_SERVER/ai-receipt-api:$TAG" 8000 "$api_secrets" "$api_env")"
   echo "backend: https://$API_FQDN"
 fi
 
 if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
-  say "Build web image (az acr build, root context)"
-  az acr build -r "$ACR_NAME" -t "ai-receipt-web:$TAG" -t "ai-receipt-web:latest" \
-    -f "$ROOT/web/Dockerfile" "$ROOT" -o none
+  if [ "$TAG" != "latest" ]; then
+    say "Build web image (az acr build, root context)"
+    az acr build -r "$ACR_NAME" -t "ai-receipt-web:$TAG" -t "ai-receipt-web:latest" \
+      -f "$ROOT/web/Dockerfile" "$ROOT" -o none
+  fi
 
   if [ -z "${API_FQDN:-}" ]; then
     API_FQDN="$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || true)"
@@ -129,14 +144,11 @@ if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
   [ -n "$API_FQDN" ] || { echo "No backend FQDN — deploy backend first."; exit 1; }
 
   say "Deploy $WEB_APP"
-  WEB_FQDN="$(deploy_app "$WEB_APP" "$ACR_SERVER/ai-receipt-web:$TAG" 3000 \
-    --secrets \
-      auth0-client-secret="$AUTH0_CLIENT_SECRET" auth0-secret="$AUTH0_SECRET" \
-    --env-vars \
-      NODE_ENV=production BACKEND_URL="https://$API_FQDN" \
-      AUTH0_DOMAIN="$AUTH0_DOMAIN" AUTH0_CLIENT_ID="$AUTH0_CLIENT_ID" \
-      AUTH0_AUDIENCE="$AUTH0_AUDIENCE" \
-      AUTH0_CLIENT_SECRET=secretref:auth0-client-secret AUTH0_SECRET=secretref:auth0-secret)"
+  web_secrets="auth0-client-secret=$AUTH0_CLIENT_SECRET auth0-secret=$AUTH0_SECRET"
+  web_env="NODE_ENV=production BACKEND_URL=https://$API_FQDN"
+  web_env="$web_env AUTH0_DOMAIN=$AUTH0_DOMAIN AUTH0_CLIENT_ID=$AUTH0_CLIENT_ID AUTH0_AUDIENCE=$AUTH0_AUDIENCE"
+  web_env="$web_env AUTH0_CLIENT_SECRET=secretref:auth0-client-secret AUTH0_SECRET=secretref:auth0-secret"
+  WEB_FQDN="$(deploy_app "$WEB_APP" "$ACR_SERVER/ai-receipt-web:$TAG" 3000 "$web_secrets" "$web_env")"
 
   # APP_BASE_URL needs the app's own FQDN, known only after the first create.
   az containerapp update -n "$WEB_APP" -g "$RESOURCE_GROUP" \
