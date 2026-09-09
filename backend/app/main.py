@@ -17,12 +17,11 @@ async def lifespan(app: FastAPI):
     configure_telemetry(app)
     if settings.auto_create_tables:
         try:
-            from app.db import create_all
+            from app.db_migrate import bootstrap_schema
 
-            await create_all()
-            logger.info("Ensured database tables exist (AUTO_CREATE_TABLES).")
+            await bootstrap_schema()
         except Exception:  # noqa: BLE001 - don't crash if the DB isn't up yet
-            logger.warning("create_all() failed on startup", exc_info=True)
+            logger.warning("schema bootstrap failed on startup", exc_info=True)
     yield
 
 
