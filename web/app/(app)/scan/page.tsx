@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, RotateCcw, UploadCloud } from "lucide-react";
+import { CheckCircle2, PencilLine, RotateCcw, UploadCloud } from "lucide-react";
 import { apiPost } from "@/lib/api";
 import type { Extraction } from "@/lib/types";
 import { categoryMeta } from "@/lib/categories";
@@ -98,6 +99,19 @@ export default function ScanPage() {
           {stage.name === "error" && (
             <p className="text-caption text-danger">{stage.message}</p>
           )}
+
+          <div className="flex items-center gap-md text-caption text-text-tertiary">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Link
+            href="/expenses/new"
+            className="flex items-center justify-center gap-sm rounded-md border border-border py-md text-callout text-text hover:bg-surface-2"
+          >
+            <PencilLine size={16} />
+            Enter an expense manually
+          </Link>
         </>
       )}
 

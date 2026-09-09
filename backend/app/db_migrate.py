@@ -19,6 +19,7 @@ from pathlib import Path
 
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 from alembic import command
@@ -55,9 +56,12 @@ async def bootstrap_schema() -> None:
                         await conn.exec_driver_sql(stmt)
 
     cfg = Config(str(_ALEMBIC_INI))
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+
     if current is None:
         await asyncio.to_thread(command.stamp, cfg, "head")
-        logger.info("DB bootstrapped from models; Alembic stamped to head.")
-    else:
+        logger.info("DB bootstrapped from models; Alembic stamped to %s.", head)
+    elif current != head:
         await asyncio.to_thread(command.upgrade, cfg, "head")
-        logger.info("Alembic upgraded to head (was at %s).", current)
+        logger.info("Alembic upgraded %s -> %s.", current, head)
+    # already at head: nothing to do (keeps cold starts fast)
