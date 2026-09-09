@@ -36,9 +36,12 @@ targets:
       path: AIReceiptApp/Generated/Info.plist
       properties:
         CFBundleDisplayName: Tally
-        UILaunchScreen: {}
-        NSCameraUsageDescription: "Scan receipts to add expenses automatically."
-        NSPhotoLibraryUsageDescription: "Import receipt photos from your library."
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchMark
+          UIImageRespectsSafeAreaInsets: false
+        NSCameraUsageDescription: "Tally uses the camera so you can snap a receipt and have its details filled in for you."
+        NSPhotoLibraryUsageDescription: "Tally reads a receipt photo you pick from your library to fill in the expense."
         ExtractionAPIHost: $(EXTRACTION_API_HOST)
         Auth0Domain: $(AUTH0_DOMAIN)
         Auth0ClientId: $(AUTH0_CLIENT_ID)

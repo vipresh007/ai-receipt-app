@@ -105,6 +105,13 @@ struct ReceiptExtractionAPIClient {
         try Self.expectOK(http, data, "Couldn't delete the receipt")
     }
 
+    /// Permanently delete the signed-in account and all its data. `DELETE /v1/auth/me`.
+    func deleteAccount() async throws {
+        let request = try authorized("v1/auth/me", method: "DELETE")
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't delete your account")
+    }
+
     /// The receipt's stored image bytes. Throws on 404 (no image) or error.
     func receiptImage(id: String) async throws -> Data {
         let request = try authorized("v1/receipts/\(id)/image", method: "GET")

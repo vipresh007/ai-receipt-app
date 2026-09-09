@@ -4,6 +4,10 @@ import SwiftUI
 /// Google sign-in that unlocks the web app + cross-device sync.
 struct AccountView: View {
     @Environment(AuthManager.self) private var auth
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var confirmingDelete = false
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
@@ -21,6 +25,32 @@ struct AccountView: View {
             .frame(maxWidth: .infinity)
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Account")
+        }
+        .confirmationDialog(
+            "Delete your account?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete account", role: .destructive) {
+                Task {
+                    do {
+                        try await AccountSync.deleteAccount(auth: auth, context: modelContext)
+                    } catch {
+                        deleteError = error.localizedDescription
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes your account and every receipt on it, on all devices. This can't be undone.")
+        }
+        .alert(
+            "Couldn't delete account",
+            isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteError ?? "")
         }
     }
 
@@ -67,6 +97,13 @@ struct AccountView: View {
         }
         .buttonStyle(.secondaryFill)
         .disabled(auth.isBusy)
+
+        Button("Delete account", role: .destructive) { confirmingDelete = true }
+            .font(.appCaption)
+            .foregroundStyle(Theme.Palette.danger)
+            .frame(maxWidth: .infinity)
+            .padding(.top, Theme.Space.xs)
+            .disabled(auth.isBusy)
     }
 
     // MARK: - Anonymous

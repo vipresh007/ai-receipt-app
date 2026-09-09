@@ -106,6 +106,21 @@ enum AccountSync {
         try? context.save()
     }
 
+    /// Permanently delete the account on the backend, then sign out and wipe
+    /// the local store. Throws if the server call fails (nothing is wiped then).
+    @MainActor
+    static func deleteAccount(auth: AuthManager, context: ModelContext) async throws {
+        guard let client = await client(auth: auth) else {
+            throw ReceiptExtractionError.notConfigured
+        }
+        try await client.deleteAccount()
+        for receipt in (try? context.fetch(FetchDescriptor<Receipt>())) ?? [] {
+            context.delete(receipt)
+        }
+        try? context.save()
+        await auth.signOut()
+    }
+
     /// Delete locally and, if it's synced, on the account too.
     @MainActor
     static func delete(_ receipt: Receipt, auth: AuthManager, context: ModelContext) async {
