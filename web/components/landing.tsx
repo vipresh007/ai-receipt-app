@@ -6,7 +6,6 @@ import {
   CircleCheckBig,
   Database,
   FileText,
-  ScanLine,
   Sparkles,
   TrendingUp,
   Zap,
@@ -554,8 +553,7 @@ export function BottomCTA() {
     <section className="px-lg py-4xl">
       <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl border border-[#1c356b] bg-[linear-gradient(135deg,#26467f,#1b3563)] px-lg py-3xl text-center text-white sm:px-2xl">
         {/* glyph watermark */}
-        <ScanLine
-          aria-hidden
+        <TallyMark
           size={280}
           className="pointer-events-none absolute -right-12 -top-16 text-white/[0.07]"
         />
