@@ -67,6 +67,7 @@ class ReceiptCreate(BaseModel):
     items: list[ExtractionItemOut] = Field(default_factory=list)
     image_base64: str | None = Field(default=None, alias="imageBase64")
     confidence: float | None = None
+    note: str = ""
 
 
 class ImportIn(BaseModel):

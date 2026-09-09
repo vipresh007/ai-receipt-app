@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { Insight, ReceiptOut, SpendingSummary } from "@/lib/types";
+import type { Insight, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
 import { money } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetricTile } from "@/components/metric-tile";
 import { CategoryBreakdown } from "@/components/category-breakdown";
+import { SpendingTrend } from "@/components/spending-trend";
 import { InsightList } from "@/components/insight-list";
 import { ReceiptRow } from "@/components/receipt-row";
 
@@ -49,6 +50,10 @@ export default function DashboardPage() {
     queryKey: ["receipts", "month", month],
     queryFn: () => apiGet<ReceiptOut[]>(`v1/receipts?limit=8&month=${month}`),
   });
+  const trend = useQuery({
+    queryKey: ["trend"],
+    queryFn: () => apiGet<TrendPoint[]>("v1/expenses/trend?months=6"),
+  });
 
   const s = summary.data;
   const delta = s ? Number(s.total) - Number(s.previous_month_total) : 0;
@@ -59,9 +64,14 @@ export default function DashboardPage() {
     <div className="space-y-xl">
       <header className="flex items-center justify-between">
         <h1 className="text-title">Dashboard</h1>
-        <Link href="/scan" className="text-callout text-accent hover:underline">
-          Scan a receipt →
-        </Link>
+        <div className="flex items-center gap-md text-callout">
+          <Link href="/expenses/new" className="text-text-secondary hover:text-text">
+            Add expense
+          </Link>
+          <Link href="/scan" className="text-accent hover:underline">
+            Scan a receipt →
+          </Link>
+        </div>
       </header>
 
       <div className="flex items-center justify-center gap-lg">
@@ -107,6 +117,17 @@ export default function DashboardPage() {
           muted
         />
       </div>
+
+      <Card>
+        <CardTitle>Last 6 months</CardTitle>
+        <div className="mt-md">
+          {trend.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <SpendingTrend data={trend.data ?? []} activeMonth={month} />
+          )}
+        </div>
+      </Card>
 
       <Card>
         <CardTitle>By category</CardTitle>

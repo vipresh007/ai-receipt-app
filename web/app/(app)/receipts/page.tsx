@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import type { ReceiptOut } from "@/lib/types";
@@ -15,7 +16,12 @@ export default function ReceiptsPage() {
 
   return (
     <div className="space-y-xl">
-      <h1 className="text-title">Receipts</h1>
+      <header className="flex items-center justify-between">
+        <h1 className="text-title">Receipts</h1>
+        <Link href="/expenses/new" className="text-callout text-accent hover:underline">
+          Add expense
+        </Link>
+      </header>
       <Card>
         <div className="divide-y divide-border">
           {isLoading &&

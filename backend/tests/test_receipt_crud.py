@@ -29,6 +29,12 @@ async def test_create_then_list(client):
     assert [r["id"] for r in listed.json()] == [created["id"]]
 
 
+async def test_manual_expense_note_reaches_the_expense(client):
+    await client.post("/v1/receipts", json=_new(merchant="Split dinner", note="paid for 4"))
+    expenses = (await client.get("/v1/expenses")).json()
+    assert expenses[0]["note"] == "paid for 4"
+
+
 async def test_patch_updates_receipt_and_expense(client):
     rid = (await client.post("/v1/receipts", json=_new())).json()["id"]
 

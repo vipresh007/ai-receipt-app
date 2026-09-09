@@ -191,7 +191,7 @@ async def _persist_receipt(
             amount=total,
             category_slug=receipt.category_slug,
             spent_at=purchased or date.today(),
-            note="",
+            note=item.note[:500],
         )
     )
     return receipt

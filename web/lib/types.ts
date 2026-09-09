@@ -43,6 +43,11 @@ export interface CategoryTotal {
   amount: string;
 }
 
+export interface TrendPoint {
+  month: string; // YYYY-MM
+  total: string;
+}
+
 export interface SpendingSummary {
   month: string;
   total: string;
