@@ -18,6 +18,8 @@ struct ScanFlowView: View {
     /// Server receipt id when signed in — `/v1/extract` already persisted it, so
     /// "Save" only needs to push edits and "Discard" needs to delete it.
     @State private var pendingServerID: String?
+    /// True while the confirm screen is a from-scratch entry (no scan).
+    @State private var isManualEntry = false
 
     private enum Stage: Equatable {
         case idle, working, confirming
@@ -72,7 +74,12 @@ struct ScanFlowView: View {
             readingState
                 .transition(.opacity)
         case .confirming:
-            ConfirmReceiptView(draft: $draft, onSave: save, onDiscard: discard)
+            ConfirmReceiptView(
+                draft: $draft,
+                title: isManualEntry ? "New expense" : "Confirm",
+                onSave: save,
+                onDiscard: discard
+            )
                 .transition(.move(edge: .trailing).combined(with: .opacity))
         }
     }
@@ -136,6 +143,7 @@ struct ScanFlowView: View {
         draft = ReceiptDraft()
         pendingServerID = nil
         previewImage = nil
+        isManualEntry = true
         withAnimation(Theme.Motion.spring) { stage = .confirming }
     }
 
@@ -197,6 +205,7 @@ struct ScanFlowView: View {
 
     private func handle(_ image: UIImage) {
         previewImage = image
+        isManualEntry = false
         withAnimation(Theme.Motion.base) { stage = .working }
         Task {
             do {

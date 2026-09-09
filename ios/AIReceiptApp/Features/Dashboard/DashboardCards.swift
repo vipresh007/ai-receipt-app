@@ -44,15 +44,30 @@ struct SpendingTrendCard: View {
     let points: [MonthlyPoint]
     /// Month (its first day) currently being viewed — drawn solid; others faded.
     let highlighted: Date
+    let currencyCode: String
+
+    private var maxTotal: Double {
+        points.map { ($0.total as NSDecimalNumber).doubleValue }.max() ?? 0
+    }
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.md) {
-                SectionLabel("Last \(points.count) months")
+            VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                HStack {
+                    SectionLabel("Last \(points.count) months")
+                    Spacer()
+                    Text("All months")
+                        .font(.appCaption.weight(.medium))
+                        .foregroundStyle(Theme.Palette.accent)
+                    Image(systemName: "chevron.right")
+                        .font(.appCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.accent)
+                }
                 Chart(points) { point in
+                    let value = (point.total as NSDecimalNumber).doubleValue
                     BarMark(
                         x: .value("Month", point.label),
-                        y: .value("Spent", (point.total as NSDecimalNumber).doubleValue)
+                        y: .value("Spent", value)
                     )
                     .foregroundStyle(
                         point.monthStart == highlighted
@@ -60,14 +75,35 @@ struct SpendingTrendCard: View {
                             : Theme.Palette.accent.opacity(0.28)
                     )
                     .cornerRadius(4)
+                    .annotation(position: .top, spacing: 3) {
+                        if value > 0 {
+                            Text(compactMoney(point.total, code: currencyCode))
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                        }
+                    }
                 }
-                .chartYAxis {
-                    AxisMarks(position: .leading, values: .automatic(desiredCount: 3))
-                }
+                .chartYAxis(.hidden)
+                .chartYScale(domain: 0...(maxTotal * 1.25 + 1))
                 .frame(height: 150)
             }
         }
     }
+}
+
+/// "$2k" / "$1.5k" / "$320" — tight labels for chart annotations.
+func compactMoney(_ amount: Decimal, code: String) -> String {
+    let value = (amount as NSDecimalNumber).doubleValue
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .currency
+    formatter.currencyCode = code
+    formatter.maximumFractionDigits = 0
+    if value >= 1000 {
+        formatter.maximumFractionDigits = value >= 10000 ? 0 : 1
+        let scaled = NSNumber(value: value / 1000)
+        return (formatter.string(from: scaled) ?? "\(Int(value / 1000))") + "k"
+    }
+    return formatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
 }
 
 struct CategoryBreakdownCard: View {

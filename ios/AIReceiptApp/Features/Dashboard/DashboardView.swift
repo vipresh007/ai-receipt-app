@@ -40,6 +40,14 @@ struct DashboardView: View {
         SpendingSummary.monthlyTrend(receipts: receipts, calendar: calendar, months: 6)
     }
 
+    /// Move the dashboard to the month containing `date`.
+    private func jump(toMonthContaining date: Date) {
+        let currentStart = calendar.dateInterval(of: .month, for: .now)?.start ?? .now
+        let targetStart = calendar.dateInterval(of: .month, for: date)?.start ?? date
+        let months = calendar.dateComponents([.month], from: currentStart, to: targetStart).month ?? 0
+        withAnimation(Theme.Motion.base) { monthOffset = min(0, months) }
+    }
+
     private var monthLabel: String {
         monthOffset == 0 ? "This month" : anchor.formatted(.dateTime.month(.wide).year())
     }
@@ -72,9 +80,23 @@ struct DashboardView: View {
                                 currencyCode: currencyCode,
                                 previous: (summary.previousMonthTotal, previousMonthLabel)
                             )
-                            if receipts.count >= 2 {
-                                SpendingTrendCard(points: trendPoints, highlighted: anchorMonthStart)
+                            NavigationLink {
+                                MonthlyHistoryView(
+                                    months: SpendingSummary.allMonths(
+                                        receipts: receipts, calendar: calendar
+                                    ),
+                                    currencyCode: currencyCode,
+                                    onSelect: jump(toMonthContaining:)
+                                )
+                            } label: {
+                                SpendingTrendCard(
+                                    points: trendPoints,
+                                    highlighted: anchorMonthStart,
+                                    currencyCode: currencyCode
+                                )
                             }
+                            .buttonStyle(.plain)
+
                             CategoryBreakdownCard(
                                 breakdown: summary.currentMonthByCategory,
                                 currencyCode: currencyCode

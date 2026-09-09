@@ -79,6 +79,24 @@ struct SpendingSummary {
         }
     }
 
+    /// Every month that has at least one receipt, newest first, with a
+    /// "September 2026" style label. For the full month-by-month comparison list.
+    static func allMonths(receipts: [Receipt], calendar: Calendar = .current) -> [MonthlyPoint] {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = .current
+        formatter.dateFormat = "MMMM yyyy"
+
+        var buckets: [Date: Decimal] = [:]
+        for receipt in receipts {
+            guard let start = calendar.dateInterval(of: .month, for: receipt.date)?.start else { continue }
+            buckets[start, default: 0] += receipt.total
+        }
+        return buckets
+            .sorted { $0.key > $1.key }
+            .map { MonthlyPoint(monthStart: $0.key, total: $0.value, label: formatter.string(from: $0.key)) }
+    }
+
     // MARK: - Helpers
 
     private static func contains(_ interval: DateInterval?, _ date: Date) -> Bool {

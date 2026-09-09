@@ -92,6 +92,20 @@ final class SpendingSummaryTests: XCTestCase {
         XCTAssertLessThan(trend[0].monthStart, trend[3].monthStart)
     }
 
+    func testAllMonthsIsNewestFirstWithOnlyPopulatedMonths() {
+        let receipts = [
+            receipt(2000, .shopping, on: date(year: 2026, month: 7, day: 4)),
+            receipt(1500, .groceries, on: date(year: 2026, month: 8, day: 1)),
+            receipt(200, .transport, on: date(year: 2026, month: 9, day: 2)),
+            receipt(100, .transport, on: date(year: 2026, month: 9, day: 20)),
+        ]
+
+        let months = SpendingSummary.allMonths(receipts: receipts, calendar: calendar)
+
+        XCTAssertEqual(months.map(\.total), [300, 1500, 2000])  // Sep, Aug, Jul
+        XCTAssertGreaterThan(months[0].monthStart, months[2].monthStart)
+    }
+
     func testRisingStreakInsightAcrossThreeMonths() {
         let receipts = [
             receipt(50, .groceries, on: date(year: 2026, month: 4, day: 10)),

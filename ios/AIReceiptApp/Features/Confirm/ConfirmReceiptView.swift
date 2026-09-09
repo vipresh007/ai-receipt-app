@@ -4,6 +4,7 @@ import SwiftUI
 /// then saves.
 struct ConfirmReceiptView: View {
     @Binding var draft: ReceiptDraft
+    var title = "Confirm"
     var onSave: () -> Void
     var onDiscard: () -> Void
 
@@ -42,7 +43,7 @@ struct ConfirmReceiptView: View {
                 }
             }
         }
-        .navigationTitle("Confirm")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
