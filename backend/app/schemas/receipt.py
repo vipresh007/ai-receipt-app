@@ -25,6 +25,8 @@ class ExtractionOut(BaseModel):
     """Response body for POST /v1/extract — matches what the iOS
     `ReceiptExtractionAPIClient` decodes."""
 
+    # Set for signed-in callers (a Receipt row was created); null for anonymous.
+    id: str | None = None
     merchant: str
     date: str | None = None  # YYYY-MM-DD
     total: str
@@ -36,8 +38,23 @@ class ExtractionOut(BaseModel):
     scans_remaining: int | None = None
 
 
-class ImportItem(BaseModel):
-    """One receipt migrated from an anonymous iOS device on sign-in."""
+class ReceiptUpdate(BaseModel):
+    """PATCH /v1/receipts/{id} — every field optional; only those sent change."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    merchant: str | None = None
+    date: str | None = None  # YYYY-MM-DD
+    total: str | None = None
+    tax: str | None = None
+    category: str | None = None
+    items: list[ExtractionItemOut] | None = None
+
+
+class ReceiptCreate(BaseModel):
+    """Body for `POST /v1/receipts` and each item of `POST /v1/receipts/import`
+    — a confirmed receipt from a client (anonymous-device migration or a manual
+    add). Camel-case `imageBase64` is accepted for the iOS client."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -49,10 +66,11 @@ class ImportItem(BaseModel):
     currency: str = "USD"
     items: list[ExtractionItemOut] = Field(default_factory=list)
     image_base64: str | None = Field(default=None, alias="imageBase64")
+    confidence: float | None = None
 
 
 class ImportIn(BaseModel):
-    receipts: list[ImportItem]
+    receipts: list[ReceiptCreate]
 
 
 class ReceiptOut(BaseModel):

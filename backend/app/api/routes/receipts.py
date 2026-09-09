@@ -1,7 +1,7 @@
 import base64
 import binascii
 from datetime import date
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -17,7 +17,9 @@ from app.schemas.receipt import (
     ExtractionItemOut,
     ExtractionOut,
     ImportIn,
+    ReceiptCreate,
     ReceiptOut,
+    ReceiptUpdate,
 )
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
@@ -116,6 +118,72 @@ async def extract(
     return receipt_to_extraction_out(receipt)
 
 
+async def _persist_receipt(
+    session: AsyncSession, user: User, item: ReceiptCreate, blob: BlobStorage | None
+) -> Receipt:
+    """Create a Receipt + its linked Expense from a confirmed client payload."""
+    blob_url: str | None = None
+    if item.image_base64 and blob is not None:
+        try:
+            blob_url = await blob.upload_receipt_image(
+                user_id=user.id,
+                request_id=uuid4().hex,
+                data=base64.b64decode(item.image_base64),
+            )
+        except Exception:  # noqa: BLE001 - image is best-effort
+            blob_url = None
+
+    purchased = _parse_date(item.date)
+    total = _to_decimal(item.total)
+    receipt = Receipt(
+        user_id=user.id,
+        merchant=item.merchant,
+        purchased_at=purchased,
+        total=total,
+        tax=_to_decimal(item.tax),
+        currency=(item.currency or "USD")[:3].upper(),
+        category_slug=item.category or "other",
+        image_blob_url=blob_url,
+        extraction_confidence=item.confidence,
+        line_items=[li.model_dump() for li in item.items],
+    )
+    session.add(receipt)
+    await session.flush()
+    session.add(
+        Expense(
+            user_id=user.id,
+            receipt_id=receipt.id,
+            merchant=receipt.merchant or "Unknown",
+            amount=total,
+            category_slug=receipt.category_slug,
+            spent_at=purchased or date.today(),
+            note="",
+        )
+    )
+    return receipt
+
+
+async def _owned_receipt(session: AsyncSession, user: User, receipt_id: UUID) -> Receipt:
+    receipt = await session.get(Receipt, receipt_id)
+    if receipt is None or receipt.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Receipt not found.")
+    return receipt
+
+
+@router.post("/receipts", response_model=ReceiptOut, status_code=status.HTTP_201_CREATED)
+async def create_receipt(
+    payload: ReceiptCreate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ReceiptOut:
+    settings = get_settings()
+    blob = BlobStorage(settings) if settings.blob_configured else None
+    receipt = await _persist_receipt(session, user, payload, blob)
+    await session.commit()
+    await session.refresh(receipt)
+    return _receipt_out(receipt)
+
+
 @router.post(
     "/receipts/import", response_model=list[ReceiptOut], status_code=status.HTTP_201_CREATED
 )
@@ -128,47 +196,7 @@ async def import_receipts(
     settings = get_settings()
     blob = BlobStorage(settings) if settings.blob_configured else None
 
-    created: list[Receipt] = []
-    for item in payload.receipts:
-        blob_url: str | None = None
-        if item.image_base64 and blob is not None:
-            try:
-                blob_url = await blob.upload_receipt_image(
-                    user_id=user.id,
-                    request_id=uuid4().hex,
-                    data=base64.b64decode(item.image_base64),
-                )
-            except Exception:  # noqa: BLE001 - image is best-effort
-                blob_url = None
-
-        purchased = _parse_date(item.date)
-        total = _to_decimal(item.total)
-        receipt = Receipt(
-            user_id=user.id,
-            merchant=item.merchant,
-            purchased_at=purchased,
-            total=total,
-            tax=_to_decimal(item.tax),
-            currency=(item.currency or "USD")[:3].upper(),
-            category_slug=item.category or "other",
-            image_blob_url=blob_url,
-            line_items=[li.model_dump() for li in item.items],
-        )
-        session.add(receipt)
-        await session.flush()
-        session.add(
-            Expense(
-                user_id=user.id,
-                receipt_id=receipt.id,
-                merchant=receipt.merchant or "Unknown",
-                amount=total,
-                category_slug=receipt.category_slug,
-                spent_at=purchased or date.today(),
-                note="",
-            )
-        )
-        created.append(receipt)
-
+    created = [await _persist_receipt(session, user, item, blob) for item in payload.receipts]
     await session.commit()
     for receipt in created:
         await session.refresh(receipt)
@@ -188,6 +216,54 @@ async def list_receipts(
         .limit(min(limit, 200))
     )
     return [_receipt_out(r) for r in rows]
+
+
+@router.patch("/receipts/{receipt_id}", response_model=ReceiptOut)
+async def update_receipt(
+    receipt_id: UUID,
+    payload: ReceiptUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ReceiptOut:
+    receipt = await _owned_receipt(session, user, receipt_id)
+    fields = payload.model_dump(exclude_unset=True)
+
+    if "merchant" in fields:
+        receipt.merchant = fields["merchant"] or ""
+    if "date" in fields:
+        receipt.purchased_at = _parse_date(fields["date"])
+    if "total" in fields:
+        receipt.total = _to_decimal(fields["total"])
+    if "tax" in fields:
+        receipt.tax = _to_decimal(fields["tax"])
+    if "category" in fields:
+        receipt.category_slug = fields["category"] or "other"
+    if "items" in fields:
+        receipt.line_items = [li.model_dump() for li in (payload.items or [])]
+
+    expense = await session.scalar(select(Expense).where(Expense.receipt_id == receipt.id))
+    if expense is not None:
+        expense.merchant = receipt.merchant or "Unknown"
+        expense.amount = receipt.total
+        expense.category_slug = receipt.category_slug
+        expense.spent_at = receipt.purchased_at or expense.spent_at
+
+    await session.commit()
+    await session.refresh(receipt)
+    return _receipt_out(receipt)
+
+
+@router.delete("/receipts/{receipt_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_receipt(
+    receipt_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    receipt = await _owned_receipt(session, user, receipt_id)
+    for expense in await session.scalars(select(Expense).where(Expense.receipt_id == receipt.id)):
+        await session.delete(expense)
+    await session.delete(receipt)
+    await session.commit()
 
 
 def _receipt_out(r: Receipt) -> ReceiptOut:

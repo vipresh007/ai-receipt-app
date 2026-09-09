@@ -94,6 +94,7 @@ async def process_receipt(
 
 def receipt_to_extraction_out(receipt: Receipt) -> ExtractionOut:
     return ExtractionOut(
+        id=str(receipt.id),
         merchant=receipt.merchant,
         date=receipt.purchased_at.isoformat() if receipt.purchased_at else None,
         total=f"{receipt.total:.2f}",
