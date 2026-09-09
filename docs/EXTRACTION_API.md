@@ -4,14 +4,16 @@
 
 ```
 iOS app  ──POST /v1/extract──▶  FastAPI backend  ──▶  Azure OpenAI (vision + structured outputs)
-             Bearer JWT              │  │
-                                     │  └──▶ Azure Blob Storage (original image)
-                                     └─────▶ PostgreSQL (Receipt + Expense)
+     Bearer JWT  *or*  X-Device-Id    │  │
+                                      │  └──▶ Azure Blob Storage (original image)  ┐ signed-in
+                                      └─────▶ PostgreSQL (Receipt + Expense)       ┘ only
 ```
 
-The app never holds an Azure key. It calls the backend with a bearer token; the
-backend calls Azure OpenAI and returns clean JSON. The backend also enforces the
-freemium scan limit and persists the result.
+The app never holds an Azure key. It calls the backend with a bearer token *or*,
+when the user hasn't signed in, an `X-Device-Id`; the backend calls Azure OpenAI
+and returns clean JSON. For signed-in users it also enforces the freemium scan
+limit and persists the result; anonymous parses are rate-limited per device and
+not stored.
 
 - iOS side: [`ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift`](../ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift)
 - Backend side: [`backend/app/api/routes/receipts.py`](../backend/app/api/routes/receipts.py) → [`services/extraction.py`](../backend/app/services/extraction.py) → [`services/azure_openai.py`](../backend/app/services/azure_openai.py)
@@ -20,7 +22,17 @@ freemium scan limit and persists the result.
 
 ## `POST /v1/extract`
 
-`Authorization: Bearer <jwt>` required.
+**Auth is optional.** The iOS app is local-first (see
+[`AUTH.md`](AUTH.md#ios--local-first-optional-sign-in)):
+
+| Caller | Header | Behaviour |
+|---|---|---|
+| Signed in | `Authorization: Bearer <jwt>` | Parses, persists `Receipt` + `Expense`, uploads the image to Blob. `scans_remaining` is `null`. |
+| Anonymous | `X-Device-Id: <uuid>` (required) | Parses and returns — **nothing is persisted server-side**. Counts against a per-device free allowance (`anon_scan_limit`, default 15); `scans_remaining` reports what's left. |
+
+An anonymous call with no `X-Device-Id` is `400`. Once the allowance is spent the
+endpoint returns `402` (the app shows a soft wall — history stays readable, the
+shutter is disabled).
 
 ### Request (JSON, camelCase — from the iOS client)
 
@@ -49,6 +61,7 @@ freemium scan limit and persists the result.
 | `category`   | string            | One of the slugs below. Unknown → `other`. |
 | `items`      | array             | `{ name: string, price: string, quantity: int≥1 }`. |
 | `confidence` | number \| null    | 0–1, optional. |
+| `scans_remaining` | int \| null   | Anonymous only — free scans left for this device after this call. `null` when signed in. |
 
 ```json
 {
@@ -69,9 +82,11 @@ freemium scan limit and persists the result.
 
 | Status | Meaning |
 |--------|---------|
-| `401`  | Missing/invalid token. |
+| `400`  | Anonymous call missing the `X-Device-Id` header. |
+| `401`  | Bearer token present but invalid/expired. |
+| `402`  | Anonymous device has used all its free scans — sign in to continue. |
 | `422`  | `imageBase64` not valid base64, or empty. |
-| `429`  | Free-tier monthly scan limit reached *(planned)*. |
+| `429`  | Signed-in free-tier monthly scan limit reached *(planned)*. |
 | `502`  | Azure OpenAI unavailable or returned nothing usable. |
 
 Body: `{ "detail": "Human-readable message" }` — the iOS client shows `detail`
@@ -85,6 +100,45 @@ Matches the iOS `ExpenseCategory` raw values and `backend/app/models/category.py
 groceries  restaurants  transport  shopping  entertainment
 health     utilities    travel     other
 ```
+
+---
+
+## `POST /v1/receipts/import`
+
+`Authorization: Bearer <jwt>` **required**. Called once, right after an
+anonymous iOS user signs in, to migrate their on-device receipts into the
+account. See [`AUTH.md`](AUTH.md#sign-in--migration-flow).
+
+### Request (JSON)
+
+```json
+{
+  "receipts": [
+    {
+      "merchant": "Corner Store",
+      "date": "2026-09-03",
+      "total": "9.99",
+      "tax": "0.80",
+      "category": "groceries",
+      "currency": "USD",
+      "items": [{ "name": "Milk", "price": "3.50", "quantity": 1 }],
+      "imageBase64": "/9j/4AAQ..."
+    }
+  ]
+}
+```
+
+Every field except `merchant`/`total` has a fallback (`date`→null, `tax`→`"0"`,
+`category`→`other`, `currency`→`USD`, `items`→`[]`). `imageBase64` is optional;
+when present the backend uploads it to Blob (best-effort — a failed upload
+doesn't fail the import).
+
+### Response `201`
+
+`ReceiptOut[]` — the created rows, same shape as `GET /v1/receipts` items. One
+`Receipt` + one `Expense` are created per input item. After this the app refills
+its SwiftData cache from `GET /v1/receipts` and treats the backend as the source
+of truth.
 
 ---
 

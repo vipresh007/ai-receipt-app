@@ -23,25 +23,41 @@ def get_extractor() -> AzureOpenAIExtractor:
     return AzureOpenAIExtractor()
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-    session: AsyncSession = Depends(get_session),
-) -> User:
-    """Verify the Auth0 access token and return the local `users` row for that
-    identity, creating it on first sight."""
+_bearer_optional = HTTPBearer(auto_error=False)
+
+
+async def _user_from_token(session: AsyncSession, token: str) -> User:
+    """Verify an Auth0 access token → local `users` row, provisioning on first sight."""
     try:
-        claims = verify_access_token(credentials.credentials)
+        claims = verify_access_token(token)
         sub = str(claims["sub"])
     except (TokenError, KeyError) as exc:
         raise _CREDS_ERROR from exc
 
     user = await session.scalar(select(User).where(User.auth0_sub == sub))
     if user is None:
-        user = await _provision_user(session, sub, credentials.credentials)
-
+        user = await _provision_user(session, sub, token)
     if not user.is_active:
         raise _CREDS_ERROR
     return user
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    return await _user_from_token(session, credentials.credentials)
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_optional),
+    session: AsyncSession = Depends(get_session),
+) -> User | None:
+    """`None` when no Authorization header is sent (anonymous / local-first
+    client). A present-but-invalid token still 401s."""
+    if credentials is None:
+        return None
+    return await _user_from_token(session, credentials.credentials)
 
 
 async def _provision_user(session: AsyncSession, sub: str, access_token: str) -> User:

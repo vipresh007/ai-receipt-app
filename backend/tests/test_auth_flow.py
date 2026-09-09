@@ -14,9 +14,6 @@ async def test_me_requires_a_token(anon_client):
     assert resp.status_code in (401, 403)
 
 
-async def test_extract_requires_a_token(anon_client):
-    resp = await anon_client.post(
-        "/v1/extract",
-        json={"imageBase64": "", "ocrLines": [], "clientRequestID": "x"},
-    )
+async def test_receipts_list_requires_a_token(anon_client):
+    resp = await anon_client.get("/v1/receipts")
     assert resp.status_code in (401, 403)

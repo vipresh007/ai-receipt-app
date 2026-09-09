@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     auth0_domain: str = ""  # e.g. your-tenant.us.auth0.com
     auth0_audience: str = ""  # the Auth0 API identifier for this backend
 
+    # Anonymous (not-signed-in) extraction: free scans per device before sign-in.
+    anon_scan_limit: int = 15
+
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_receipt"
 

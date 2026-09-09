@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_current_user, get_extractor
+from app.api.deps import get_current_user, get_current_user_optional, get_extractor
 from app.db import get_session
 from app.main import app
 from app.models import Base, User
@@ -64,6 +64,7 @@ async def client(sessionmaker_, test_user):
 
     app.dependency_overrides[get_session] = _get_session
     app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_current_user_optional] = lambda: test_user
     app.dependency_overrides[get_extractor] = FakeExtractor
 
     transport = ASGITransport(app=app)
@@ -75,7 +76,8 @@ async def client(sessionmaker_, test_user):
 
 @pytest_asyncio.fixture
 async def anon_client(sessionmaker_):
-    """Client with no auth override — protected routes should 401/403."""
+    """No auth overrides — `get_current_user` 401/403s, `get_current_user_optional`
+    resolves to None (anonymous)."""
 
     async def _get_session():
         async with sessionmaker_() as session:

@@ -112,11 +112,51 @@ URLs (step 1).
 on the *Login* flow that copies `email` into the access token as a namespaced
 claim. Then `_provision_user` can skip the `/userinfo` round-trip.
 
-## iOS (not built yet)
+## iOS — local-first, optional sign-in
 
-Add the [`Auth0.swift`](https://github.com/auth0/Auth0.swift) SPM package, use
-`WebAuthentication` for login, store the access token in the Keychain, and pass
-it to `ReceiptExtractionAPIClient(authToken:)`. Register a **Native** application
-in Auth0 with callback `com.example.AIReceiptApp://<domain>/ios/...`. Sign in
-with Apple on iOS uses the native `ASAuthorizationController`; Auth0 can accept
-that assertion.
+The iOS app works **without an account**. Sign-in is a one-way upgrade that
+unlocks the web app, cross-device sync, a higher scan quota, and cloud backup.
+
+### Two modes
+
+| | Anonymous (default) | Signed in |
+|---|---|---|
+| Identity | random device UUID (Keychain) sent as `X-Device-Id` | Auth0 access token (Keychain) sent as `Authorization: Bearer` |
+| Source of truth | on-device SwiftData | **backend** — SwiftData is a read-through cache (no offline write queue in v1) |
+| Scan quota | `anon_scan_limit` (15) total, enforced server-side per device | plan-based (enforced later, server-side) |
+| Server persistence | none — `/v1/extract` returns the parse and forgets it | `Receipt` + `Expense` rows, image in Blob |
+| Web access | no | yes |
+
+### Anonymous requests
+
+`POST /v1/extract` is **auth-optional**. With no bearer token the caller must
+send `X-Device-Id: <uuid>`. The backend keeps a counter in `anon_devices`
+(`device_id` unique, `scan_count`); each successful call increments it and the
+response carries `scans_remaining`. Past the limit the endpoint returns **402**
+with a "sign in to keep scanning" message — the app shows a soft wall (history
+stays browsable, the shutter is disabled). Anonymous parses are **not** stored
+server-side. See [`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
+
+### Sign-in / migration flow
+
+1. `Auth0.swift` `WebAuthentication` login (audience `https://api.ai-receipt`) →
+   store the access token in the Keychain.
+2. `POST /v1/receipts/import` (bearer) with the local receipts as
+   `{ merchant, date, total, tax, category, currency, items[], imageBase64? }`.
+   The backend creates a `Receipt` + `Expense` per item and uploads each image
+   to Blob. Returns the created `ReceiptOut[]` (201).
+3. Switch the app to signed-in mode: backend becomes source of truth, refill
+   SwiftData from `GET /v1/receipts`, drop the `X-Device-Id` counter (left as a
+   dead row; not reused).
+
+### One-time Auth0 setup for iOS
+
+- Register a **Native** application in Auth0. Callback / logout URL:
+  `com.example.AIReceiptApp://<AUTH0_DOMAIN>/ios/com.example.AIReceiptApp/callback`.
+- Add the URL scheme `com.example.AIReceiptApp` to the app target's Info.
+- Add the `Auth0.swift` SPM package; `AuthManager` (`@Observable`) holds
+  `.anonymous(deviceId)` / `.signedIn(token, profile)` and the Keychain I/O.
+- `ReceiptExtractionAPIClient` gains a `deviceId` field and sends whichever of
+  the two headers applies.
+- Sign in with Apple on iOS uses the native `ASAuthorizationController`; Auth0
+  accepts that assertion.
