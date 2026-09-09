@@ -30,9 +30,11 @@ enum ReceiptExtractionError: LocalizedError, Equatable {
     }
 }
 
-/// One extraction outcome: the editable draft plus, for anonymous callers, how
-/// many free scans remain on this device (`nil` when signed in).
+/// One extraction outcome: the editable draft, how many free scans remain on
+/// this device (anonymous only; `nil` when signed in), and the server receipt
+/// id (signed-in only; the backend already persisted it).
 struct ReceiptExtractionResult {
     var draft: ReceiptDraft
     var scansRemaining: Int?
+    var serverID: String?
 }

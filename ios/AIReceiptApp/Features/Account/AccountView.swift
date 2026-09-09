@@ -99,7 +99,7 @@ struct AccountView: View {
         benefit("checkmark.icloud", "Backup", "Your receipts are safe if you lose your phone.")
 
         if auth.isConfigured {
-            SignInWithGoogleButton()
+            SignInButton()
         } else {
             Text("Sign-in isn't available in this build.")
                 .font(.appCaption)

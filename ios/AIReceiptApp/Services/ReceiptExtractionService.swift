@@ -20,4 +20,15 @@ enum ReceiptExtractionService {
             deviceID: token == nil ? auth.deviceID : nil
         )
     }
+
+    /// A bearer-authorized API client, or `nil` when signed out / not configured.
+    /// Used for the receipt CRUD calls (create/update/delete/list).
+    @MainActor
+    static func makeAuthorizedClient(auth: AuthManager) async -> ReceiptExtractionAPIClient? {
+        guard auth.isSignedIn,
+            let baseURL = AppConfig.extractionAPIBaseURL,
+            let token = await auth.accessToken()
+        else { return nil }
+        return ReceiptExtractionAPIClient(baseURL: baseURL, authToken: token)
+    }
 }

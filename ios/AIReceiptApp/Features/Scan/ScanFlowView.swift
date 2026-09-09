@@ -15,6 +15,9 @@ struct ScanFlowView: View {
     @State private var errorMessage: String?
     @State private var savedTick = 0
     @State private var showQuotaWall = false
+    /// Server receipt id when signed in — `/v1/extract` already persisted it, so
+    /// "Save" only needs to push edits and "Discard" needs to delete it.
+    @State private var pendingServerID: String?
 
     private enum Stage: Equatable {
         case idle, working, confirming
@@ -69,7 +72,7 @@ struct ScanFlowView: View {
             readingState
                 .transition(.opacity)
         case .confirming:
-            ConfirmReceiptView(draft: $draft, onSave: save, onDiscard: reset)
+            ConfirmReceiptView(draft: $draft, onSave: save, onDiscard: discard)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
         }
     }
@@ -189,6 +192,7 @@ struct ScanFlowView: View {
                 let result = try await extractor.extractReceipt(from: image)
                 auth.noteScansRemaining(result.scansRemaining)
                 draft = result.draft
+                pendingServerID = result.serverID
                 withAnimation(Theme.Motion.spring) { stage = .confirming }
             } catch ReceiptExtractionError.quotaExhausted {
                 auth.noteScansRemaining(0)
@@ -202,8 +206,30 @@ struct ScanFlowView: View {
     }
 
     private func save() {
-        modelContext.insert(draft.makeReceipt())
+        let receipt = draft.makeReceipt()
+        receipt.remoteID = pendingServerID
+        modelContext.insert(receipt)
         savedTick += 1
+
+        if pendingServerID != nil {
+            // The server row holds the raw extraction — push the confirmed edits.
+            Task { await AccountSync.pushUpdate(receipt, auth: auth) }
+        }
+        pendingServerID = nil
+        reset()
+    }
+
+    /// User bailed on the confirm screen. If the backend already created a row
+    /// for this scan (signed in), remove it so nothing orphaned is left behind.
+    private func discard() {
+        if let id = pendingServerID {
+            let auth = auth
+            Task {
+                let client = await ReceiptExtractionService.makeAuthorizedClient(auth: auth)
+                try? await client?.deleteReceipt(id: id)
+            }
+        }
+        pendingServerID = nil
         reset()
     }
 

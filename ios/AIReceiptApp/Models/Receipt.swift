@@ -11,6 +11,10 @@ final class Receipt {
     var note: String
     var createdAt: Date
 
+    /// Server receipt id once this row is backed by the account (`nil` = local
+    /// only, i.e. anonymous or not yet synced). See `AccountSync`.
+    var remoteID: String? = nil
+
     /// Persisted separately from the row; may be large.
     @Attribute(.externalStorage) var imageData: Data?
 

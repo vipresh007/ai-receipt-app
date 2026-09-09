@@ -3,6 +3,7 @@ import SwiftData
 
 struct ReceiptListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var auth
     @Query(sort: \Receipt.date, order: .reverse) private var receipts: [Receipt]
 
     private var currencyCode: String {
@@ -36,12 +37,18 @@ struct ReceiptListView: View {
                     EditButton()
                 }
             }
+            .refreshable {
+                await AccountSync.pull(auth: auth, context: modelContext)
+            }
         }
     }
 
     private func delete(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(receipts[index])
+        let targets = offsets.map { receipts[$0] }
+        Task {
+            for receipt in targets {
+                await AccountSync.delete(receipt, auth: auth, context: modelContext)
+            }
         }
     }
 }
@@ -74,4 +81,5 @@ private struct ReceiptRow: View {
 #Preview {
     ReceiptListView()
         .modelContainer(for: Receipt.self, inMemory: true)
+        .environment(AuthManager())
 }

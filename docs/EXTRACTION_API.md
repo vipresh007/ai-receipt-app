@@ -54,6 +54,7 @@ shutter is disabled).
 
 | Field        | Type              | Notes |
 |--------------|-------------------|-------|
+| `id`         | string \| null    | Signed-in only — id of the `Receipt` row the backend just created, so the client can correlate / `PATCH` / `DELETE` it. `null` for anonymous. |
 | `merchant`   | string            | `""` if not legible. |
 | `date`       | string \| null    | `YYYY-MM-DD`. `null` → app uses today. |
 | `total`      | string            | Decimal string, `.` separator, no symbol/grouping. `"0"` if unreadable. |
@@ -139,6 +140,23 @@ doesn't fail the import).
 `Receipt` + one `Expense` are created per input item. After this the app refills
 its SwiftData cache from `GET /v1/receipts` and treats the backend as the source
 of truth.
+
+---
+
+## Receipt CRUD (bearer only)
+
+Used by the signed-in iOS app to keep its local store in step with the account
+(`AccountSync`). Web reads the list; it doesn't use these yet.
+
+| Method & path | Body | Response | Notes |
+|---|---|---|---|
+| `GET /v1/receipts?limit=` | — | `ReceiptOut[]` | Newest first. iOS pulls this to reconcile. |
+| `POST /v1/receipts` | `ReceiptCreate` (same shape as one import item) | `201 ReceiptOut` | Creates the `Receipt` + its `Expense`. |
+| `PATCH /v1/receipts/{id}` | partial: `merchant, date, total, tax, category, items` — only keys sent change | `200 ReceiptOut` | Keeps the linked `Expense` (amount/merchant/category/date) in sync. `404` if not the caller's. |
+| `DELETE /v1/receipts/{id}` | — | `204` | Removes the receipt and its expense. `404` if not the caller's. |
+
+`ReceiptOut` (snake_case on the wire): `id, merchant, purchased_at, total, tax,
+currency, category_slug, image_blob_url, extraction_confidence, line_items`.
 
 ---
 

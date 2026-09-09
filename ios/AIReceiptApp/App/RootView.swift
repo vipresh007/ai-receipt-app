@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(AuthManager.self) private var auth
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         TabView {
             DashboardView()
@@ -16,6 +20,11 @@ struct RootView: View {
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
         .tint(Theme.Palette.accent)
+        .task { await AccountSync.pull(auth: auth, context: modelContext) }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await AccountSync.pull(auth: auth, context: modelContext) }
+        }
     }
 }
 

@@ -43,7 +43,6 @@ final class AuthManager {
         static let deviceID = "com.aireceipt.deviceID"
         static let name = "com.aireceipt.user.name"
         static let email = "com.aireceipt.user.email"
-        static let didImport = "com.aireceipt.didImportOnSignIn"
     }
 
     init() {
@@ -95,12 +94,13 @@ final class AuthManager {
         isBusy = true
         defer { isBusy = false }
 
+        // No `.connection(...)` filter: Auth0 Universal Login shows every method
+        // enabled for this application (Google + email/password today).
         let credentials =
             try await Auth0
             .webAuth(clientId: clientID, domain: domain)
             .audience(audience)
             .scope("openid profile email offline_access")
-            .connection("google-oauth2")
             .start()
 
         try manager.store(credentials: credentials)
@@ -131,7 +131,6 @@ final class AuthManager {
         try? credentialsManager?.clear()
         defaults.removeObject(forKey: Key.name)
         defaults.removeObject(forKey: Key.email)
-        defaults.removeObject(forKey: Key.didImport)
         state = .anonymous
     }
 
@@ -139,12 +138,6 @@ final class AuthManager {
     func noteScansRemaining(_ value: Int?) {
         guard let value else { return }
         scansRemaining = value
-    }
-
-    /// Guard so local receipts are pushed to the account only once per sign-in.
-    var hasImportedOnSignIn: Bool {
-        get { defaults.bool(forKey: Key.didImport) }
-        set { defaults.set(newValue, forKey: Key.didImport) }
     }
 
     enum AuthError: LocalizedError {

@@ -20,6 +20,6 @@ struct MockReceiptExtractor: ReceiptExtractor {
         draft.tax = 1.34
         draft.total = subtotal + draft.tax
         draft.imageData = image.jpegData(compressionQuality: 0.7)
-        return ReceiptExtractionResult(draft: draft, scansRemaining: nil)
+        return ReceiptExtractionResult(draft: draft, scansRemaining: nil, serverID: nil)
     }
 }

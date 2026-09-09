@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReceiptDetailView: View {
     @Bindable var receipt: Receipt
+    @Environment(AuthManager.self) private var auth
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -57,5 +58,11 @@ struct ReceiptDetailView: View {
         }
         .navigationTitle(receipt.merchant)
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear {
+            // SwiftData autosaves the edits locally; mirror them to the account.
+            let receipt = receipt
+            let auth = auth
+            Task { await AccountSync.pushUpdate(receipt, auth: auth) }
+        }
     }
 }

@@ -92,8 +92,8 @@ final class ReceiptExtractionAPIClientTests: XCTestCase {
         XCTAssertNil(ReceiptExtractionAPIClient.errorMessage(from: Data("not json".utf8)))
     }
 
-    func testImportReceiptEncodesBackendKeys() throws {
-        let item = ReceiptExtractionAPIClient.ImportReceipt(
+    func testReceiptWriteEncodesBackendKeys() throws {
+        let item = ReceiptExtractionAPIClient.ReceiptWrite(
             merchant: "Corner Store",
             date: "2026-09-03",
             total: "9.99",
@@ -108,5 +108,42 @@ final class ReceiptExtractionAPIClientTests: XCTestCase {
         XCTAssertEqual(json?["date"] as? String, "2026-09-03")
         XCTAssertNil(json?["imageBase64"])  // nil optional is omitted
         XCTAssertEqual((json?["items"] as? [[String: Any]])?.first?["price"] as? String, "3.50")
+    }
+
+    func testResponseCarriesServerIdWhenSignedIn() throws {
+        let signedIn = try decode(#"{ "id": "abc-123", "merchant": "X", "total": "1.00" }"#)
+        XCTAssertEqual(signedIn.id, "abc-123")
+        let anon = try decode(#"{ "merchant": "X", "total": "1.00" }"#)
+        XCTAssertNil(anon.id)
+    }
+
+    func testReceiptDTODecodesSnakeCaseAndMakesReceipt() throws {
+        let dto = try JSONDecoder().decode(
+            ReceiptExtractionAPIClient.ReceiptDTO.self,
+            from: Data(
+                #"""
+                {
+                  "id": "r-1",
+                  "merchant": "Blue Bottle",
+                  "purchased_at": "2026-09-01",
+                  "total": "12.50",
+                  "tax": "1.03",
+                  "currency": "USD",
+                  "category_slug": "restaurants",
+                  "image_blob_url": null,
+                  "extraction_confidence": 0.9,
+                  "line_items": [{ "name": "Latte", "price": "5.25", "quantity": 2 }]
+                }
+                """#.utf8
+            )
+        )
+        XCTAssertEqual(dto.categorySlug, "restaurants")
+
+        let receipt = dto.makeReceipt()
+        XCTAssertEqual(receipt.remoteID, "r-1")
+        XCTAssertEqual(receipt.merchant, "Blue Bottle")
+        XCTAssertEqual(receipt.total, Decimal(string: "12.50"))
+        XCTAssertEqual(receipt.category, .restaurants)
+        XCTAssertEqual(receipt.items.first?.quantity, 2)
     }
 }

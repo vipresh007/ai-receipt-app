@@ -34,9 +34,11 @@ Insights** (telemetry).
   (git-ignored; copy from `Secrets.example.xcconfig`). With it unset, the app
   uses `MockReceiptExtractor` and the whole flow still runs.
 - Local-first auth: the app runs anonymously (device UUID → `X-Device-Id`, capped
-  free scans); optional Google sign-in via Auth0 (`Auth0` SPM package,
-  `AuthManager`) unlocks the web app + uploads local receipts. Auth0 config
-  (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
+  free scans); optional Auth0 Universal Login (`Auth0` SPM package, `AuthManager`
+  — Google + email/password) unlocks the web app. On sign-in, local receipts are
+  imported and then `AccountSync` keeps SwiftData reconciled with the account
+  (`pull()` on launch/foreground/refresh; create/edit/delete pushed). Auth0
+  config (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
   empty → the Account screen just hides sign-in. See [`docs/AUTH.md`](docs/AUTH.md).
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
 - Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'`
@@ -96,8 +98,10 @@ Insights** (telemetry).
 
 ## The iOS ⇄ backend contract
 
-`POST /v1/extract` — the one endpoint both sides must agree on. Request/response
-shapes and the Azure OpenAI prompt live in
+`POST /v1/extract` (parse; persists for signed-in) plus the receipt CRUD
+(`GET/POST /v1/receipts`, `PATCH/DELETE /v1/receipts/{id}`, `POST
+/v1/receipts/import`) that iOS sync uses. Request/response shapes and the Azure
+OpenAI prompt live in
 [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md). The iOS side is
 `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift`; the backend side is
 `backend/app/api/routes/receipts.py` + `services/extraction.py`. Change both

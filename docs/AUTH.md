@@ -116,27 +116,33 @@ claim. Then `_provision_user` can skip the `/userinfo` round-trip.
 
 The iOS app works **without an account**. Sign-in is a one-way upgrade that
 unlocks the web app, cross-device sync, a higher scan quota, and cloud backup.
-**Google is the only sign-in method wired up so far** (email/password and Apple
-are dashboard-enabled but the app doesn't surface them yet).
+The app opens Auth0 **Universal Login** with no connection filter, so it offers
+every method enabled on the tenant — today **Google + email/password**. (Apple
+is deferred until there's an Apple Developer membership.)
 
 ### Two modes
 
 | | Anonymous (default) | Signed in |
 |---|---|---|
 | Identity | random device UUID (Keychain) sent as `X-Device-Id` | Auth0 access token (Keychain, via `CredentialsManager`) sent as `Authorization: Bearer` |
-| Source of truth | on-device SwiftData | backend for the web app; **iOS v1 is push-only** — local receipts upload on sign-in, but other devices' receipts aren't pulled back into iOS yet |
+| Source of truth | on-device SwiftData | **backend** — `AccountSync.pull()` reconciles `GET /v1/receipts` into SwiftData on launch / foreground / pull-to-refresh; local create + edit + delete are pushed as they happen. No offline write queue: a failed push is dropped and the next pull re-aligns. |
 | Scan quota | `anon_scan_limit` (15) total, enforced server-side per device | plan-based (enforced later, server-side) |
 | Server persistence | none — `/v1/extract` returns the parse and forgets it | `Receipt` + `Expense` rows, image in Blob |
 | Web access | no | yes |
+
+Receipt **images** stay on the device that scanned them — rows pulled from the
+server on another device show without a thumbnail (the original is in Blob; v1
+doesn't re-download it).
 
 ### Code map (iOS)
 
 | Piece | File |
 |---|---|
-| Identity + Auth0 web flow + token refresh | `ios/AIReceiptApp/Services/AuthManager.swift` |
+| Identity + Auth0 Universal Login + token refresh | `ios/AIReceiptApp/Services/AuthManager.swift` |
 | Device-ID keychain | `ios/AIReceiptApp/Services/KeychainStore.swift` |
-| Header selection (`Bearer` vs `X-Device-Id`), `scans_remaining`, 402, import | `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift` |
-| One-shot local→account import | `ios/AIReceiptApp/Services/AccountSync.swift` |
+| Header selection (`Bearer` vs `X-Device-Id`), `scans_remaining`, 402, receipt CRUD | `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift` |
+| Sign-in import + `pull()` / `pushUpdate()` / `delete()` reconcile | `ios/AIReceiptApp/Services/AccountSync.swift` |
+| `Receipt.remoteID` links a local row to its server row | `ios/AIReceiptApp/Models/Receipt.swift` |
 | Account tab / quota wall / sign-in button | `ios/AIReceiptApp/Features/Account/` |
 | Config (`AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` / `AUTH0_AUDIENCE`) | `ios/Config/AIReceiptApp.xcconfig` → Info.plist → `AppConfig` |
 
@@ -150,19 +156,20 @@ with a "sign in to keep scanning" message — the app shows a soft wall (history
 stays browsable, the shutter is disabled). Anonymous parses are **not** stored
 server-side. See [`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
 
-### Sign-in / migration flow
+### Sign-in / sync flow
 
-1. `Auth0.swift` `WebAuth` login — `connection("google-oauth2")`, audience
-   `https://api.ai-receipt`, scope `openid profile email offline_access`. The
+1. `Auth0.swift` `WebAuth` Universal Login — audience `https://api.ai-receipt`,
+   scope `openid profile email offline_access`, no `.connection(...)` filter. The
    access + refresh tokens go into the keychain via `CredentialsManager`.
 2. `AccountSync.importLocalReceiptsIfNeeded` runs once: `POST /v1/receipts/import`
-   (bearer) with every local receipt as
-   `{ merchant, date, total, tax, category, currency, items[], imageBase64? }`.
-   The backend creates a `Receipt` + `Expense` per item and uploads each image
-   to Blob. Guarded by a `didImportOnSignIn` `UserDefaults` flag.
-3. From then on the app is in signed-in mode: `/v1/extract` sends the bearer and
-   the backend persists. (Pulling the backend's receipts back into SwiftData for
-   multi-device view is a later step — not in v1.)
+   (bearer) with every receipt that has no `remoteID` yet. The backend creates a
+   `Receipt` + `Expense` per item (uploading each image to Blob) and returns the
+   rows; the app writes each new `remoteID` back onto its local row.
+3. `AccountSync.pull()` then reconciles `GET /v1/receipts` into SwiftData, and
+   keeps doing so on every launch / foreground / pull-to-refresh.
+4. Ongoing: a signed-in scan uses `/v1/extract` (persists, returns `id`); the
+   confirm screen's edits are `PATCH`ed and a discard `DELETE`s the row. Receipt
+   detail edits `PATCH` on close; list deletes `DELETE`.
 
 ### One-time Auth0 setup for iOS (done for the dev tenant)
 
@@ -172,7 +179,8 @@ server-side. See [`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
   `com.example.AIReceiptApp://dev-nvjgstqap8b8wb68.us.auth0.com/ios/com.example.AIReceiptApp/callback`
   (Auth0.swift's default custom-scheme callback; `useHTTPS()` is **not** used, so
   no associated-domain entitlement is needed).
-- `google-oauth2` connection enabled for that application.
+- Connections enabled for that application: `google-oauth2` and
+  `Username-Password-Authentication`.
 - The `CFBundleURLTypes` scheme (`= $(PRODUCT_BUNDLE_IDENTIFIER)`) is registered
   in `project.yml`.
 - Sign in with Apple would use the native `ASAuthorizationController`; deferred

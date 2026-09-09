@@ -33,7 +33,7 @@ struct QuotaWallView: View {
             Spacer()
 
             if auth.isConfigured {
-                SignInWithGoogleButton { dismiss() }
+                SignInButton(title: "Sign in to keep scanning") { dismiss() }
             } else {
                 Text("Sign-in isn't available in this build.")
                     .font(.appCaption)
