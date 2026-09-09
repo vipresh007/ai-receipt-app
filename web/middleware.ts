@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth0 } from "@/lib/auth0";
 
-const PROTECTED = ["/dashboard", "/receipts", "/scan"];
+const PROTECTED = ["/dashboard", "/receipts", "/scan", "/account", "/expenses"];
 
 export async function middleware(request: NextRequest) {
   // Handles /auth/login, /auth/logout, /auth/callback, /auth/access-token, …

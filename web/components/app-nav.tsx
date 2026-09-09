@@ -46,9 +46,17 @@ export function AppNav({ displayName }: { displayName?: string }) {
 
       <div className="mt-auto hidden flex-col gap-xs pt-lg md:flex">
         {displayName && (
-          <p className="truncate px-md text-caption text-text-tertiary" title={displayName}>
+          <Link
+            href="/account"
+            aria-current={pathname === "/account" ? "page" : undefined}
+            className={cn(
+              "truncate rounded-md px-md py-sm text-caption transition-colors hover:bg-surface-2",
+              pathname === "/account" ? "text-accent" : "text-text-tertiary hover:text-text",
+            )}
+            title={displayName}
+          >
             {displayName}
-          </p>
+          </Link>
         )}
         <a
           href="/auth/logout"

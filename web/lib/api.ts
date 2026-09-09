@@ -38,3 +38,7 @@ export function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   }).then(handle) as Promise<T>;
 }
+
+export function apiDelete<T = null>(path: string): Promise<T> {
+  return fetch(proxyPath(path), { method: "DELETE" }).then(handle) as Promise<T>;
+}

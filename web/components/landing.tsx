@@ -594,9 +594,17 @@ function SparklesIconInline() {
 export function SiteFooter() {
   return (
     <footer className="border-t border-border px-lg py-xl">
-      <div className="mx-auto flex max-w-content flex-col items-center justify-between gap-sm text-caption text-text-tertiary sm:flex-row">
+      <div className="mx-auto flex max-w-content flex-col items-center justify-between gap-md text-caption text-text-tertiary sm:flex-row">
         <Wordmark />
-        <span>© {new Date().getFullYear()} Tally · FastAPI · Next.js · Azure OpenAI</span>
+        <nav className="flex items-center gap-lg">
+          <a href="/privacy" className="hover:text-text">
+            Privacy
+          </a>
+          <a href="/terms" className="hover:text-text">
+            Terms
+          </a>
+          <span>© {new Date().getFullYear()} Tally</span>
+        </nav>
       </div>
     </footer>
   );
