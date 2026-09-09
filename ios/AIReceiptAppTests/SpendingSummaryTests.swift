@@ -106,6 +106,16 @@ final class SpendingSummaryTests: XCTestCase {
         XCTAssertGreaterThan(months[0].monthStart, months[2].monthStart)
     }
 
+    func testCompactMoneyShortensThousands() {
+        // Currency symbol is locale-dependent; assert the digits/shape only.
+        XCTAssertTrue(compactMoney(320, code: "USD").contains("320"))
+        XCTAssertFalse(compactMoney(320, code: "USD").hasSuffix("k"))
+        XCTAssertTrue(compactMoney(1830, code: "USD").hasSuffix("k"))
+        XCTAssertTrue(compactMoney(1830, code: "USD").contains("1.8"))
+        XCTAssertTrue(compactMoney(25000, code: "USD").contains("25"))
+        XCTAssertTrue(compactMoney(25000, code: "USD").hasSuffix("k"))
+    }
+
     func testRisingStreakInsightAcrossThreeMonths() {
         let receipts = [
             receipt(50, .groceries, on: date(year: 2026, month: 4, day: 10)),
