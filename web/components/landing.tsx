@@ -53,10 +53,10 @@ export function SiteHeader() {
 function Wordmark() {
   return (
     <span className="flex items-center gap-sm">
-      <span className="grid h-7 w-7 place-items-center rounded-md bg-accent text-accent-fg shadow-e1">
-        <TallyMark size={16} />
+      <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-accent-fg shadow-e1">
+        <TallyMark size={22} />
       </span>
-      <span className="text-callout font-semibold tracking-tight">Tally</span>
+      <span className="text-headline font-semibold tracking-tight">Tally</span>
     </span>
   );
 }

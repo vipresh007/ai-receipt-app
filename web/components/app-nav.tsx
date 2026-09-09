@@ -17,11 +17,11 @@ export function AppNav({ displayName }: { displayName?: string }) {
 
   return (
     <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
-      <div className="mb-lg hidden items-center gap-sm px-md md:flex">
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-fg">
-          <TallyMark size={18} />
+      <div className="mb-xl hidden items-center gap-sm px-md md:flex">
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-accent-fg">
+          <TallyMark size={24} />
         </div>
-        <span className="text-headline">Tally</span>
+        <span className="text-title tracking-tight">Tally</span>
       </div>
 
       {LINKS.map(({ href, label, icon: Icon }) => {
