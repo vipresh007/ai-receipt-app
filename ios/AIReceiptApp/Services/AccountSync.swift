@@ -76,6 +76,22 @@ enum AccountSync {
         )
     }
 
+    /// Fetch a synced receipt's image bytes if the local row doesn't have them
+    /// (rows pulled from another device). No-op otherwise.
+    @MainActor
+    static func fetchImageIfNeeded(
+        _ receipt: Receipt,
+        auth: AuthManager,
+        context: ModelContext
+    ) async {
+        guard receipt.imageData == nil, let id = receipt.remoteID,
+            let client = await client(auth: auth)
+        else { return }
+        guard let data = try? await client.receiptImage(id: id), !data.isEmpty else { return }
+        receipt.imageData = data
+        try? context.save()
+    }
+
     /// Delete locally and, if it's synced, on the account too.
     @MainActor
     static func delete(_ receipt: Receipt, auth: AuthManager, context: ModelContext) async {

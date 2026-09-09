@@ -87,7 +87,7 @@ shutter is disabled).
 | `401`  | Bearer token present but invalid/expired. |
 | `402`  | Anonymous device has used all its free scans — sign in to continue. |
 | `422`  | `imageBase64` not valid base64, or empty. |
-| `429`  | Signed-in free-tier monthly scan limit reached *(planned)*. |
+| `429`  | Anonymous: too many calls from this client IP this hour (`anon_ip_hourly_limit`, default 60). Signed-in monthly limit is *planned*. |
 | `502`  | Azure OpenAI unavailable or returned nothing usable. |
 
 Body: `{ "detail": "Human-readable message" }` — the iOS client shows `detail`
@@ -151,6 +151,7 @@ Used by the signed-in iOS app to keep its local store in step with the account
 | Method & path | Body | Response | Notes |
 |---|---|---|---|
 | `GET /v1/receipts?limit=` | — | `ReceiptOut[]` | Newest first. iOS pulls this to reconcile. |
+| `GET /v1/receipts/{id}/image` | — | `image/jpeg` bytes | The stored receipt photo, so a device that pulled the row (bytes never sync between devices) can show it. `404` when there's no image. `Cache-Control: private, max-age=86400`. |
 | `POST /v1/receipts` | `ReceiptCreate` (same shape as one import item) | `201 ReceiptOut` | Creates the `Receipt` + its `Expense`. |
 | `PATCH /v1/receipts/{id}` | partial: `merchant, date, total, tax, category, items` — only keys sent change | `200 ReceiptOut` | Keeps the linked `Expense` (amount/merchant/category/date) in sync. `404` if not the caller's. |
 | `DELETE /v1/receipts/{id}` | — | `204` | Removes the receipt and its expense. `404` if not the caller's. |

@@ -105,6 +105,14 @@ struct ReceiptExtractionAPIClient {
         try Self.expectOK(http, data, "Couldn't delete the receipt")
     }
 
+    /// The receipt's stored image bytes. Throws on 404 (no image) or error.
+    func receiptImage(id: String) async throws -> Data {
+        let request = try authorized("v1/receipts/\(id)/image", method: "GET")
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't load the receipt image")
+        return data
+    }
+
     // MARK: - Helpers
 
     private func applyAuth(to request: inout URLRequest) {

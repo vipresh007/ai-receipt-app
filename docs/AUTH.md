@@ -130,9 +130,9 @@ is deferred until there's an Apple Developer membership.)
 | Server persistence | none — `/v1/extract` returns the parse and forgets it | `Receipt` + `Expense` rows, image in Blob |
 | Web access | no | yes |
 
-Receipt **images** stay on the device that scanned them — rows pulled from the
-server on another device show without a thumbnail (the original is in Blob; v1
-doesn't re-download it).
+Receipt **images**: the bytes never sync device-to-device (SwiftData holds them
+locally). When a pulled row is opened in the detail view, the app fetches the
+photo once from `GET /v1/receipts/{id}/image` and caches it locally.
 
 ### Code map (iOS)
 
@@ -154,7 +154,10 @@ send `X-Device-Id: <uuid>`. The backend keeps a counter in `anon_devices`
 response carries `scans_remaining`. Past the limit the endpoint returns **402**
 with a "sign in to keep scanning" message — the app shows a soft wall (history
 stays browsable, the shutter is disabled). Anonymous parses are **not** stored
-server-side. See [`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
+server-side. A second guard caps anonymous calls per **client IP** per hour
+(`anon_ip_hourly_limit`, `anon_rate_limits` table) → **429** when tripped, so a
+fresh `X-Device-Id` each call doesn't get around the quota. See
+[`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
 
 ### Sign-in / sync flow
 

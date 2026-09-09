@@ -119,24 +119,37 @@ struct RecentReceiptsCard: View {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 SectionLabel("Recent")
                 ForEach(receipts) { receipt in
-                    HStack(spacing: Theme.Space.md) {
-                        CategoryGlyph(category: receipt.category, size: 28)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(receipt.merchant.isEmpty ? "Unknown merchant" : receipt.merchant)
-                                .font(.appCallout)
-                                .foregroundStyle(Theme.Palette.text)
-                            Text(receipt.date, format: .dateTime.month().day())
-                                .font(.appCaption)
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                        }
-                        Spacer()
-                        Text(receipt.total, format: .currency(code: currencyCode))
-                            .font(.appCallout.weight(.medium))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.Palette.text)
+                    NavigationLink {
+                        ReceiptDetailView(receipt: receipt)
+                    } label: {
+                        row(receipt)
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func row(_ receipt: Receipt) -> some View {
+        HStack(spacing: Theme.Space.md) {
+            CategoryGlyph(category: receipt.category, size: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(receipt.merchant.isEmpty ? "Unknown merchant" : receipt.merchant)
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.text)
+                Text(receipt.date, format: .dateTime.month().day())
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            Spacer()
+            Text(receipt.total, format: .currency(code: currencyCode))
+                .font(.appCallout.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(Theme.Palette.text)
+            Image(systemName: "chevron.right")
+                .font(.appCaption.weight(.semibold))
+                .foregroundStyle(Theme.Palette.textTertiary)
+        }
+        .contentShape(Rectangle())
     }
 }
