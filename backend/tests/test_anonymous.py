@@ -1,5 +1,7 @@
 import base64
 
+from app.config import get_settings
+
 _IMG = base64.b64encode(b"pretend-jpeg").decode()
 
 
@@ -37,6 +39,21 @@ async def test_anonymous_quota_runs_out(anon_client):
     )
     assert r.status_code == 402
     assert "sign in" in r.json()["detail"].lower()
+
+
+async def test_anonymous_extract_is_rate_limited_per_ip(anon_client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "anon_ip_hourly_limit", 3)
+    for i in range(3):
+        r = await anon_client.post(
+            "/v1/extract", json=_payload(f"ip{i}"), headers={"X-Device-Id": f"dev-{i}"}
+        )
+        assert r.status_code == 200, (i, r.text)
+    # 4th call from the same IP (different device) is refused
+    r = await anon_client.post(
+        "/v1/extract", json=_payload("ip3"), headers={"X-Device-Id": "dev-3"}
+    )
+    assert r.status_code == 429
+    assert "network" in r.json()["detail"].lower()
 
 
 async def test_quota_is_per_device(anon_client):

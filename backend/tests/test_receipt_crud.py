@@ -71,6 +71,13 @@ async def test_delete_unknown_receipt_is_404(client):
     assert resp.status_code == 404
 
 
+async def test_receipt_image_404_when_none_stored(client):
+    rid = (await client.post("/v1/receipts", json=_new())).json()["id"]
+    # No blob configured in tests → nothing was stored.
+    resp = await client.get(f"/v1/receipts/{rid}/image")
+    assert resp.status_code == 404
+
+
 async def test_signed_in_extract_returns_receipt_id(client):
     resp = await client.post(
         "/v1/extract",

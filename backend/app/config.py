@@ -27,6 +27,9 @@ class Settings(BaseSettings):
 
     # Anonymous (not-signed-in) extraction: free scans per device before sign-in.
     anon_scan_limit: int = 15
+    # Anonymous extraction: max calls per client IP per rolling hour (abuse guard
+    # on top of the per-device cap — stops someone cycling fake device ids).
+    anon_ip_hourly_limit: int = 60
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_receipt"

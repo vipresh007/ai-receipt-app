@@ -1,16 +1,17 @@
 import base64
 import binascii
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_current_user_optional, get_extractor
 from app.config import get_settings
 from app.db import get_session
-from app.models import AnonDevice, Expense, Receipt, User
+from app.models import AnonDevice, AnonRateLimit, Expense, Receipt, User
 from app.schemas.extraction import ExtractedReceipt
 from app.schemas.receipt import (
     ExtractionIn,
@@ -78,6 +79,37 @@ async def _consume_anon_quota(session: AsyncSession, device_id: str) -> int:
     return max(0, limit - device.scan_count)
 
 
+def _client_ip(request: Request) -> str:
+    """Best-effort caller IP. Container Apps' ingress sets X-Forwarded-For; the
+    left-most entry is the original client."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def _enforce_anon_ip_limit(session: AsyncSession, ip: str) -> None:
+    """Fixed-window (1h) per-IP cap on anonymous extraction. Raises 429 when hit."""
+    limit = get_settings().anon_ip_hourly_limit
+    now = datetime.now(UTC)
+    bucket = f"{ip}:{now:%Y%m%d%H}"
+    row = await session.scalar(select(AnonRateLimit).where(AnonRateLimit.bucket == bucket))
+    if row is None:
+        # opportunistic prune of stale buckets (keeps the table tiny)
+        await session.execute(
+            sa_delete(AnonRateLimit).where(AnonRateLimit.created_at < now - timedelta(hours=2))
+        )
+        row = AnonRateLimit(bucket=bucket, count=0)
+        session.add(row)
+    if row.count >= limit:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many scans from this network right now. Try again later or sign in.",
+        )
+    row.count += 1
+    await session.commit()
+
+
 @router.post("/extract", response_model=ExtractionOut)
 async def extract(
     payload: ExtractionIn,
@@ -93,6 +125,7 @@ async def extract(
         device_id = (request.headers.get("x-device-id") or "").strip()
         if not device_id:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Missing X-Device-Id header.")
+        await _enforce_anon_ip_limit(session, _client_ip(request))
         remaining = await _consume_anon_quota(session, device_id)
         try:
             extracted = extractor.extract(image_bytes=image_bytes, ocr_lines=payload.ocr_lines)
@@ -216,6 +249,28 @@ async def list_receipts(
         .limit(min(limit, 200))
     )
     return [_receipt_out(r) for r in rows]
+
+
+@router.get("/receipts/{receipt_id}/image")
+async def receipt_image(
+    receipt_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Stream a receipt's stored image so other devices can show it after a
+    pull (the bytes never live in SwiftData across devices)."""
+    receipt = await _owned_receipt(session, user, receipt_id)
+    settings = get_settings()
+    if not receipt.image_blob_url or not settings.blob_configured:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No image for this receipt.")
+    data = await BlobStorage(settings).download_by_url(receipt.image_blob_url)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No image for this receipt.")
+    return Response(
+        content=data,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
 
 
 @router.patch("/receipts/{receipt_id}", response_model=ReceiptOut)
