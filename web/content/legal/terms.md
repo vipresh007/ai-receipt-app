@@ -1,11 +1,11 @@
 # Terms of Service
 
-_Last updated: [EFFECTIVE DATE]. This is a first draft — have it reviewed by a
-lawyer before you rely on it._
+_Last updated: set this to the date you publish. This is a first draft — have it
+reviewed by a lawyer before you rely on it._
 
-These terms are a contract between you and
-**[YOUR NAME / COMPANY]** ("we", "us") for use of the **Tally** app and website
-(the "Service"). By creating an account or using the Service you agree to them.
+These terms are a contract between you and **DATA EAVER INC.** ("we", "us") for
+use of the **Tally** app and website (the "Service"). By creating an account or
+using the Service you agree to them.
 
 ## The Service
 
@@ -15,7 +15,7 @@ available; paid plans, if offered, are described at sign-up.
 
 ## Your account
 
-- You must be at least **[16]** years old and provide accurate information.
+- You must be at least **16** years old and provide accurate information.
 - You are responsible for activity under your account and for keeping your
   sign-in credentials secure.
 - One person or entity per account unless we agree otherwise.
@@ -68,7 +68,7 @@ Privacy Policy.
 To the fullest extent permitted by law, we disclaim all warranties not
 expressly stated here, and our total liability for any claim relating to the
 Service is limited to the greater of the amount you paid us in the 12 months
-before the claim or **[USD 50]**. We are not liable for indirect or
+before the claim or **CAD 100**. We are not liable for indirect or
 consequential losses, including lost data or profits. Some jurisdictions don't
 allow these limits, in which case they apply to the extent permitted.
 
@@ -80,10 +80,12 @@ changes means you accept them.
 
 ## Governing law
 
-These terms are governed by the laws of **[JURISDICTION]**, and disputes will
-be handled by the courts of **[VENUE]**, without regard to conflict-of-laws
-rules.
+These terms are governed by the laws of the **Province of Ontario** and the
+federal laws of Canada that apply there, and disputes will be handled by the
+courts located in **Toronto, Ontario**, without regard to conflict-of-laws
+rules. _(Confirm this matches DATA EAVER INC.'s province of incorporation.)_
 
 ## Contact
 
-**[YOUR NAME / COMPANY]** — **[CONTACT EMAIL]** — **[ADDRESS]**
+**DATA EAVER INC.** — **contact@dataeaver.ca** — **[COMPANY MAILING ADDRESS]**,
+Canada

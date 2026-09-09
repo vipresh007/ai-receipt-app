@@ -12,12 +12,12 @@ build, ✅ = already done.**
   `web/app/layout.tsx` → `metadata.title`).
 - ✅ App icon: `ios/.../AppIcon.appiconset/icon-1024.png` (1024², opaque). Web
   favicon `web/app/icon.svg`. Sources in `design/logo/`, exports in `brand/`.
-- ⛔ **Real bundle identifier.** Currently `com.example.AIReceiptApp` — a
-  placeholder. Pick a permanent reverse-DNS id you control (e.g.
-  `com.<yourdomain>.tally` or `app.tally.ios`). Change `bundleIdPrefix` +
-  `PRODUCT_BUNDLE_IDENTIFIER` in `ios/project.yml`, and the Auth0 **Native**
-  app's callback URL + the `CFBundleURLTypes` scheme. It can never change once
-  shipped.
+- ✅ **Bundle identifier**: `ca.dataeaver.tally` (main), `ca.dataeaver.tally.tests`
+  (tests). Set in `ios/project.yml`; the `CFBundleURLTypes` scheme follows it
+  automatically. **Add the new Auth0 callback URL** (keep the old one during the
+  switch): `ca.dataeaver.tally://dev-…auth0.com/ios/ca.dataeaver.tally/callback`.
+  When you enroll in the Apple Developer Program, register this exact id as an
+  Explicit App ID and create the App Store Connect record with it.
 - 🟡 App Store name (30 chars) + subtitle (30). "Tally" alone may be taken —
   plan a qualified store name like `Tally: Receipts & Spending`.
 - 🟡 Marketing site copy, screenshots, an App Store description + keywords.
