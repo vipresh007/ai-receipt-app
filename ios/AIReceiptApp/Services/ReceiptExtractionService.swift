@@ -1,15 +1,23 @@
 import Foundation
 
-/// Chooses which `ReceiptExtractor` the app uses:
-/// - the real backend (`LLMReceiptExtractor`) when `EXTRACTION_API_HOST` is set,
-/// - otherwise `MockReceiptExtractor`, so the flow still runs end to end.
-///
-/// `current` is a `var` so tests or a debug menu can substitute an extractor.
+/// Builds the `ReceiptExtractor` for the current auth state:
+/// - `MockReceiptExtractor` when `EXTRACTION_API_HOST` is unset (flow still runs),
+/// - `LLMReceiptExtractor` otherwise, carrying either the bearer token (signed
+///   in) or the anonymous `X-Device-Id`.
 enum ReceiptExtractionService {
-    static var current: ReceiptExtractor = {
-        if let baseURL = AppConfig.extractionAPIBaseURL {
-            return LLMReceiptExtractor(baseURL: baseURL)
+    /// Set by tests or a debug menu to force a specific extractor.
+    static var override: ReceiptExtractor?
+
+    static func makeExtractor(auth: AuthManager) async -> ReceiptExtractor {
+        if let override { return override }
+        guard let baseURL = AppConfig.extractionAPIBaseURL else {
+            return MockReceiptExtractor()
         }
-        return MockReceiptExtractor()
-    }()
+        let token = await auth.accessToken()
+        return LLMReceiptExtractor(
+            baseURL: baseURL,
+            authToken: token,
+            deviceID: token == nil ? auth.deviceID : nil
+        )
+    }
 }

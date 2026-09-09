@@ -11,6 +11,9 @@ struct RootView: View {
 
             ReceiptListView()
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
+
+            AccountView()
+                .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
         .tint(Theme.Palette.accent)
     }
@@ -19,4 +22,5 @@ struct RootView: View {
 #Preview {
     RootView()
         .modelContainer(for: Receipt.self, inMemory: true)
+        .environment(AuthManager())
 }

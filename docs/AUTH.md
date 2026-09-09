@@ -116,16 +116,29 @@ claim. Then `_provision_user` can skip the `/userinfo` round-trip.
 
 The iOS app works **without an account**. Sign-in is a one-way upgrade that
 unlocks the web app, cross-device sync, a higher scan quota, and cloud backup.
+**Google is the only sign-in method wired up so far** (email/password and Apple
+are dashboard-enabled but the app doesn't surface them yet).
 
 ### Two modes
 
 | | Anonymous (default) | Signed in |
 |---|---|---|
-| Identity | random device UUID (Keychain) sent as `X-Device-Id` | Auth0 access token (Keychain) sent as `Authorization: Bearer` |
-| Source of truth | on-device SwiftData | **backend** — SwiftData is a read-through cache (no offline write queue in v1) |
+| Identity | random device UUID (Keychain) sent as `X-Device-Id` | Auth0 access token (Keychain, via `CredentialsManager`) sent as `Authorization: Bearer` |
+| Source of truth | on-device SwiftData | backend for the web app; **iOS v1 is push-only** — local receipts upload on sign-in, but other devices' receipts aren't pulled back into iOS yet |
 | Scan quota | `anon_scan_limit` (15) total, enforced server-side per device | plan-based (enforced later, server-side) |
 | Server persistence | none — `/v1/extract` returns the parse and forgets it | `Receipt` + `Expense` rows, image in Blob |
 | Web access | no | yes |
+
+### Code map (iOS)
+
+| Piece | File |
+|---|---|
+| Identity + Auth0 web flow + token refresh | `ios/AIReceiptApp/Services/AuthManager.swift` |
+| Device-ID keychain | `ios/AIReceiptApp/Services/KeychainStore.swift` |
+| Header selection (`Bearer` vs `X-Device-Id`), `scans_remaining`, 402, import | `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift` |
+| One-shot local→account import | `ios/AIReceiptApp/Services/AccountSync.swift` |
+| Account tab / quota wall / sign-in button | `ios/AIReceiptApp/Features/Account/` |
+| Config (`AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` / `AUTH0_AUDIENCE`) | `ios/Config/AIReceiptApp.xcconfig` → Info.plist → `AppConfig` |
 
 ### Anonymous requests
 
@@ -139,24 +152,28 @@ server-side. See [`EXTRACTION_API.md`](EXTRACTION_API.md) for the wire contract.
 
 ### Sign-in / migration flow
 
-1. `Auth0.swift` `WebAuthentication` login (audience `https://api.ai-receipt`) →
-   store the access token in the Keychain.
-2. `POST /v1/receipts/import` (bearer) with the local receipts as
+1. `Auth0.swift` `WebAuth` login — `connection("google-oauth2")`, audience
+   `https://api.ai-receipt`, scope `openid profile email offline_access`. The
+   access + refresh tokens go into the keychain via `CredentialsManager`.
+2. `AccountSync.importLocalReceiptsIfNeeded` runs once: `POST /v1/receipts/import`
+   (bearer) with every local receipt as
    `{ merchant, date, total, tax, category, currency, items[], imageBase64? }`.
    The backend creates a `Receipt` + `Expense` per item and uploads each image
-   to Blob. Returns the created `ReceiptOut[]` (201).
-3. Switch the app to signed-in mode: backend becomes source of truth, refill
-   SwiftData from `GET /v1/receipts`, drop the `X-Device-Id` counter (left as a
-   dead row; not reused).
+   to Blob. Guarded by a `didImportOnSignIn` `UserDefaults` flag.
+3. From then on the app is in signed-in mode: `/v1/extract` sends the bearer and
+   the backend persists. (Pulling the backend's receipts back into SwiftData for
+   multi-device view is a later step — not in v1.)
 
-### One-time Auth0 setup for iOS
+### One-time Auth0 setup for iOS (done for the dev tenant)
 
-- Register a **Native** application in Auth0. Callback / logout URL:
-  `com.example.AIReceiptApp://<AUTH0_DOMAIN>/ios/com.example.AIReceiptApp/callback`.
-- Add the URL scheme `com.example.AIReceiptApp` to the app target's Info.
-- Add the `Auth0.swift` SPM package; `AuthManager` (`@Observable`) holds
-  `.anonymous(deviceId)` / `.signedIn(token, profile)` and the Keychain I/O.
-- `ReceiptExtractionAPIClient` gains a `deviceId` field and sends whichever of
-  the two headers applies.
-- Sign in with Apple on iOS uses the native `ASAuthorizationController`; Auth0
-  accepts that assertion.
+- A **Native** application `AI Receipt iOS` (client ID
+  `fO5rWCD0FHGA13ty7Y9pKXXWnrw86ES0`, committed in `AIReceiptApp.xcconfig` — it's
+  a public client, not a secret). Allowed Callback + Logout URLs:
+  `com.example.AIReceiptApp://dev-nvjgstqap8b8wb68.us.auth0.com/ios/com.example.AIReceiptApp/callback`
+  (Auth0.swift's default custom-scheme callback; `useHTTPS()` is **not** used, so
+  no associated-domain entitlement is needed).
+- `google-oauth2` connection enabled for that application.
+- The `CFBundleURLTypes` scheme (`= $(PRODUCT_BUNDLE_IDENTIFIER)`) is registered
+  in `project.yml`.
+- Sign in with Apple would use the native `ASAuthorizationController`; deferred
+  until the Apple Developer Program membership exists.

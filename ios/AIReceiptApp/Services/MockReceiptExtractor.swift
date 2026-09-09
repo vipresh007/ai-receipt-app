@@ -3,7 +3,7 @@ import UIKit
 /// Returns believable sample data after a short delay. Used for development and
 /// previews until the real extraction service is available.
 struct MockReceiptExtractor: ReceiptExtractor {
-    func extractReceipt(from image: UIImage) async throws -> ReceiptDraft {
+    func extractReceipt(from image: UIImage) async throws -> ReceiptExtractionResult {
         try await Task.sleep(for: .seconds(1.2))
 
         var draft = ReceiptDraft()
@@ -20,6 +20,6 @@ struct MockReceiptExtractor: ReceiptExtractor {
         draft.tax = 1.34
         draft.total = subtotal + draft.tax
         draft.imageData = image.jpegData(compressionQuality: 0.7)
-        return draft
+        return ReceiptExtractionResult(draft: draft, scansRemaining: nil)
     }
 }

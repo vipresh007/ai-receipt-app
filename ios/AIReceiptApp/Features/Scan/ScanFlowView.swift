@@ -5,6 +5,7 @@ import PhotosUI
 /// confirm and save.
 struct ScanFlowView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var auth
 
     @State private var pickedItem: PhotosPickerItem?
     @State private var showCamera = false
@@ -13,9 +14,15 @@ struct ScanFlowView: View {
     @State private var previewImage: UIImage?
     @State private var errorMessage: String?
     @State private var savedTick = 0
+    @State private var showQuotaWall = false
 
     private enum Stage: Equatable {
         case idle, working, confirming
+    }
+
+    /// Anonymous + backend-configured + the device has spent its free scans.
+    private var quotaSpent: Bool {
+        !auth.isSignedIn && AppConfig.extractionAPIBaseURL != nil && (auth.scansRemaining ?? 1) <= 0
     }
 
     var body: some View {
@@ -24,6 +31,7 @@ struct ScanFlowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.Palette.bg.ignoresSafeArea())
                 .navigationTitle("Scan")
+                .safeAreaInset(edge: .top) { scanAllowance }
                 .alert("Couldn't scan receipt", isPresented: errorBinding) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -33,6 +41,10 @@ struct ScanFlowView: View {
         .sheet(isPresented: $showCamera) {
             CameraPicker(onImage: handle)
                 .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showQuotaWall) {
+            QuotaWallView()
+                .presentationDetents([.medium])
         }
         .sensoryFeedback(.success, trigger: savedTick)
         .onChange(of: pickedItem) { _, newValue in
@@ -87,20 +99,49 @@ struct ScanFlowView: View {
             Spacer()
 
             VStack(spacing: Theme.Space.sm) {
-                Button {
-                    showCamera = true
-                } label: {
-                    Label("Take photo", systemImage: "camera.fill")
-                }
-                .buttonStyle(.primary)
+                if quotaSpent {
+                    Button {
+                        showQuotaWall = true
+                    } label: {
+                        Label("Sign in to keep scanning", systemImage: "lock.fill")
+                    }
+                    .buttonStyle(.primary)
+                } else {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("Take photo", systemImage: "camera.fill")
+                    }
+                    .buttonStyle(.primary)
 
-                PhotosPicker(selection: $pickedItem, matching: .images) {
-                    Label("Choose from library", systemImage: "photo.on.rectangle")
+                    PhotosPicker(selection: $pickedItem, matching: .images) {
+                        Label("Choose from library", systemImage: "photo.on.rectangle")
+                    }
+                    .buttonStyle(.secondaryFill)
                 }
-                .buttonStyle(.secondaryFill)
             }
         }
         .padding(Theme.Space.lg)
+    }
+
+    /// Thin banner: how many free scans are left (anonymous only).
+    @ViewBuilder
+    private var scanAllowance: some View {
+        if !auth.isSignedIn, let remaining = auth.scansRemaining {
+            HStack(spacing: Theme.Space.xs) {
+                Image(systemName: remaining <= 0 ? "lock.fill" : "sparkles")
+                Text(
+                    remaining <= 0
+                        ? "No free scans left"
+                        : "^[\(remaining) free scan](inflect: true) left"
+                )
+                .font(.appCaption.weight(.medium))
+            }
+            .foregroundStyle(remaining <= 3 ? Theme.Palette.accent : Theme.Palette.textSecondary)
+            .padding(.vertical, Theme.Space.xs)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
+        }
     }
 
     private var readingState: some View {
@@ -144,8 +185,15 @@ struct ScanFlowView: View {
         withAnimation(Theme.Motion.base) { stage = .working }
         Task {
             do {
-                draft = try await ReceiptExtractionService.current.extractReceipt(from: image)
+                let extractor = await ReceiptExtractionService.makeExtractor(auth: auth)
+                let result = try await extractor.extractReceipt(from: image)
+                auth.noteScansRemaining(result.scansRemaining)
+                draft = result.draft
                 withAnimation(Theme.Motion.spring) { stage = .confirming }
+            } catch ReceiptExtractionError.quotaExhausted {
+                auth.noteScansRemaining(0)
+                withAnimation(Theme.Motion.base) { stage = .idle }
+                showQuotaWall = true
             } catch {
                 errorMessage = error.localizedDescription
                 withAnimation(Theme.Motion.base) { stage = .idle }
@@ -170,4 +218,5 @@ struct ScanFlowView: View {
 #Preview {
     ScanFlowView()
         .modelContainer(for: Receipt.self, inMemory: true)
+        .environment(AuthManager())
 }

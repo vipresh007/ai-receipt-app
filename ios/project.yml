@@ -15,6 +15,11 @@ settings:
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
 
+packages:
+  Auth0:
+    url: https://github.com/auth0/Auth0.swift
+    from: "3.1.0"
+
 targets:
   AIReceiptApp:
     type: application
@@ -24,6 +29,9 @@ targets:
       Release: Config/AIReceiptApp.xcconfig
     sources:
       - path: AIReceiptApp
+    dependencies:
+      - package: Auth0
+        product: Auth0
     info:
       path: AIReceiptApp/Generated/Info.plist
       properties:
@@ -32,6 +40,16 @@ targets:
         NSCameraUsageDescription: "Scan receipts to add expenses automatically."
         NSPhotoLibraryUsageDescription: "Import receipt photos from your library."
         ExtractionAPIHost: $(EXTRACTION_API_HOST)
+        Auth0Domain: $(AUTH0_DOMAIN)
+        Auth0ClientId: $(AUTH0_CLIENT_ID)
+        Auth0Audience: $(AUTH0_AUDIENCE)
+        # Auth0 redirects back to the app through this custom scheme. Must match
+        # the Native app's Allowed Callback URLs in the Auth0 dashboard.
+        CFBundleURLTypes:
+          - CFBundleTypeRole: None
+            CFBundleURLName: auth0
+            CFBundleURLSchemes:
+              - $(PRODUCT_BUNDLE_IDENTIFIER)
         # Allow plain-HTTP only to localhost / *.local for local backend dev.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

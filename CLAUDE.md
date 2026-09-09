@@ -33,6 +33,11 @@ Insights** (telemetry).
 - Backend URL comes from `EXTRACTION_API_HOST` in `ios/Config/Secrets.xcconfig`
   (git-ignored; copy from `Secrets.example.xcconfig`). With it unset, the app
   uses `MockReceiptExtractor` and the whole flow still runs.
+- Local-first auth: the app runs anonymously (device UUID → `X-Device-Id`, capped
+  free scans); optional Google sign-in via Auth0 (`Auth0` SPM package,
+  `AuthManager`) unlocks the web app + uploads local receipts. Auth0 config
+  (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
+  empty → the Account screen just hides sign-in. See [`docs/AUTH.md`](docs/AUTH.md).
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
 - Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'`
 

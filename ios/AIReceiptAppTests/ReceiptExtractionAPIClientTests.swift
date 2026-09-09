@@ -71,4 +71,42 @@ final class ReceiptExtractionAPIClientTests: XCTestCase {
             Calendar.current.startOfDay(for: .now)
         )
     }
+
+    func testScansRemainingDecodesFromSnakeCase() throws {
+        let withCount = try decode(#"{ "merchant": "X", "total": "1.00", "scans_remaining": 14 }"#)
+        XCTAssertEqual(withCount.scansRemaining, 14)
+
+        let withoutCount = try decode(#"{ "merchant": "X", "total": "1.00" }"#)
+        XCTAssertNil(withoutCount.scansRemaining)
+    }
+
+    func testErrorMessagePrefersDetailThenError() {
+        XCTAssertEqual(
+            ReceiptExtractionAPIClient.errorMessage(from: Data(#"{"detail":"nope"}"#.utf8)),
+            "nope"
+        )
+        XCTAssertEqual(
+            ReceiptExtractionAPIClient.errorMessage(from: Data(#"{"error":"legacy"}"#.utf8)),
+            "legacy"
+        )
+        XCTAssertNil(ReceiptExtractionAPIClient.errorMessage(from: Data("not json".utf8)))
+    }
+
+    func testImportReceiptEncodesBackendKeys() throws {
+        let item = ReceiptExtractionAPIClient.ImportReceipt(
+            merchant: "Corner Store",
+            date: "2026-09-03",
+            total: "9.99",
+            tax: "0.80",
+            category: "groceries",
+            currency: "USD",
+            items: [.init(name: "Milk", price: "3.50", quantity: 1)],
+            imageBase64: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(item)) as? [String: Any]
+        XCTAssertEqual(json?["merchant"] as? String, "Corner Store")
+        XCTAssertEqual(json?["date"] as? String, "2026-09-03")
+        XCTAssertNil(json?["imageBase64"])  // nil optional is omitted
+        XCTAssertEqual((json?["items"] as? [[String: Any]])?.first?["price"] as? String, "3.50")
+    }
 }

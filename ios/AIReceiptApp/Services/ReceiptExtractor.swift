@@ -6,12 +6,14 @@ import UIKit
 /// save flow works without a backend. Swap in `LLMReceiptExtractor` once the
 /// extraction API is wired up (see `ReceiptExtractionService`).
 protocol ReceiptExtractor {
-    func extractReceipt(from image: UIImage) async throws -> ReceiptDraft
+    func extractReceipt(from image: UIImage) async throws -> ReceiptExtractionResult
 }
 
-enum ReceiptExtractionError: LocalizedError {
+enum ReceiptExtractionError: LocalizedError, Equatable {
     case couldNotReadImage
     case notConfigured
+    /// Anonymous device has used all its free scans (HTTP 402). Sign in to continue.
+    case quotaExhausted(String)
     case server(String)
 
     var errorDescription: String? {
@@ -20,8 +22,17 @@ enum ReceiptExtractionError: LocalizedError {
             "We couldn't read that image. Try a clearer, well-lit photo."
         case .notConfigured:
             "Receipt extraction isn't configured yet."
+        case .quotaExhausted(let message):
+            message
         case .server(let message):
             message
         }
     }
+}
+
+/// One extraction outcome: the editable draft plus, for anonymous callers, how
+/// many free scans remain on this device (`nil` when signed in).
+struct ReceiptExtractionResult {
+    var draft: ReceiptDraft
+    var scansRemaining: Int?
 }
