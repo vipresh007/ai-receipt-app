@@ -76,6 +76,20 @@ enum AccountSync {
         )
     }
 
+    /// Create a not-yet-synced local receipt on the account (manual entry — a
+    /// scan already exists server-side via `/v1/extract`). Stamps `remoteID`.
+    @MainActor
+    static func pushCreate(_ receipt: Receipt, auth: AuthManager, context: ModelContext) async {
+        guard receipt.remoteID == nil, let client = await client(auth: auth) else { return }
+        guard
+            let dto = try? await client.createReceipt(
+                ReceiptExtractionAPIClient.ReceiptWrite(from: receipt, includeImage: true)
+            )
+        else { return }
+        receipt.remoteID = dto.id
+        try? context.save()
+    }
+
     /// Fetch a synced receipt's image bytes if the local row doesn't have them
     /// (rows pulled from another device). No-op otherwise.
     @MainActor

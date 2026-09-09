@@ -13,6 +13,15 @@ struct Insight: Identifiable {
     let message: String
 }
 
+/// One month's total, for the month-to-month trend chart.
+struct MonthlyPoint: Identifiable {
+    let id = UUID()
+    let monthStart: Date
+    let total: Decimal
+    /// Short month name, e.g. "Apr".
+    let label: String
+}
+
 /// Derives everything the dashboard shows from the raw list of receipts.
 /// Pure and deterministic so it's easy to unit-test.
 struct SpendingSummary {
@@ -43,6 +52,31 @@ struct SpendingSummary {
             calendar: calendar,
             now: now
         )
+    }
+
+    /// Total spend per month for the last `months` months, oldest first,
+    /// zero-filled. Independent of the currently-viewed month.
+    static func monthlyTrend(
+        receipts: [Receipt],
+        calendar: Calendar = .current,
+        now: Date = .now,
+        months: Int = 6
+    ) -> [MonthlyPoint] {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = .current
+        formatter.dateFormat = "MMM"
+
+        let thisMonthStart = calendar.dateInterval(of: .month, for: now)?.start ?? now
+        return (0..<max(1, months)).reversed().compactMap { offset -> MonthlyPoint? in
+            guard let start = calendar.date(byAdding: .month, value: -offset, to: thisMonthStart),
+                let interval = calendar.dateInterval(of: .month, for: start)
+            else { return nil }
+            let total = receipts
+                .filter { interval.contains($0.date) }
+                .reduce(Decimal(0)) { $0 + $1.total }
+            return MonthlyPoint(monthStart: interval.start, total: total, label: formatter.string(from: start))
+        }
     }
 
     // MARK: - Helpers

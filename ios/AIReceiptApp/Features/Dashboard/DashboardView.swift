@@ -27,6 +27,19 @@ struct DashboardView: View {
         return receipts.filter { interval.contains($0.date) }
     }
 
+    private var anchorMonthStart: Date {
+        calendar.dateInterval(of: .month, for: anchor)?.start ?? anchor
+    }
+
+    private var previousMonthLabel: String {
+        let prev = calendar.date(byAdding: .month, value: -1, to: anchor) ?? anchor
+        return prev.formatted(.dateTime.month(.abbreviated))
+    }
+
+    private var trendPoints: [MonthlyPoint] {
+        SpendingSummary.monthlyTrend(receipts: receipts, calendar: calendar, months: 6)
+    }
+
     private var monthLabel: String {
         monthOffset == 0 ? "This month" : anchor.formatted(.dateTime.month(.wide).year())
     }
@@ -56,8 +69,12 @@ struct DashboardView: View {
                             MonthlyTotalCard(
                                 label: monthLabel,
                                 amount: summary.currentMonthTotal,
-                                currencyCode: currencyCode
+                                currencyCode: currencyCode,
+                                previous: (summary.previousMonthTotal, previousMonthLabel)
                             )
+                            if receipts.count >= 2 {
+                                SpendingTrendCard(points: trendPoints, highlighted: anchorMonthStart)
+                            }
                             CategoryBreakdownCard(
                                 breakdown: summary.currentMonthByCategory,
                                 currencyCode: currencyCode

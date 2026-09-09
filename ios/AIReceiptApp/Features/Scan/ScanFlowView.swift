@@ -122,9 +122,21 @@ struct ScanFlowView: View {
                     }
                     .buttonStyle(.secondaryFill)
                 }
+
+                Button("Enter manually", systemImage: "square.and.pencil", action: startManualEntry)
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .padding(.top, Theme.Space.xs)
             }
         }
         .padding(Theme.Space.lg)
+    }
+
+    private func startManualEntry() {
+        draft = ReceiptDraft()
+        pendingServerID = nil
+        previewImage = nil
+        withAnimation(Theme.Motion.spring) { stage = .confirming }
     }
 
     /// Thin banner: how many free scans are left (anonymous only).
@@ -211,9 +223,14 @@ struct ScanFlowView: View {
         modelContext.insert(receipt)
         savedTick += 1
 
+        let auth = auth
+        let context = modelContext
         if pendingServerID != nil {
             // The server row holds the raw extraction — push the confirmed edits.
             Task { await AccountSync.pushUpdate(receipt, auth: auth) }
+        } else if auth.isSignedIn {
+            // Manual entry — nothing on the server yet.
+            Task { await AccountSync.pushCreate(receipt, auth: auth, context: context) }
         }
         pendingServerID = nil
         reset()

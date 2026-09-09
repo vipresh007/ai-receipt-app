@@ -76,6 +76,22 @@ final class SpendingSummaryTests: XCTestCase {
         )
     }
 
+    func testMonthlyTrendIsZeroFilledOldestFirst() {
+        let receipts = [
+            receipt(40, .groceries, on: date(year: 2026, month: 4, day: 4)),
+            receipt(100, .restaurants, on: date(year: 2026, month: 6, day: 9)),
+        ]
+
+        let trend = SpendingSummary.monthlyTrend(
+            receipts: receipts, calendar: calendar, now: now, months: 4
+        )
+
+        // Apr, May, Jun (now is 15 Jun) -> plus one older = Mar..Jun
+        XCTAssertEqual(trend.count, 4)
+        XCTAssertEqual(trend.map(\.total), [0, 40, 0, 100])
+        XCTAssertLessThan(trend[0].monthStart, trend[3].monthStart)
+    }
+
     func testRisingStreakInsightAcrossThreeMonths() {
         let receipts = [
             receipt(50, .groceries, on: date(year: 2026, month: 4, day: 10)),

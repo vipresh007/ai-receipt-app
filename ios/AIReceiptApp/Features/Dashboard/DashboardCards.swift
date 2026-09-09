@@ -5,6 +5,13 @@ struct MonthlyTotalCard: View {
     var label = "This month"
     let amount: Decimal
     let currencyCode: String
+    /// Prior month's total + its name, for the "vs" line. Nil hides it.
+    var previous: (amount: Decimal, label: String)?
+
+    private var delta: Decimal? {
+        guard let previous, previous.amount > 0 else { return nil }
+        return amount - previous.amount
+    }
 
     var body: some View {
         AppCard {
@@ -15,6 +22,49 @@ struct MonthlyTotalCard: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.Palette.text)
                     .contentTransition(.numericText())
+
+                if let delta, let previous {
+                    let up = delta > 0
+                    HStack(spacing: 3) {
+                        Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
+                        Text(abs(delta), format: .currency(code: currencyCode))
+                            .monospacedDigit()
+                        Text("vs \(previous.label)")
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    .font(.appCaption)
+                    .foregroundStyle(up ? Theme.Palette.danger : Theme.Palette.success)
+                }
+            }
+        }
+    }
+}
+
+struct SpendingTrendCard: View {
+    let points: [MonthlyPoint]
+    /// Month (its first day) currently being viewed — drawn solid; others faded.
+    let highlighted: Date
+
+    var body: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                SectionLabel("Last \(points.count) months")
+                Chart(points) { point in
+                    BarMark(
+                        x: .value("Month", point.label),
+                        y: .value("Spent", (point.total as NSDecimalNumber).doubleValue)
+                    )
+                    .foregroundStyle(
+                        point.monthStart == highlighted
+                            ? Theme.Palette.accent
+                            : Theme.Palette.accent.opacity(0.28)
+                    )
+                    .cornerRadius(4)
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 3))
+                }
+                .frame(height: 150)
             }
         }
     }
