@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo.
 
 ## What this is
 
-**AI Receipt** — a personal expense tracker. Core loop: photo of a receipt →
+**Tally** — a personal expense tracker (formerly "AI Receipt"). Core loop: photo of a receipt →
 AI extracts structured data → user confirms → expense saved → dashboard +
 insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

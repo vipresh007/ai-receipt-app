@@ -35,7 +35,7 @@ targets:
     info:
       path: AIReceiptApp/Generated/Info.plist
       properties:
-        CFBundleDisplayName: AI Receipt
+        CFBundleDisplayName: Tally
         UILaunchScreen: {}
         NSCameraUsageDescription: "Scan receipts to add expenses automatically."
         NSPhotoLibraryUsageDescription: "Import receipt photos from your library."

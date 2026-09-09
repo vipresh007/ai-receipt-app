@@ -75,7 +75,7 @@ struct AccountView: View {
     private var anonymous: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
-                SectionLabel("You're using AI Receipt without an account")
+                SectionLabel("You're using Tally without an account")
                 Text("Everything works on this device. Sign in when you want the web app, backup, and sync across devices.")
                     .font(.appCallout)
                     .foregroundStyle(Theme.Palette.text)
@@ -94,7 +94,7 @@ struct AccountView: View {
             }
         }
 
-        benefit("globe", "Use it on the web", "Open your receipts at the AI Receipt web app.")
+        benefit("globe", "Use it on the web", "Open your receipts at the Tally web app.")
         benefit("arrow.triangle.2.circlepath", "Sync everywhere", "Scan on your phone, review on your laptop.")
         benefit("checkmark.icloud", "Backup", "Your receipts are safe if you lose your phone.")
 

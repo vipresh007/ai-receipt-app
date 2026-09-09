@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { TallyMark } from "@/components/tally-mark";
 import { categoryColor } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
@@ -53,9 +54,9 @@ function Wordmark() {
   return (
     <span className="flex items-center gap-sm">
       <span className="grid h-7 w-7 place-items-center rounded-md bg-accent text-accent-fg shadow-e1">
-        <ScanLine size={16} />
+        <TallyMark size={16} />
       </span>
-      <span className="text-callout font-semibold tracking-tight">AI Receipt</span>
+      <span className="text-callout font-semibold tracking-tight">Tally</span>
     </span>
   );
 }
@@ -597,7 +598,7 @@ export function SiteFooter() {
     <footer className="border-t border-border px-lg py-xl">
       <div className="mx-auto flex max-w-content flex-col items-center justify-between gap-sm text-caption text-text-tertiary sm:flex-row">
         <Wordmark />
-        <span>© {new Date().getFullYear()} AI Receipt · FastAPI · Next.js · Azure OpenAI</span>
+        <span>© {new Date().getFullYear()} Tally · FastAPI · Next.js · Azure OpenAI</span>
       </div>
     </footer>
   );

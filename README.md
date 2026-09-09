@@ -1,4 +1,4 @@
-# AI Receipt
+# Tally
 
 [![CI](https://github.com/vipresh007/ai-receipt-app/actions/workflows/ci.yml/badge.svg)](https://github.com/vipresh007/ai-receipt-app/actions/workflows/ci.yml)
 

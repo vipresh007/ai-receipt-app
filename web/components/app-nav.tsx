@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, LogOut, ReceiptText, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TallyMark } from "@/components/tally-mark";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -18,9 +19,9 @@ export function AppNav({ displayName }: { displayName?: string }) {
     <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
       <div className="mb-lg hidden items-center gap-sm px-md md:flex">
         <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-fg">
-          <ScanLine size={18} />
+          <TallyMark size={18} />
         </div>
-        <span className="text-headline">AI Receipt</span>
+        <span className="text-headline">Tally</span>
       </div>
 
       {LINKS.map(({ href, label, icon: Icon }) => {

@@ -1,4 +1,4 @@
-# Design language — AI Receipt
+# Design language — Tally
 
 One product, two clients (iOS + web). This is the shared visual language; the
 machine-readable values live in [`design/tokens.json`](../design/tokens.json).

@@ -5,8 +5,9 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "AI Receipt",
+  title: { default: "Tally", template: "%s · Tally" },
   description: "Snap a receipt. It files itself.",
+  applicationName: "Tally",
 };
 
 export const viewport: Viewport = {

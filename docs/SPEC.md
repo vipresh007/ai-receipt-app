@@ -1,4 +1,4 @@
-# AI Receipt — Product Spec
+# Tally — Product Spec
 
 ## One-liner
 
