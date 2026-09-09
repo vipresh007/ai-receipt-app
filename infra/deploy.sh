@@ -164,6 +164,15 @@ if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
   echo "web: https://$WEB_FQDN"
 fi
 
+# Lock the API's CORS to the web origin (needs the web FQDN, known only now).
+WEB_FQDN="${WEB_FQDN:-$(az containerapp show -n "$WEB_APP" -g "$RESOURCE_GROUP" \
+  --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || true)}"
+if [ -n "$WEB_FQDN" ] && az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
+  say "Set API CORS_ORIGINS -> https://$WEB_FQDN"
+  az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
+    --set-env-vars CORS_ORIGINS="https://$WEB_FQDN" -o none
+fi
+
 say "Done"
 [ -n "${API_FQDN:-}" ] && echo "  API  https://$API_FQDN  (docs: /docs)" || true
 [ -n "${WEB_FQDN:-}" ] && echo "  Web  https://$WEB_FQDN" || true

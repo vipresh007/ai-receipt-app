@@ -1,8 +1,9 @@
 import os
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,8 +19,19 @@ class Settings(BaseSettings):
     # App
     environment: str = "local"
     log_level: str = "INFO"
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+    # Comma-separated in the env (CORS_ORIGINS=https://app.example,https://…).
+    # Locked down in prod to the web origin(s) — never "*" with credentials.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
     auto_create_tables: bool = True
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_csv(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
     # Auth — Auth0 (issues the access tokens; we verify them via JWKS)
     auth0_domain: str = ""  # e.g. your-tenant.us.auth0.com
