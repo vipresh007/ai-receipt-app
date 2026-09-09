@@ -7,21 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.date_ranges import month_bounds, month_start
 from app.db import get_session
 from app.models import Expense, User
 from app.schemas.expense import CategoryTotal, ExpenseOut, SpendingSummaryOut
 
 router = APIRouter()
-
-
-def _month_bounds(anchor: date) -> tuple[date, date]:
-    start = anchor.replace(day=1)
-    end = (
-        start.replace(year=start.year + 1, month=1)
-        if start.month == 12
-        else start.replace(month=start.month + 1)
-    )
-    return start, end
 
 
 @router.get("", response_model=list[ExpenseOut])
@@ -54,11 +45,12 @@ async def list_expenses(
 async def spending_summary(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    month: str | None = None,
 ) -> SpendingSummaryOut:
+    """Spending for `month` (YYYY-MM, default the current month)."""
     rows = list(await session.scalars(select(Expense).where(Expense.user_id == user.id)))
-    today = date.today()
-    this_start, this_end = _month_bounds(today)
-    prev_start, _ = _month_bounds(this_start - date.resolution)
+    this_start, this_end = month_bounds(month_start(month))
+    prev_start, _ = month_bounds(this_start - date.resolution)
 
     by_category: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
     total = Decimal("0")
@@ -70,10 +62,12 @@ async def spending_summary(
         elif prev_start <= e.spent_at < this_start:
             prev_total += Decimal(e.amount)
 
+    earliest = min((e.spent_at for e in rows), default=None)
     ranked = sorted(by_category.items(), key=lambda kv: kv[1], reverse=True)
     return SpendingSummaryOut(
         month=this_start.strftime("%Y-%m"),
         total=f"{total:.2f}",
         by_category=[CategoryTotal(category_slug=s, amount=f"{a:.2f}") for s, a in ranked],
         previous_month_total=f"{prev_total:.2f}",
+        earliest_month=earliest.strftime("%Y-%m") if earliest else None,
     )

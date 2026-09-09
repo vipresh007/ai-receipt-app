@@ -22,7 +22,10 @@ class CategoryTotal(BaseModel):
 
 
 class SpendingSummaryOut(BaseModel):
-    month: str  # YYYY-MM
+    month: str  # YYYY-MM — the month this summary covers
     total: str
     by_category: list[CategoryTotal]
     previous_month_total: str
+    # YYYY-MM of the user's oldest expense, so clients can cap "previous month"
+    # navigation. null when there are no expenses.
+    earliest_month: str | None = None

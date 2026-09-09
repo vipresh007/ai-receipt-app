@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_current_user_optional, get_extractor
 from app.config import get_settings
+from app.date_ranges import month_bounds, month_start
 from app.db import get_session
 from app.models import AnonDevice, AnonRateLimit, Expense, Receipt, User
 from app.schemas.extraction import ExtractedReceipt
@@ -241,13 +242,14 @@ async def list_receipts(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     limit: int = 50,
+    month: str | None = None,
 ) -> list[ReceiptOut]:
-    rows = await session.scalars(
-        select(Receipt)
-        .where(Receipt.user_id == user.id)
-        .order_by(Receipt.created_at.desc())
-        .limit(min(limit, 200))
-    )
+    """Newest first. `month` (YYYY-MM) filters by purchase date."""
+    query = select(Receipt).where(Receipt.user_id == user.id)
+    if month:
+        start, end = month_bounds(month_start(month))
+        query = query.where(Receipt.purchased_at >= start, Receipt.purchased_at < end)
+    rows = await session.scalars(query.order_by(Receipt.created_at.desc()).limit(min(limit, 200)))
     return [_receipt_out(r) for r in rows]
 
 
