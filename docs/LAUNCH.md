@@ -31,22 +31,24 @@ build, ✅ = already done.**
   Add it: Auth0 Apple connection (needs a Services ID, a Sign-in-with-Apple key
   `.p8`, Team ID) + a native `ASAuthorizationController` button, or route it
   through Auth0 Universal Login. See `docs/AUTH.md`.
-- ⛔ **In-app account deletion.** Guideline 5.1.1(v): any app with account
-  creation must let users delete their account (and data) from inside the app.
-  Needs a backend `DELETE /v1/me` (cascade receipts, expenses, blobs, the
-  `users` row) + an iOS/web "Delete account" flow.
-- 🟡 **Privacy manifest** `PrivacyInfo.xcprivacy` in the app bundle — now
-  required. Declare data collected (photos = user content, email, coarse
-  usage) and required-reason APIs (UserDefaults, file timestamp, etc.).
+- ✅ **In-app account deletion.** `DELETE /v1/auth/me` wipes expenses,
+  receipts, insights, the `users` row, and (best-effort) the Blob images.
+  UI: iOS Account → "Delete account" (confirmation dialog); web `/account` →
+  danger zone (type `DELETE`). Both sign out afterwards.
+- ✅ **Privacy manifest** `PrivacyInfo.xcprivacy` — in the bundle. First pass:
+  declares email/name/photos/other-user-content (app functionality) + crash/
+  perf/interaction, and required-reason APIs (UserDefaults `CA92.1`, file
+  timestamp `0A2A.1`). **Reconcile with the App Privacy answers below.**
 - 🟡 **App Privacy answers** in App Store Connect ("nutrition label"): we
   collect email (account), photos/receipts (app functionality), and diagnostics
-  via App Insights. Not used for tracking.
+  via App Insights. Not used for tracking. Must match `PrivacyInfo.xcprivacy`.
 - 🟡 Screenshots for 6.9"/6.7" iPhone (and 13" iPad if you keep iPad — the app
   is iPhone-only today: `TARGETED_DEVICE_FAMILY = "1"`).
 - 🟡 Age rating (4+), primary category **Finance**, support URL, marketing URL.
-- 🟡 `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — present;
-  reword to be user-facing and specific before review.
-- 🟡 Launch screen is a bare `UILaunchScreen: {}` — add a simple branded one.
+- ✅ `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — reworded
+  to be user-facing.
+- ✅ Launch screen — brand-blue background + centred Tally mark
+  (`LaunchBackground` / `LaunchMark` assets).
 - 🟢 Later: crash reporting, `CFBundleShortVersionString` / build-number bump
   process, an App Store Connect API key for CI upload (`xcrun altool` /
   `fastlane`).
@@ -57,9 +59,9 @@ build, ✅ = already done.**
   and `api.tally.app`). Add custom domains to both Container Apps, managed
   certs, and update `APP_BASE_URL` / `AUTH0` allowed URLs / iOS
   `EXTRACTION_API_HOST`.
-- 🟡 **Account deletion** on web too (shares the backend `DELETE /v1/me`).
-- 🟡 **Lock CORS** — `settings.cors_origins` should be exactly the web origin,
-  not `*`.
+- ✅ **Account deletion** on web — `/account` danger zone.
+- ✅ **CORS** — `cors_origins` no longer defaults to `*`; `deploy.sh` sets
+  `CORS_ORIGINS` to the web FQDN. Update it when the custom domain lands.
 - 🟡 Cookie / consent banner if you'll have EU users (Auth0 sets a session
   cookie; that's essential-only, but analytics would need consent).
 - 🟡 SEO: `metadata` per route, `opengraph-image`, `robots`, `sitemap`.
@@ -101,15 +103,15 @@ build, ✅ = already done.**
 
 ## 5. Legal & data
 
-- ⛔ **Privacy Policy** — public URL, required by both Apple and Auth0/Google.
-  Cover: what's collected (email, name, receipt images + extracted data,
-  diagnostics), why, where it's stored (Azure, region), third parties (Auth0,
-  Azure OpenAI, Google sign-in), retention, and how to delete.
-- ⛔ **Account & data deletion** mechanism (see §2) — and honour it end to end
-  (DB rows + blobs + any backups policy).
-- 🟡 **Terms of Service**.
+- 🟡 **Privacy Policy** — first draft at `/privacy`
+  (`web/content/legal/privacy.md`). Fill every `[PLACEHOLDER]` and have it
+  legally reviewed, then it's a ✅.
+- ✅ **Account & data deletion** mechanism (see §2) — DB rows + best-effort
+  blob cleanup. Confirm your backup policy also purges deleted accounts.
+- 🟡 **Terms of Service** — first draft at `/terms`
+  (`web/content/legal/terms.md`); same placeholders + review.
 - 🟡 Decide the **publishing entity** (personal name vs a company) — it shows on
-  the App Store and in the policy.
+  the App Store and fills the biggest placeholder in both documents.
 - 🟡 Data Processing / sub-processor list if you'll have EU/UK users (GDPR).
 - 🟢 "Export my data" (JSON dump) — nice, not required.
 

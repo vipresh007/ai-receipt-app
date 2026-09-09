@@ -92,7 +92,8 @@ Insights** (telemetry).
 - Auth: **Auth0** issues tokens, the backend verifies them.
   `core/security.verify_access_token` (PyJWT + JWKS) → `api/deps.get_current_user`
   upserts a `users` row keyed by `auth0_sub`. No passwords, no token minting.
-  Only endpoint is `GET /v1/auth/me`. See [`docs/AUTH.md`](docs/AUTH.md).
+  Endpoints: `GET /v1/auth/me`, `DELETE /v1/auth/me` (account deletion — wipes
+  the user's rows + Blob images). See [`docs/AUTH.md`](docs/AUTH.md).
 - The Azure OpenAI call is `client.chat.completions.parse(..., response_format=ExtractedReceipt)`
   (structured outputs). `tests/test_azure_openai_wiring.py` guards the SDK path.
 
