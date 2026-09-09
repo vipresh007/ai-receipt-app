@@ -21,6 +21,11 @@ class CategoryTotal(BaseModel):
     amount: str
 
 
+class TrendPoint(BaseModel):
+    month: str  # YYYY-MM
+    total: str
+
+
 class SpendingSummaryOut(BaseModel):
     month: str  # YYYY-MM — the month this summary covers
     total: str

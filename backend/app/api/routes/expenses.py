@@ -10,7 +10,7 @@ from app.api.deps import get_current_user
 from app.date_ranges import month_bounds, month_start
 from app.db import get_session
 from app.models import Expense, User
-from app.schemas.expense import CategoryTotal, ExpenseOut, SpendingSummaryOut
+from app.schemas.expense import CategoryTotal, ExpenseOut, SpendingSummaryOut, TrendPoint
 
 router = APIRouter()
 
@@ -39,6 +39,35 @@ async def list_expenses(
         )
         for e in rows
     ]
+
+
+@router.get("/trend", response_model=list[TrendPoint])
+async def spending_trend(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    months: int = 6,
+) -> list[TrendPoint]:
+    """Total spend per month for the last `months` months (oldest first),
+    zero-filled. Drives the month-to-month chart."""
+    months = max(1, min(months, 24))
+    rows = list(await session.scalars(select(Expense).where(Expense.user_id == user.id)))
+
+    starts: list[date] = []
+    cursor = month_start(None)
+    for _ in range(months):
+        starts.append(cursor)
+        cursor = (cursor - date.resolution).replace(day=1)
+    starts.reverse()
+
+    points: list[TrendPoint] = []
+    for start in starts:
+        _, end = month_bounds(start)
+        total = sum(
+            (Decimal(e.amount) for e in rows if start <= e.spent_at < end),
+            Decimal("0"),
+        )
+        points.append(TrendPoint(month=start.strftime("%Y-%m"), total=f"{total:.2f}"))
+    return points
 
 
 @router.get("/summary", response_model=SpendingSummaryOut)

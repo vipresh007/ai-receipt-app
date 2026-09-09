@@ -40,6 +40,19 @@ async def test_bad_month_param_falls_back_to_current(client):
     assert resp.status_code == 200
 
 
+async def test_trend_returns_zero_filled_months_oldest_first(client):
+    await _seed(client)
+
+    trend = (await client.get("/v1/expenses/trend?months=4")).json()
+    assert [p["month"] for p in trend] == sorted(p["month"] for p in trend)  # oldest first
+    assert len(trend) == 4
+    by_month = {p["month"]: p["total"] for p in trend}
+    assert by_month.get("2026-07") == "40.00"
+    assert by_month.get("2026-08") == "100.00"
+    # a month with no data in the window is present and zero
+    assert all(p["total"] == f"{float(p['total']):.2f}" for p in trend)
+
+
 async def test_receipts_can_be_filtered_by_month(client):
     await _seed(client)
 
