@@ -1,6 +1,15 @@
 "use client";
 
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { TrendPoint } from "@/lib/types";
 import { money } from "@/lib/format";
 
@@ -52,6 +61,12 @@ export function SpendingTrend({ data, activeMonth }: { data: TrendPoint[]; activ
           formatter={(v: number) => [money(v), "Spent"]}
         />
         <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={30} fill="var(--c-accent)">
+          <LabelList
+            dataKey="amount"
+            position="top"
+            formatter={(v: number) => (v > 0 ? compact(v) : "")}
+            style={{ fill: "var(--c-text-secondary)", fontSize: 10 }}
+          />
           {rows.map((r) => (
             <Cell key={r.month} fillOpacity={r.month === activeMonth ? 1 : 0.28} />
           ))}

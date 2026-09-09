@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -37,6 +37,12 @@ function monthLabel(ym: string): string {
 export default function DashboardPage() {
   const [month, setMonth] = useState(thisMonth);
   const isCurrent = month === thisMonth();
+
+  // Allow deep-linking a month, e.g. from /months.
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("month");
+    if (m && /^\d{4}-\d{2}$/.test(m)) setMonth(m);
+  }, []);
 
   const summary = useQuery({
     queryKey: ["summary", month],
@@ -119,7 +125,15 @@ export default function DashboardPage() {
       </div>
 
       <Card>
-        <CardTitle>Last 6 months</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Last 6 months</CardTitle>
+          <Link
+            href="/months"
+            className="text-caption text-text-secondary hover:text-text"
+          >
+            All months →
+          </Link>
+        </div>
         <div className="mt-md">
           {trend.isLoading ? (
             <Skeleton className="h-40 w-full" />
