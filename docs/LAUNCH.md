@@ -74,9 +74,11 @@ build, ✅ = already done.**
   triggers `alembic upgrade head`) **or** move the `alembic upgrade` into the
   container entrypoint and drop the flag.
 - ✅ Per-IP + per-device anonymous rate limiting on `/v1/extract`.
-- ⛔ **Rotate the secrets that were shared in plaintext**: Auth0 client secret,
-  Google OAuth client secret, `AUTH0_SECRET`, and the Postgres admin password.
-  Do this before any public exposure.
+- 🟡 **Secrets** — the dev env keeps its current values (dev-only, no real
+  users). **Prod must get brand-new secrets**, not copies: a separate Auth0
+  prod application (own client secret), a separate Google OAuth client, a fresh
+  `AUTH0_SECRET`, and a new Postgres password. The values used in dev are
+  effectively public and must never guard real user data.
 - ⛔ **A production environment** separate from `rg-ai-receipt-dev`: its own
   resource group, Postgres, Blob, Key Vault, Container Apps, Auth0
   tenant/application, Azure OpenAI deployment. `infra/provision.sh` +
