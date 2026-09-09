@@ -2,17 +2,19 @@ import SwiftUI
 import Charts
 
 struct MonthlyTotalCard: View {
+    var label = "This month"
     let amount: Decimal
     let currencyCode: String
 
     var body: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                SectionLabel("This month")
+                SectionLabel(label)
                 Text(amount, format: .currency(code: currencyCode))
                     .font(.appDisplay)
                     .monospacedDigit()
                     .foregroundStyle(Theme.Palette.text)
+                    .contentTransition(.numericText())
             }
         }
     }
@@ -111,20 +113,27 @@ struct InsightsCard: View {
 }
 
 struct RecentReceiptsCard: View {
+    var title = "Recent"
     let receipts: [Receipt]
     let currencyCode: String
 
     var body: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
-                SectionLabel("Recent")
-                ForEach(receipts) { receipt in
-                    NavigationLink {
-                        ReceiptDetailView(receipt: receipt)
-                    } label: {
-                        row(receipt)
+                SectionLabel(title)
+                if receipts.isEmpty {
+                    Text("No receipts this month.")
+                        .font(.appCallout)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                } else {
+                    ForEach(receipts) { receipt in
+                        NavigationLink {
+                            ReceiptDetailView(receipt: receipt)
+                        } label: {
+                            row(receipt)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }

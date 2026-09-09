@@ -1,15 +1,43 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct DashboardView: View {
     @Query(sort: \Receipt.date, order: .reverse) private var receipts: [Receipt]
+
+    /// 0 = current month, -1 = last month, …
+    @State private var monthOffset = 0
+
+    private let calendar = Calendar.current
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
     }
 
+    /// A date inside the month currently being viewed.
+    private var anchor: Date {
+        calendar.date(byAdding: .month, value: monthOffset, to: .now) ?? .now
+    }
+
     private var summary: SpendingSummary {
-        SpendingSummary(receipts: receipts)
+        SpendingSummary(receipts: receipts, calendar: calendar, now: anchor)
+    }
+
+    private var monthReceipts: [Receipt] {
+        guard let interval = calendar.dateInterval(of: .month, for: anchor) else { return [] }
+        return receipts.filter { interval.contains($0.date) }
+    }
+
+    private var monthLabel: String {
+        monthOffset == 0 ? "This month" : anchor.formatted(.dateTime.month(.wide).year())
+    }
+
+    private var canGoForward: Bool { monthOffset < 0 }
+
+    private var canGoBack: Bool {
+        guard let earliest = receipts.map(\.date).min() else { return false }
+        let earliestMonth = calendar.dateInterval(of: .month, for: earliest)?.start ?? earliest
+        let viewedMonth = calendar.dateInterval(of: .month, for: anchor)?.start ?? anchor
+        return viewedMonth > earliestMonth
     }
 
     var body: some View {
@@ -24,7 +52,9 @@ struct DashboardView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: Theme.Space.xl) {
+                            monthSwitcher
                             MonthlyTotalCard(
+                                label: monthLabel,
                                 amount: summary.currentMonthTotal,
                                 currencyCode: currencyCode
                             )
@@ -34,7 +64,8 @@ struct DashboardView: View {
                             )
                             InsightsCard(insights: summary.insights)
                             RecentReceiptsCard(
-                                receipts: Array(receipts.prefix(5)),
+                                title: monthOffset == 0 ? "Recent" : "Receipts",
+                                receipts: Array(monthReceipts.prefix(8)),
                                 currencyCode: currencyCode
                             )
                         }
@@ -46,6 +77,34 @@ struct DashboardView: View {
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
         }
+    }
+
+    private var monthSwitcher: some View {
+        HStack {
+            Button {
+                withAnimation(Theme.Motion.base) { monthOffset -= 1 }
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            .disabled(!canGoBack)
+
+            Spacer()
+            Text(anchor.formatted(.dateTime.month(.wide).year()))
+                .font(.appHeadline)
+                .foregroundStyle(Theme.Palette.text)
+                .contentTransition(.numericText())
+            Spacer()
+
+            Button {
+                withAnimation(Theme.Motion.base) { monthOffset += 1 }
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .disabled(!canGoForward)
+        }
+        .font(.appCallout.weight(.semibold))
+        .foregroundStyle(Theme.Palette.accent)
+        .padding(.horizontal, Theme.Space.xs)
     }
 }
 

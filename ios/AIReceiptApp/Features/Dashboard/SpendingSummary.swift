@@ -82,7 +82,7 @@ struct SpendingSummary {
             insights.append(
                 Insight(
                     kind: percent > 0 ? .up : .down,
-                    message: "You spent \(Int(abs(percent).rounded()))% \(direction) on \(category.displayName.lowercased()) this month."
+                    message: "You spent \(Int(abs(percent).rounded()))% \(direction) on \(category.displayName.lowercased()) than the month before."
                 )
             )
             if insights.count >= 3 { break }

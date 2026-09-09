@@ -56,6 +56,26 @@ final class SpendingSummaryTests: XCTestCase {
         )
     }
 
+    func testAnchoringToAPastMonthSummarisesThatMonth() {
+        let receipts = [
+            receipt(40, .groceries, on: date(year: 2026, month: 4, day: 4)),
+            receipt(70, .restaurants, on: date(year: 2026, month: 5, day: 9)),
+            receipt(30, .groceries, on: date(year: 2026, month: 5, day: 20)),
+            receipt(12, .transport, on: date(year: 2026, month: 6, day: 2)),
+        ]
+
+        // View May (one month before the test's fixed "now" of 15 June).
+        let may = date(year: 2026, month: 5, day: 15)
+        let summary = SpendingSummary(receipts: receipts, calendar: calendar, now: may)
+
+        XCTAssertEqual(summary.currentMonthTotal, 100)      // May
+        XCTAssertEqual(summary.previousMonthTotal, 40)      // April
+        XCTAssertEqual(
+            summary.currentMonthByCategory.map(\.category),
+            [.restaurants, .groceries]
+        )
+    }
+
     func testRisingStreakInsightAcrossThreeMonths() {
         let receipts = [
             receipt(50, .groceries, on: date(year: 2026, month: 4, day: 10)),
