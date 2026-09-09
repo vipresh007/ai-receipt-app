@@ -150,7 +150,7 @@ Used by the signed-in iOS app to keep its local store in step with the account
 
 | Method & path | Body | Response | Notes |
 |---|---|---|---|
-| `GET /v1/receipts?limit=` | — | `ReceiptOut[]` | Newest first. iOS pulls this to reconcile. |
+| `GET /v1/receipts?limit=&month=` | — | `ReceiptOut[]` | Newest first. `month=YYYY-MM` filters by purchase date. iOS pulls the unfiltered list to reconcile; the dashboard uses `month`. |
 | `GET /v1/receipts/{id}/image` | — | `image/jpeg` bytes | The stored receipt photo, so a device that pulled the row (bytes never sync between devices) can show it. `404` when there's no image. `Cache-Control: private, max-age=86400`. |
 | `POST /v1/receipts` | `ReceiptCreate` (same shape as one import item) | `201 ReceiptOut` | Creates the `Receipt` + its `Expense`. |
 | `PATCH /v1/receipts/{id}` | partial: `merchant, date, total, tax, category, items` — only keys sent change | `200 ReceiptOut` | Keeps the linked `Expense` (amount/merchant/category/date) in sync. `404` if not the caller's. |
@@ -158,6 +158,13 @@ Used by the signed-in iOS app to keep its local store in step with the account
 
 `ReceiptOut` (snake_case on the wire): `id, merchant, purchased_at, total, tax,
 currency, category_slug, image_blob_url, extraction_confidence, line_items`.
+
+**`GET /v1/expenses/summary?month=YYYY-MM`** (bearer) returns that month's
+`total`, `by_category`, and the month-before total (`previous_month_total`),
+plus `earliest_month` (YYYY-MM of the oldest expense) so a month-stepper knows
+how far back to allow. `month` defaults to the current month; an unparseable
+value falls back to it. Both the iOS and web dashboards use this to browse
+past months.
 
 ---
 

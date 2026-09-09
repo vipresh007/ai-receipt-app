@@ -48,6 +48,7 @@ export interface SpendingSummary {
   total: string;
   by_category: CategoryTotal[];
   previous_month_total: string;
+  earliest_month: string | null;
 }
 
 export type InsightKind = "up" | "down" | "neutral" | "streak" | "summary";
