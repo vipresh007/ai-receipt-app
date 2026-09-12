@@ -1,12 +1,10 @@
-import { Fraunces } from "next/font/google";
+import { Inter } from "next/font/google";
 
-/** Editorial display serif for headlines — Inter stays the body/UI face.
- * Self-hosted by Next at build time; exposes `--font-serif` everywhere the
- * `variable` className is applied (see app/layout.tsx). */
-export const fraunces = Fraunces({
+/** The site's one typeface, actually loaded (previously `--font-sans` named
+ * Inter in tokens.css but nothing ever fetched it, so every page silently
+ * fell back to the OS UI font). Variable weight — headlines just go bolder. */
+export const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500"],
-  style: ["normal", "italic"],
-  variable: "--font-serif",
+  variable: "--font-inter",
   display: "swap",
 });

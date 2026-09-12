@@ -23,7 +23,7 @@ const LOGIN = "/auth/login";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-bg/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-content items-center justify-between px-lg">
+      <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between px-xl">
         <span className="flex items-center gap-sm">
           <Wordmark />
         </span>
@@ -83,12 +83,10 @@ export function Hero() {
             Expense tracking, minus the tracking
           </span>
 
-          <h1 className="font-display mt-lg text-[2.75rem] font-medium leading-[1.05] sm:text-[3.4rem] lg:text-[3.75rem]">
+          <h1 className="mt-lg text-[2.75rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.4rem] lg:text-[3.75rem]">
             Snap a receipt.
             <br />
-            <em className="italic" style={{ color: "var(--c-landing-accent)" }}>
-              It tallies itself.
-            </em>
+            <span style={{ color: "var(--c-landing-accent)" }}>It tallies itself.</span>
           </h1>
 
           <p className="mt-lg max-w-md text-body text-text-secondary sm:text-[1.0625rem]">
@@ -314,7 +312,7 @@ export function ReadsReceipts() {
   return (
     <section className="border-t border-border px-lg py-4xl">
       <div className="mx-auto max-w-content">
-        <h2 className="font-display max-w-lg text-title font-medium">
+        <h2 className="max-w-lg text-title font-extrabold tracking-tight">
           It reads the whole receipt.
         </h2>
         <p className="mt-sm max-w-lg text-callout text-text-secondary">
@@ -372,7 +370,7 @@ export function HowItWorks() {
         <p className="text-center text-micro uppercase tracking-wide text-text-tertiary">
           How it works
         </p>
-        <h2 className="font-display mt-sm text-center text-title font-medium">
+        <h2 className="mt-sm text-center text-title font-extrabold tracking-tight">
           From shoebox to dashboard in three taps
         </h2>
 
@@ -485,7 +483,7 @@ export function Features() {
   return (
     <section className="border-t border-border px-lg py-4xl">
       <div className="mx-auto max-w-content">
-        <h2 className="font-display max-w-lg text-title font-medium">
+        <h2 className="max-w-lg text-title font-extrabold tracking-tight">
           More than a pile of photos
         </h2>
         <div className="mt-2xl grid gap-lg sm:grid-cols-3">
@@ -589,9 +587,8 @@ export function BottomCTA() {
         />
         <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
           <SparklesIconInline />
-          <h2 className="font-display text-[1.9rem] font-medium leading-tight sm:text-title">
-            Your <em className="italic text-[#ffb89a]">last</em> manual expense
-            entry
+          <h2 className="text-[1.9rem] font-extrabold leading-tight tracking-tight sm:text-title">
+            Your <span className="text-[#ffb89a]">last</span> manual expense entry
           </h2>
           <p className="text-callout text-white/80">
             Sign in with Google or email and scan your first receipt in the next
@@ -622,20 +619,62 @@ function SparklesIconInline() {
 
 /* ─────────────────────────── footer ─────────────────────────── */
 
+const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] }[] = [
+  {
+    heading: "Product",
+    links: [
+      { label: "How it works", href: "#how" },
+      { label: "Get started", href: SIGNUP },
+      { label: "Log in", href: LOGIN },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Terms of service", href: "/terms" },
+      { label: "Contact", href: "mailto:vipresh1993@gmail.com" },
+    ],
+  },
+];
+
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border px-lg py-xl">
-      <div className="mx-auto flex max-w-content flex-col items-center justify-between gap-md text-caption text-text-tertiary sm:flex-row">
-        <Wordmark />
-        <nav className="flex items-center gap-lg">
-          <a href="/privacy" className="hover:text-text">
-            Privacy
-          </a>
-          <a href="/terms" className="hover:text-text">
-            Terms
-          </a>
-          <span>© {new Date().getFullYear()} Tally</span>
-        </nav>
+    <footer className="border-t border-border px-lg pb-xl pt-3xl">
+      <div className="mx-auto max-w-content">
+        <div className="grid gap-2xl sm:grid-cols-[1.4fr_1fr_1fr]">
+          <div>
+            <Wordmark />
+            <p className="mt-md max-w-[26ch] text-caption text-text-secondary">
+              Snap a receipt. It tallies itself. Free expense tracking for iOS
+              and the web.
+            </p>
+          </div>
+          {FOOTER_LINKS.map((col) => (
+            <div key={col.heading}>
+              <p className="text-micro uppercase tracking-wide text-text-tertiary">
+                {col.heading}
+              </p>
+              <ul className="mt-md space-y-sm">
+                {col.links.map((l) => (
+                  <li key={l.label}>
+                    <a
+                      href={l.href}
+                      className="text-callout text-text-secondary hover:text-text"
+                    >
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2xl flex flex-col items-center justify-between gap-sm border-t border-border pt-lg text-caption text-text-tertiary sm:flex-row">
+          <span>© {new Date().getFullYear()} Tally. All rights reserved.</span>
+          <span>Built by Vipresh Patel</span>
+        </div>
       </div>
     </footer>
   );
