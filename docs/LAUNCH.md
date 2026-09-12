@@ -12,10 +12,13 @@ build, ✅ = already done.**
   `web/app/layout.tsx` → `metadata.title`).
 - ✅ App icon: `ios/.../AppIcon.appiconset/icon-1024.png` (1024², opaque). Web
   favicon `web/app/icon.svg`. Sources in `design/logo/`, exports in `brand/`.
-- ✅ **Bundle identifier**: `ca.dataeaver.tally` (main), `ca.dataeaver.tally.tests`
-  (tests). Set in `ios/project.yml`; the `CFBundleURLTypes` scheme follows it
-  automatically. **Add the new Auth0 callback URL** (keep the old one during the
-  switch): `ca.dataeaver.tally://dev-…auth0.com/ios/ca.dataeaver.tally/callback`.
+- ✅ **Bundle identifier**: `com.vipreshpatel.tally` (main),
+  `com.vipreshpatel.tally.tests` (tests) — a personal namespace, not tied to a
+  domain (you're publishing as an **Individual**, not an org; no domain
+  required for this). Set in `ios/project.yml`; the `CFBundleURLTypes` scheme
+  follows it automatically. **Add the new Auth0 callback URL** (keep the old
+  one during the switch):
+  `com.vipreshpatel.tally://dev-…auth0.com/ios/com.vipreshpatel.tally/callback`.
   When you enroll in the Apple Developer Program, register this exact id as an
   Explicit App ID and create the App Store Connect record with it.
 - 🟡 App Store name (30 chars) + subtitle (30). "Tally" alone may be taken —
@@ -25,7 +28,9 @@ build, ✅ = already done.**
 ## 2. Apple / iOS
 
 - ⛔ **Apple Developer Program** enrollment ($99/yr) — required for TestFlight
-  and the App Store. Nothing iOS ships without it.
+  and the App Store. Nothing iOS ships without it. Enroll as an **Individual**
+  (your legal name, Vipresh Patel, shows as the seller) — no D-U-N-S number or
+  business registration needed, unlike an Organization account.
 - ⛔ **Sign in with Apple.** App Review guideline 4.8: if you offer a
   third-party sign-in (we offer Google) you must also offer Sign in with Apple.
   Add it: Auth0 Apple connection (needs a Services ID, a Sign-in-with-Apple key

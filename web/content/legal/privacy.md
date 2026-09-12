@@ -3,9 +3,10 @@
 _Last updated: set this to the date you publish. This is a first draft — have it
 reviewed by a lawyer before you rely on it._
 
-This policy explains what **Tally** ("we", "us"), operated by **DATA EAVER INC.**
-(**[COMPANY MAILING ADDRESS]**, Canada), collects when you use the Tally app and
-website, why, and what choices you have. Questions: **contact@dataeaver.ca**.
+This policy explains what **Tally** ("we", "us"), an app developed and
+operated by **Vipresh Patel**, collects when you use the Tally app and
+website, why, and what choices you have. Questions: **[CONTACT EMAIL — add
+before publishing; also required by Apple as a support contact]**.
 
 ## What we collect
 
@@ -55,8 +56,9 @@ return the extracted data; we then store it as described below.
 ## Where your data is stored
 
 Your account and receipts are stored in Microsoft Azure, in the **Canada
-Central** region: PostgreSQL for records and Azure Blob Storage for receipt
-images. Some processing by our providers (below) may occur in other regions.
+Central** region _(confirm this is where you'll actually host production)_:
+PostgreSQL for records and Azure Blob Storage for receipt images. Some
+processing by our providers (below) may occur in other regions.
 
 ## Sharing
 
@@ -82,8 +84,8 @@ or the public.
 
 ## Your choices and rights
 
-- **Access / export** — email **contact@dataeaver.ca** and we will provide a
-  copy of your account data.
+- **Access / export** — email us and we will provide a copy of your account
+  data.
 - **Correct** — edit any receipt in the app; contact us to change account
   details.
 - **Delete** — delete individual receipts in the app, or delete your entire
@@ -93,7 +95,7 @@ or the public.
   processing, to data portability, and to lodge a complaint with your privacy
   regulator (in Canada, the Office of the Privacy Commissioner).
 
-To exercise a right, email **contact@dataeaver.ca**.
+To exercise a right, email **[CONTACT EMAIL]**.
 
 ## Children
 
@@ -113,5 +115,4 @@ material changes, notify you in the app or by email.
 
 ## Contact
 
-**DATA EAVER INC.** — **contact@dataeaver.ca** — **[COMPANY MAILING ADDRESS]**,
-Canada
+**Vipresh Patel** — **[CONTACT EMAIL]**

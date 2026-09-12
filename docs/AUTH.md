@@ -179,8 +179,8 @@ fresh `X-Device-Id` each call doesn't get around the quota. See
 - A **Native** application `AI Receipt iOS` (client ID
   `fO5rWCD0FHGA13ty7Y9pKXXWnrw86ES0`, committed in `AIReceiptApp.xcconfig` — it's
   a public client, not a secret). Allowed Callback + Logout URLs (bundle id is
-  `ca.dataeaver.tally`):
-  `ca.dataeaver.tally://dev-nvjgstqap8b8wb68.us.auth0.com/ios/ca.dataeaver.tally/callback`
+  `com.vipreshpatel.tally`):
+  `com.vipreshpatel.tally://dev-nvjgstqap8b8wb68.us.auth0.com/ios/com.vipreshpatel.tally/callback`
   (Auth0.swift's default custom-scheme callback; `useHTTPS()` is **not** used, so
   no associated-domain entitlement is needed). Keep the old
   `com.example.AIReceiptApp://…` entry too until every build has moved over.

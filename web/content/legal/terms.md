@@ -3,9 +3,9 @@
 _Last updated: set this to the date you publish. This is a first draft — have it
 reviewed by a lawyer before you rely on it._
 
-These terms are a contract between you and **DATA EAVER INC.** ("we", "us") for
-use of the **Tally** app and website (the "Service"). By creating an account or
-using the Service you agree to them.
+These terms are a contract between you and **Vipresh Patel** ("we", "us"), the
+developer of **Tally**, for use of the Tally app and website (the "Service").
+By creating an account or using the Service you agree to them.
 
 ## The Service
 
@@ -83,9 +83,8 @@ changes means you accept them.
 These terms are governed by the laws of the **Province of Ontario** and the
 federal laws of Canada that apply there, and disputes will be handled by the
 courts located in **Toronto, Ontario**, without regard to conflict-of-laws
-rules. _(Confirm this matches DATA EAVER INC.'s province of incorporation.)_
+rules. _(Confirm this matches where you're actually based.)_
 
 ## Contact
 
-**DATA EAVER INC.** — **contact@dataeaver.ca** — **[COMPANY MAILING ADDRESS]**,
-Canada
+**Vipresh Patel** — **[CONTACT EMAIL]**
