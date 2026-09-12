@@ -23,9 +23,9 @@ const LOGIN = "/auth/login";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-bg/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between px-xl">
+      <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-3xl sm:px-4xl">
         <span className="flex items-center gap-sm">
-          <Wordmark />
+          <Wordmark size="lg" />
         </span>
         <nav className="flex items-center gap-xs">
           <a
@@ -49,13 +49,26 @@ export function SiteHeader() {
   );
 }
 
-function Wordmark() {
+function Wordmark({ size = "default" }: { size?: "default" | "lg" }) {
+  const isLarge = size === "lg";
   return (
     <span className="flex items-center gap-sm">
-      <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-accent-fg shadow-e1">
-        <TallyMark size={22} />
+      <span
+        className={cn(
+          "grid place-items-center rounded-lg bg-accent text-accent-fg shadow-e1",
+          isLarge ? "h-12 w-12 rounded-xl" : "h-9 w-9",
+        )}
+      >
+        <TallyMark size={isLarge ? 28 : 22} />
       </span>
-      <span className="text-headline font-semibold tracking-tight">Tally</span>
+      <span
+        className={cn(
+          "font-extrabold tracking-tight",
+          isLarge ? "text-title" : "text-headline",
+        )}
+      >
+        Tally
+      </span>
     </span>
   );
 }
@@ -367,10 +380,10 @@ export function HowItWorks() {
       className="scroll-mt-16 border-t border-border bg-surface-2 px-lg py-4xl"
     >
       <div className="mx-auto max-w-content">
-        <p className="text-center text-micro uppercase tracking-wide text-text-tertiary">
+        <p className="text-micro uppercase tracking-wide text-text-tertiary">
           How it works
         </p>
-        <h2 className="mt-sm text-center text-title font-extrabold tracking-tight">
+        <h2 className="mt-sm max-w-lg text-title font-extrabold tracking-tight">
           From shoebox to dashboard in three taps
         </h2>
 
