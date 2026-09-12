@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Marketing-page-only warm accent (the product UI keeps the blue --c-accent
+   everywhere). Used sparingly on the landing page for emphasis — an italic
+   word in a headline, a highlight dot — never for actionable UI elements. */
+:root {
+  --c-landing-accent: #b8472a;
+  --c-landing-accent-muted: rgba(184, 71, 42, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-landing-accent: #ff9269;
+    --c-landing-accent-muted: rgba(255, 146, 105, 0.16);
+  }
+}
+:root[data-theme="dark"] {
+  --c-landing-accent: #ff9269;
+  --c-landing-accent-muted: rgba(255, 146, 105, 0.16);
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -25,6 +43,12 @@
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Editorial display serif — landing-page headlines only. */
+  .font-display {
+    font-family: var(--font-serif), var(--font-sans);
+    letter-spacing: -0.01em;
   }
 }
 

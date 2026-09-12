@@ -65,52 +65,67 @@ function Wordmark() {
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* soft glow */}
+      {/* soft dual glow — product blue + the landing-only warm accent */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-[-20%] mx-auto h-[520px] max-w-4xl rounded-pill bg-accent-muted blur-[120px]"
+        className="pointer-events-none absolute -top-24 right-[-10%] h-[420px] w-[420px] rounded-pill bg-accent-muted blur-[110px]"
       />
-      <div className="relative mx-auto flex max-w-content flex-col items-center px-lg pt-xl text-center md:pt-4xl">
-        <span className="inline-flex items-center gap-xs rounded-pill border border-border bg-surface/80 px-md py-hair text-micro uppercase tracking-wide text-text-secondary backdrop-blur">
-          <Sparkles size={12} className="text-accent" />
-          Expense tracking, minus the tracking
-        </span>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-[-8%] top-[18%] h-[320px] w-[320px] rounded-pill blur-[110px]"
+        style={{ background: "var(--c-landing-accent-muted)" }}
+      />
 
-        <h1 className="mt-lg max-w-3xl text-[2.6rem] font-bold leading-[1.03] tracking-tight sm:text-[3.5rem]">
-          Snap a receipt.{" "}
-          <span className="bg-gradient-to-r from-accent to-[color:var(--cat-transport)] bg-clip-text text-transparent">
-            It files itself.
+      <div className="relative mx-auto grid max-w-content gap-3xl px-lg pb-4xl pt-3xl lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-2xl lg:pt-4xl">
+        <div>
+          <span className="inline-flex items-center gap-xs rounded-pill border border-border bg-surface/80 px-md py-hair text-micro uppercase tracking-wide text-text-secondary backdrop-blur">
+            <Sparkles size={12} style={{ color: "var(--c-landing-accent)" }} />
+            Expense tracking, minus the tracking
           </span>
-        </h1>
 
-        <p className="mt-lg max-w-xl text-body text-text-secondary sm:text-[1.0625rem]">
-          Point your camera at any receipt — crumpled, faded, handwritten. AI
-          pulls the merchant, total, tax and category and drops it into your
-          spending in about five seconds.
-        </p>
+          <h1 className="font-display mt-lg text-[2.75rem] font-medium leading-[1.05] sm:text-[3.4rem] lg:text-[3.75rem]">
+            Snap a receipt.
+            <br />
+            <em className="italic" style={{ color: "var(--c-landing-accent)" }}>
+              It tallies itself.
+            </em>
+          </h1>
 
-        <div className="mt-xl flex flex-col gap-sm sm:flex-row">
-          <a href={SIGNUP} className={cn(buttonVariants(), "px-xl")}>
-            Get started free <ArrowRight size={16} />
-          </a>
-          <a
-            href="#how"
-            className={cn(buttonVariants({ variant: "secondary" }), "px-xl")}
-          >
-            See how it works
-          </a>
+          <p className="mt-lg max-w-md text-body text-text-secondary sm:text-[1.0625rem]">
+            Point your camera at any receipt — crumpled, faded, handwritten. AI
+            pulls the merchant, total, tax and category and drops it into your
+            spending in about five seconds.
+          </p>
+
+          <div className="mt-xl flex flex-col gap-sm sm:flex-row">
+            <a
+              href={SIGNUP}
+              className={cn(buttonVariants(), "h-12 px-xl text-body")}
+            >
+              Get started free <ArrowRight size={16} />
+            </a>
+            <a
+              href="#how"
+              className={cn(
+                buttonVariants({ variant: "secondary" }),
+                "h-12 px-xl text-body",
+              )}
+            >
+              See how it works
+            </a>
+          </div>
+
+          <ul className="mt-xl flex flex-wrap items-center gap-x-lg gap-y-xs text-caption text-text-tertiary">
+            {["~5-second scans", "Reads faded & handwritten", "Auto-categorized"].map(
+              (t) => (
+                <li key={t} className="flex items-center gap-xs">
+                  <Check size={13} className="text-accent" />
+                  {t}
+                </li>
+              ),
+            )}
+          </ul>
         </div>
-
-        <ul className="mt-lg flex flex-wrap items-center justify-center gap-x-lg gap-y-xs text-caption text-text-tertiary">
-          {["~5-second scans", "Reads faded & handwritten", "Auto-categorized"].map(
-            (t) => (
-              <li key={t} className="flex items-center gap-xs">
-                <Check size={13} className="text-accent" />
-                {t}
-              </li>
-            ),
-          )}
-        </ul>
 
         <HeroVisual />
       </div>
@@ -120,16 +135,27 @@ export function Hero() {
 
 function HeroVisual() {
   return (
-    <div className="relative mt-2xl w-full max-w-3xl pb-4xl">
-      {/* receipt card, peeking from behind */}
-      <div className="absolute -left-2 top-8 hidden w-52 -rotate-6 sm:block">
-        <ReceiptCard compact />
-      </div>
-      {/* main dashboard mock */}
-      <div className="relative sm:ml-16">
+    <div className="relative mx-auto w-full max-w-md pt-lg lg:max-w-none lg:pt-0">
+      {/* main dashboard mock, angled */}
+      <div className="relative rotate-[1.5deg] transition-transform duration-500 hover:rotate-0">
         <BrowserFrame>
           <DashboardMock />
         </BrowserFrame>
+      </div>
+
+      {/* receipt card, layered in front */}
+      <div className="absolute -bottom-lg -left-sm w-36 -rotate-6 drop-shadow-xl sm:-left-xl sm:w-44">
+        <ReceiptCard compact />
+      </div>
+
+      {/* floating "saved" chip */}
+      <div className="absolute -right-xs -top-sm rotate-3 rounded-xl border border-border bg-surface px-md py-sm shadow-e2 sm:-right-lg sm:top-6">
+        <div className="flex items-center gap-xs text-caption font-medium">
+          <span className="grid h-5 w-5 place-items-center rounded-pill bg-success-muted text-success">
+            <Check size={12} />
+          </span>
+          Saved in 4s
+        </div>
       </div>
     </div>
   );
@@ -288,7 +314,9 @@ export function ReadsReceipts() {
   return (
     <section className="border-t border-border px-lg py-4xl">
       <div className="mx-auto max-w-content">
-        <h2 className="max-w-lg text-title">It reads the whole receipt.</h2>
+        <h2 className="font-display max-w-lg text-title font-medium">
+          It reads the whole receipt.
+        </h2>
         <p className="mt-sm max-w-lg text-callout text-text-secondary">
           Merchant, date, subtotal, tax and every line item — lifted from the
           photo, not retyped. You just glance and confirm.
@@ -344,7 +372,7 @@ export function HowItWorks() {
         <p className="text-center text-micro uppercase tracking-wide text-text-tertiary">
           How it works
         </p>
-        <h2 className="mt-sm text-center text-title">
+        <h2 className="font-display mt-sm text-center text-title font-medium">
           From shoebox to dashboard in three taps
         </h2>
 
@@ -457,7 +485,9 @@ export function Features() {
   return (
     <section className="border-t border-border px-lg py-4xl">
       <div className="mx-auto max-w-content">
-        <h2 className="max-w-lg text-title">More than a pile of photos</h2>
+        <h2 className="font-display max-w-lg text-title font-medium">
+          More than a pile of photos
+        </h2>
         <div className="mt-2xl grid gap-lg sm:grid-cols-3">
           {feats.map(({ icon: Icon, accent, title, body, viz }) => (
             <div
@@ -559,8 +589,9 @@ export function BottomCTA() {
         />
         <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
           <SparklesIconInline />
-          <h2 className="text-[1.9rem] font-bold leading-tight sm:text-title">
-            Your last manual expense entry
+          <h2 className="font-display text-[1.9rem] font-medium leading-tight sm:text-title">
+            Your <em className="italic text-[#ffb89a]">last</em> manual expense
+            entry
           </h2>
           <p className="text-callout text-white/80">
             Sign in with Google or email and scan your first receipt in the next
