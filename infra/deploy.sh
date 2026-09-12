@@ -169,8 +169,11 @@ WEB_FQDN="${WEB_FQDN:-$(az containerapp show -n "$WEB_APP" -g "$RESOURCE_GROUP" 
   --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || true)}"
 if [ -n "$WEB_FQDN" ] && az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
   say "Set API CORS_ORIGINS -> https://$WEB_FQDN"
+  # Best-effort: a transient Azure API error here shouldn't fail a deploy that
+  # otherwise succeeded, and the value is idempotent (same FQDN every time).
   az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
-    --set-env-vars CORS_ORIGINS="https://$WEB_FQDN" -o none
+    --set-env-vars CORS_ORIGINS="https://$WEB_FQDN" -o none \
+    || echo "WARNING: could not update CORS_ORIGINS (non-fatal) — rerun deploy.sh if needed."
 fi
 
 say "Done"

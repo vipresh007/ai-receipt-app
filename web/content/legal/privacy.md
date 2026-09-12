@@ -5,8 +5,7 @@ reviewed by a lawyer before you rely on it._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
 operated by **Vipresh Patel**, collects when you use the Tally app and
-website, why, and what choices you have. Questions: **[CONTACT EMAIL — add
-before publishing; also required by Apple as a support contact]**.
+website, why, and what choices you have. Questions: **vipresh1993@gmail.com**.
 
 ## What we collect
 
@@ -95,7 +94,7 @@ or the public.
   processing, to data portability, and to lodge a complaint with your privacy
   regulator (in Canada, the Office of the Privacy Commissioner).
 
-To exercise a right, email **[CONTACT EMAIL]**.
+To exercise a right, email **vipresh1993@gmail.com**.
 
 ## Children
 
@@ -115,4 +114,4 @@ material changes, notify you in the app or by email.
 
 ## Contact
 
-**Vipresh Patel** — **[CONTACT EMAIL]**
+**Vipresh Patel** — **vipresh1993@gmail.com**

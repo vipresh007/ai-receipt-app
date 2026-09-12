@@ -110,15 +110,14 @@ build, ✅ = already done.**
 
 ## 5. Legal & data
 
-- 🟡 **Privacy Policy** — first draft at `/privacy`
-  (`web/content/legal/privacy.md`). Fill every `[PLACEHOLDER]` and have it
-  legally reviewed, then it's a ✅.
+- 🟡 **Privacy Policy** — drafted at `/privacy` (`web/content/legal/privacy.md`),
+  fully filled in (Vipresh Patel, vipresh1993@gmail.com, no company/address).
+  Get it **legally reviewed**, then it's a ✅.
 - ✅ **Account & data deletion** mechanism (see §2) — DB rows + best-effort
   blob cleanup. Confirm your backup policy also purges deleted accounts.
-- 🟡 **Terms of Service** — first draft at `/terms`
-  (`web/content/legal/terms.md`); same placeholders + review.
-- 🟡 Decide the **publishing entity** (personal name vs a company) — it shows on
-  the App Store and fills the biggest placeholder in both documents.
+- 🟡 **Terms of Service** — drafted at `/terms` (`web/content/legal/terms.md`),
+  same as above; needs the same legal review.
+- ✅ **Publishing entity**: individual, **Vipresh Patel** — no company.
 - 🟡 Data Processing / sub-processor list if you'll have EU/UK users (GDPR).
 - 🟢 "Export my data" (JSON dump) — nice, not required.
 

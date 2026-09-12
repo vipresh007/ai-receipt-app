@@ -87,4 +87,4 @@ rules. _(Confirm this matches where you're actually based.)_
 
 ## Contact
 
-**Vipresh Patel** — **[CONTACT EMAIL]**
+**Vipresh Patel** — **vipresh1993@gmail.com**
