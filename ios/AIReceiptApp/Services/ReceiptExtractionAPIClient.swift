@@ -23,7 +23,10 @@ struct ReceiptExtractionAPIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         applyAuth(to: &request)
-        request.timeoutInterval = timeout
+        // Extraction does the most work of any call (image upload + the LLM
+        // round trip) and can also be the one that wakes a scaled-to-zero
+        // backend from cold — give it more room than the default.
+        request.timeoutInterval = max(timeout, 60)
         request.httpBody = try JSONEncoder().encode(
             RequestBody(
                 imageBase64: imageData.base64EncodedString(),
