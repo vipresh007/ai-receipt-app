@@ -39,6 +39,14 @@ export function apiPost<T>(path: string, body: unknown): Promise<T> {
   }).then(handle) as Promise<T>;
 }
 
+export function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return fetch(proxyPath(path), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }).then(handle) as Promise<T>;
+}
+
 export function apiDelete<T = null>(path: string): Promise<T> {
   return fetch(proxyPath(path), { method: "DELETE" }).then(handle) as Promise<T>;
 }

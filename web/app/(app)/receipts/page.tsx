@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { RefreshCw, Search } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { ReceiptOut } from "@/lib/types";
-import { money } from "@/lib/format";
+import type { ReceiptOut, RecurringGroup } from "@/lib/types";
+import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
+import { money, shortDate } from "@/lib/format";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReceiptRow } from "@/components/receipt-row";
 
@@ -46,13 +50,38 @@ function groupByMonth(receipts: ReceiptOut[]): MonthGroup[] {
     }));
 }
 
+/// Debounces a fast-changing value (typing) so we don't refetch on every keystroke.
+function useDebounced<T>(value: T, delayMs = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export default function ReceiptsPage() {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const debouncedSearch = useDebounced(search);
+  const filtersActive = debouncedSearch !== "" || category !== "";
+
+  const params = new URLSearchParams({ limit: "200" });
+  if (debouncedSearch) params.set("q", debouncedSearch);
+  if (category) params.set("category", category);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["receipts", "all"],
-    queryFn: () => apiGet<ReceiptOut[]>("v1/receipts?limit=200"),
+    queryKey: ["receipts", "all", debouncedSearch, category],
+    queryFn: () => apiGet<ReceiptOut[]>(`v1/receipts?${params.toString()}`),
+  });
+
+  const { data: recurring } = useQuery({
+    queryKey: ["receipts", "recurring"],
+    queryFn: () => apiGet<RecurringGroup[]>("v1/receipts/recurring"),
   });
 
   const groups = data ? groupByMonth(data) : [];
+  const monthlyRecurringTotal = (recurring ?? []).reduce((s, g) => s + Number(g.average_amount), 0);
 
   return (
     <div className="space-y-xl">
@@ -62,6 +91,63 @@ export default function ReceiptsPage() {
           Add expense
         </Link>
       </header>
+
+      <div className="flex flex-col gap-md sm:flex-row">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-md top-1/2 -translate-y-1/2 text-text-tertiary"
+          />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search merchants"
+            className="pl-2xl"
+          />
+        </div>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="h-11 rounded-md border border-border bg-surface px-md text-body text-text focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)] sm:w-48"
+        >
+          <option value="">All categories</option>
+          {CATEGORY_ORDER.map((slug) => (
+            <option key={slug} value={slug}>
+              {categoryMeta(slug).label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {!filtersActive && (recurring ?? []).length > 0 && (
+        <Card>
+          <div className="flex items-center gap-md">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent-muted text-accent">
+              <RefreshCw size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-callout font-medium text-text">Recurring</p>
+              <p className="text-caption text-text-secondary">
+                {recurring!.length} likely subscription{recurring!.length === 1 ? "" : "s"} ·{" "}
+                {money(monthlyRecurringTotal)}/mo
+              </p>
+            </div>
+          </div>
+          <ul className="mt-lg divide-y divide-border">
+            {recurring!.map((g) => (
+              <li key={g.merchant} className="flex items-center justify-between py-sm text-callout">
+                <div>
+                  <p className="text-text">{g.merchant}</p>
+                  <p className="text-caption text-text-secondary">
+                    {g.occurrences} charges · last {shortDate(g.last_purchased_at)}
+                  </p>
+                </div>
+                <span className="tabular font-medium text-text">{money(g.average_amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {isLoading && (
         <Card>
@@ -76,7 +162,7 @@ export default function ReceiptsPage() {
       {!isLoading && data?.length === 0 && (
         <Card>
           <p className="py-2xl text-center text-callout text-text-secondary">
-            Nothing here yet. Scan your first receipt.
+            {filtersActive ? "No receipts match." : "Nothing here yet. Scan your first receipt."}
           </p>
         </Card>
       )}

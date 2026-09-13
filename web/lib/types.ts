@@ -73,3 +73,20 @@ export interface Me {
   display_name: string;
   plan: string;
 }
+
+export interface Budget {
+  category_slug: string;
+  monthly_limit: string;
+  spent: string;
+  remaining: string;
+  percent_used: number;
+}
+
+export interface RecurringGroup {
+  merchant: string;
+  category_slug: string;
+  average_amount: string;
+  occurrences: number;
+  last_purchased_at: string;
+  receipt_ids: string[];
+}
