@@ -84,6 +84,31 @@ async def test_receipt_image_404_when_none_stored(client):
     assert resp.status_code == 404
 
 
+async def test_search_filters_by_merchant_case_insensitive(client):
+    await client.post("/v1/receipts", json=_new(merchant="Blue Bottle Coffee"))
+    await client.post("/v1/receipts", json=_new(merchant="Corner Store"))
+
+    resp = await client.get("/v1/receipts?q=blue")
+    assert [r["merchant"] for r in resp.json()] == ["Blue Bottle Coffee"]
+
+
+async def test_filter_by_category(client):
+    await client.post("/v1/receipts", json=_new(merchant="A", category="groceries"))
+    await client.post("/v1/receipts", json=_new(merchant="B", category="restaurants"))
+
+    resp = await client.get("/v1/receipts?category=restaurants")
+    assert [r["merchant"] for r in resp.json()] == ["B"]
+
+
+async def test_filter_by_amount_range(client):
+    await client.post("/v1/receipts", json=_new(merchant="Cheap", total="5.00"))
+    await client.post("/v1/receipts", json=_new(merchant="Mid", total="50.00"))
+    await client.post("/v1/receipts", json=_new(merchant="Pricey", total="500.00"))
+
+    resp = await client.get("/v1/receipts?min_amount=10&max_amount=100")
+    assert [r["merchant"] for r in resp.json()] == ["Mid"]
+
+
 async def test_signed_in_extract_returns_receipt_id(client):
     resp = await client.post(
         "/v1/extract",

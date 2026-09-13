@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.config import get_settings
 from app.db import get_session
-from app.models import Expense, Insight, Receipt, User
+from app.models import Budget, Expense, Insight, Receipt, User
 from app.schemas.auth import MeOut
 from app.services.blob_storage import BlobStorage
 
@@ -46,6 +46,7 @@ async def delete_me(
     await session.execute(sa_delete(Expense).where(Expense.user_id == user.id))
     await session.execute(sa_delete(Receipt).where(Receipt.user_id == user.id))
     await session.execute(sa_delete(Insight).where(Insight.user_id == user.id))
+    await session.execute(sa_delete(Budget).where(Budget.user_id == user.id))
     await session.execute(sa_delete(User).where(User.id == user.id))
     await session.commit()
 

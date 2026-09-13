@@ -87,3 +87,15 @@ class ReceiptOut(BaseModel):
     image_blob_url: str | None
     extraction_confidence: float | None
     line_items: list[ExtractionItemOut]
+
+
+class RecurringGroupOut(BaseModel):
+    """A merchant that looks like a recurring charge — appears in at least two
+    different months at roughly the same amount. Heuristic, not a bank feed."""
+
+    merchant: str
+    category_slug: str
+    average_amount: str
+    occurrences: int
+    last_purchased_at: date
+    receipt_ids: list[UUID]

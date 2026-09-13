@@ -22,6 +22,7 @@ from app.schemas.receipt import (
     ReceiptCreate,
     ReceiptOut,
     ReceiptUpdate,
+    RecurringGroupOut,
 )
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
@@ -31,6 +32,7 @@ from app.services.extraction import (
     process_receipt,
     receipt_to_extraction_out,
 )
+from app.services.recurring import find_recurring
 
 router = APIRouter()
 
@@ -243,14 +245,49 @@ async def list_receipts(
     session: AsyncSession = Depends(get_session),
     limit: int = 50,
     month: str | None = None,
+    q: str | None = None,
+    category: str | None = None,
+    min_amount: str | None = None,
+    max_amount: str | None = None,
 ) -> list[ReceiptOut]:
-    """Newest first. `month` (YYYY-MM) filters by purchase date."""
+    """Newest first. `month` (YYYY-MM) filters by purchase date; `q` searches
+    the merchant name (case-insensitive substring); `category` filters by
+    slug; `min_amount`/`max_amount` bound the total (decimal strings)."""
     query = select(Receipt).where(Receipt.user_id == user.id)
     if month:
         start, end = month_bounds(month_start(month))
         query = query.where(Receipt.purchased_at >= start, Receipt.purchased_at < end)
+    if q:
+        query = query.where(Receipt.merchant.ilike(f"%{q}%"))
+    if category:
+        query = query.where(Receipt.category_slug == category)
+    if min_amount:
+        query = query.where(Receipt.total >= _to_decimal(min_amount))
+    if max_amount:
+        query = query.where(Receipt.total <= _to_decimal(max_amount))
     rows = await session.scalars(query.order_by(Receipt.created_at.desc()).limit(min(limit, 200)))
     return [_receipt_out(r) for r in rows]
+
+
+@router.get("/receipts/recurring", response_model=list[RecurringGroupOut])
+async def list_recurring(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[RecurringGroupOut]:
+    """Merchants that look like a recurring charge — see `services/recurring.py`
+    for the heuristic. Most recently charged first."""
+    receipts = list(await session.scalars(select(Receipt).where(Receipt.user_id == user.id)))
+    return [
+        RecurringGroupOut(
+            merchant=g.merchant,
+            category_slug=g.category_slug,
+            average_amount=f"{g.average_amount:.2f}",
+            occurrences=g.occurrences,
+            last_purchased_at=g.last_purchased_at,
+            receipt_ids=g.receipt_ids,
+        )
+        for g in find_recurring(receipts)
+    ]
 
 
 @router.get("/receipts/{receipt_id}/image")
