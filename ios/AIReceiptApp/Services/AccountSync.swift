@@ -40,11 +40,19 @@ enum AccountSync {
 
     // MARK: - Pull
 
-    /// Reconcile the account's receipts into SwiftData. Silent on failure.
+    /// Reconcile the account's receipts into SwiftData. Silent to the UI on
+    /// failure (no offline write queue to reconcile against yet — see the type
+    /// doc comment), but logged so a failed pull isn't a total black box.
     @MainActor
     static func pull(auth: AuthManager, context: ModelContext) async {
         guard let client = await client(auth: auth) else { return }
-        guard let remote = try? await client.listReceipts() else { return }
+        let remote: [ReceiptExtractionAPIClient.ReceiptDTO]
+        do {
+            remote = try await client.listReceipts()
+        } catch {
+            print("AccountSync.pull failed: \(error)")
+            return
+        }
 
         let remoteByID = Dictionary(remote.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let locals = (try? context.fetch(FetchDescriptor<Receipt>())) ?? []

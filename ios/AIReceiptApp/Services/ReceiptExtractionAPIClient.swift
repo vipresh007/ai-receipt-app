@@ -139,7 +139,10 @@ struct ReceiptExtractionAPIClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = timeout
+        // Same cold-start risk as extract: any of these can be the first call
+        // to hit a scaled-to-zero backend (e.g. right after sign-in, before
+        // extract ever ran), so don't let the default 30s cut it short.
+        request.timeoutInterval = max(timeout, 60)
         return request
     }
 
