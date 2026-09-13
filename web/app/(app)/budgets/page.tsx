@@ -4,19 +4,15 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPut } from "@/lib/api";
 import type { Budget } from "@/lib/types";
-import { CATEGORY_ORDER, categoryColor, categoryMeta } from "@/lib/categories";
+import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { money } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function progressColor(percent: number): string {
-  if (percent >= 100) return "bg-danger";
-  if (percent >= 70) return "bg-warning";
-  return "bg-success";
-}
+import { MetricTile } from "@/components/metric-tile";
+import { BudgetRow } from "@/components/budget-row";
 
 export default function BudgetsPage() {
   const queryClient = useQueryClient();
@@ -33,6 +29,10 @@ export default function BudgetsPage() {
 
   const usedSlugs = new Set((budgets ?? []).map((b) => b.category_slug));
   const availableCategories = CATEGORY_ORDER.filter((slug) => !usedSlugs.has(slug));
+
+  const totalBudgeted = (budgets ?? []).reduce((s, b) => s + Number(b.monthly_limit), 0);
+  const totalSpent = (budgets ?? []).reduce((s, b) => s + Number(b.spent), 0);
+  const overBudgetCount = (budgets ?? []).filter((b) => b.percent_used >= 100).length;
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["budgets"] });
@@ -71,6 +71,25 @@ export default function BudgetsPage() {
           </Button>
         )}
       </header>
+
+      {!isLoading && (budgets ?? []).length > 0 && (
+        <div className="grid gap-lg sm:grid-cols-2">
+          <MetricTile label="Budgeted this month" value={money(totalBudgeted)} />
+          <MetricTile
+            label="Spent so far"
+            value={money(totalSpent)}
+            muted
+            delta={
+              overBudgetCount > 0
+                ? {
+                    text: `${overBudgetCount} categor${overBudgetCount === 1 ? "y" : "ies"} over budget`,
+                    dir: "up",
+                  }
+                : undefined
+            }
+          />
+        </div>
+      )}
 
       {showAdd && (
         <Card>
@@ -133,41 +152,9 @@ export default function BudgetsPage() {
       {(budgets ?? []).length > 0 && (
         <Card>
           <div className="divide-y divide-border">
-            {(budgets ?? []).map((b) => {
-              const meta = categoryMeta(b.category_slug);
-              const Icon = meta.icon;
-              return (
-                <div key={b.category_slug} className="flex items-center gap-md py-lg first:pt-0 last:pb-0">
-                  <div
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-md"
-                    style={{ backgroundColor: `color-mix(in srgb, ${categoryColor(b.category_slug)} 16%, transparent)` }}
-                  >
-                    <Icon size={18} style={{ color: categoryColor(b.category_slug) }} />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-xs">
-                    <div className="flex items-baseline justify-between gap-md">
-                      <span className="text-callout font-medium text-text">{meta.label}</span>
-                      <span className="tabular text-caption text-text-secondary">
-                        {money(b.spent)} of {money(b.monthly_limit)}
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-                      <div
-                        className={`h-full rounded-full ${progressColor(b.percent_used)}`}
-                        style={{ width: `${Math.min(b.percent_used, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => remove(b.category_slug)}
-                    className="shrink-0 text-caption text-text-tertiary hover:text-danger"
-                    aria-label={`Remove ${meta.label} budget`}
-                  >
-                    Remove
-                  </button>
-                </div>
-              );
-            })}
+            {(budgets ?? []).map((b) => (
+              <BudgetRow key={b.category_slug} budget={b} onRemove={() => remove(b.category_slug)} />
+            ))}
           </div>
         </Card>
       )}

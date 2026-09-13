@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { CategoryTotal, Insight, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
+import type { Budget, CategoryTotal, Insight, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
 import {
   type Granularity,
   anchorFromPeriodKey,
@@ -23,6 +23,7 @@ import { CategoryBreakdown } from "@/components/category-breakdown";
 import { SpendingTrend } from "@/components/spending-trend";
 import { InsightList } from "@/components/insight-list";
 import { ReceiptRow } from "@/components/receipt-row";
+import { BudgetRow } from "@/components/budget-row";
 import { cn } from "@/lib/utils";
 
 const GRANULARITIES: { value: Granularity; label: string }[] = [
@@ -98,6 +99,11 @@ export default function DashboardPage() {
   const receipts = useQuery({
     queryKey: ["receipts", "month", month],
     queryFn: () => apiGet<ReceiptOut[]>(`v1/receipts?limit=8&month=${month}`),
+    enabled: granularity === "month",
+  });
+  const budgets = useQuery({
+    queryKey: ["budgets", month],
+    queryFn: () => apiGet<Budget[]>(`v1/budgets?month=${month}`),
     enabled: granularity === "month",
   });
   const trend = useQuery({
@@ -198,6 +204,22 @@ export default function DashboardPage() {
           muted
         />
       </div>
+
+      {granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0 && (
+        <Card>
+          <div className="flex items-center justify-between">
+            <CardTitle>Budgets</CardTitle>
+            <Link href="/budgets" className="text-caption text-text-secondary hover:text-text">
+              Manage →
+            </Link>
+          </div>
+          <div className="mt-sm divide-y divide-border">
+            {budgets.data!.slice(0, 3).map((b) => (
+              <BudgetRow key={b.category_slug} budget={b} />
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card>
         <div className="flex items-center justify-between">
