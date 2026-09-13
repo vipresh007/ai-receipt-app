@@ -84,12 +84,49 @@ async def test_receipt_image_404_when_none_stored(client):
     assert resp.status_code == 404
 
 
+async def test_get_single_receipt(client):
+    rid = (await client.post("/v1/receipts", json=_new())).json()["id"]
+    resp = await client.get(f"/v1/receipts/{rid}")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["merchant"] == "Corner Store"
+
+
+async def test_get_unknown_receipt_is_404(client):
+    resp = await client.get(f"/v1/receipts/{uuid4()}")
+    assert resp.status_code == 404
+
+
+async def test_recurring_route_still_resolves_alongside_single_receipt_route(client):
+    # Regression guard: "/receipts/{receipt_id}" is registered after
+    # "/receipts/recurring" specifically so "recurring" never gets swallowed
+    # as a (invalid) UUID path param.
+    resp = await client.get("/v1/receipts/recurring")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
 async def test_search_filters_by_merchant_case_insensitive(client):
     await client.post("/v1/receipts", json=_new(merchant="Blue Bottle Coffee"))
     await client.post("/v1/receipts", json=_new(merchant="Corner Store"))
 
     resp = await client.get("/v1/receipts?q=blue")
     assert [r["merchant"] for r in resp.json()] == ["Blue Bottle Coffee"]
+
+
+async def test_search_matches_line_item_names(client):
+    await client.post(
+        "/v1/receipts",
+        json=_new(merchant="Corner Store", items=[{"name": "Sourdough Bread", "price": "5.00"}]),
+    )
+    await client.post(
+        "/v1/receipts",
+        json=_new(merchant="Corner Store", items=[{"name": "Milk", "price": "3.50"}]),
+    )
+
+    resp = await client.get("/v1/receipts?q=sourdough")
+    matches = resp.json()
+    assert len(matches) == 1
+    assert matches[0]["line_items"][0]["name"] == "Sourdough Bread"
 
 
 async def test_filter_by_category(client):

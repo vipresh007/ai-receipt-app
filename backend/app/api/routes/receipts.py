@@ -4,8 +4,8 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import Text, cast, or_, select
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_current_user_optional, get_extractor
@@ -251,14 +251,23 @@ async def list_receipts(
     max_amount: str | None = None,
 ) -> list[ReceiptOut]:
     """Newest first. `month` (YYYY-MM) filters by purchase date; `q` searches
-    the merchant name (case-insensitive substring); `category` filters by
-    slug; `min_amount`/`max_amount` bound the total (decimal strings)."""
+    the merchant name and line-item names (case-insensitive substring);
+    `category` filters by slug; `min_amount`/`max_amount` bound the total
+    (decimal strings)."""
     query = select(Receipt).where(Receipt.user_id == user.id)
     if month:
         start, end = month_bounds(month_start(month))
         query = query.where(Receipt.purchased_at >= start, Receipt.purchased_at < end)
     if q:
-        query = query.where(Receipt.merchant.ilike(f"%{q}%"))
+        # line_items is JSON ({"name": ..., ...} per item) — casting to text and
+        # substring-matching works the same way on SQLite (tests) and Postgres
+        # (prod) without relying on either dialect's native JSON operators.
+        query = query.where(
+            or_(
+                Receipt.merchant.ilike(f"%{q}%"),
+                cast(Receipt.line_items, Text).ilike(f"%{q}%"),
+            )
+        )
     if category:
         query = query.where(Receipt.category_slug == category)
     if min_amount:
@@ -288,6 +297,16 @@ async def list_recurring(
         )
         for g in find_recurring(receipts)
     ]
+
+
+@router.get("/receipts/{receipt_id}", response_model=ReceiptOut)
+async def get_receipt(
+    receipt_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ReceiptOut:
+    receipt = await _owned_receipt(session, user, receipt_id)
+    return _receipt_out(receipt)
 
 
 @router.get("/receipts/{receipt_id}/image")

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReceiptOut } from "@/lib/types";
 import { categoryColor, categoryMeta } from "@/lib/categories";
 import { money, shortDate } from "@/lib/format";
@@ -8,7 +9,10 @@ export function ReceiptRow({ receipt }: { receipt: ReceiptOut }) {
   const color = categoryColor(receipt.category_slug);
 
   return (
-    <div className="flex items-center gap-md py-sm">
+    <Link
+      href={`/receipts/${receipt.id}`}
+      className="flex items-center gap-md py-sm transition-colors hover:bg-surface-2"
+    >
       <div
         className="grid h-8 w-8 shrink-0 place-items-center rounded-md"
         style={{
@@ -27,6 +31,6 @@ export function ReceiptRow({ receipt }: { receipt: ReceiptOut }) {
       <p className="tabular text-callout font-medium">
         {money(receipt.total, receipt.currency)}
       </p>
-    </div>
+    </Link>
   );
 }

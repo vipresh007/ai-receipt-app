@@ -30,7 +30,10 @@ async function forward(req: NextRequest, path: string[]): Promise<NextResponse> 
     return NextResponse.json({ detail: "Can't reach the API." }, { status: 502 });
   }
 
-  const body = await upstream.text();
+  // arrayBuffer (not .text()) — a JSON body round-trips through this fine,
+  // but .text() re-encodes as UTF-8 on the way out and corrupts anything
+  // binary, like the receipt image endpoint's JPEG bytes.
+  const body = await upstream.arrayBuffer();
   return new NextResponse(body, {
     status: upstream.status,
     headers: { "content-type": upstream.headers.get("content-type") ?? "application/json" },
