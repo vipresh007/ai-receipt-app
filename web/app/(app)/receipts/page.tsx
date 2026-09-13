@@ -113,8 +113,8 @@ export default function ReceiptsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search merchants"
-            className="pl-2xl"
+            placeholder="Search merchants or items"
+            className="pl-4xl"
           />
         </div>
         <select

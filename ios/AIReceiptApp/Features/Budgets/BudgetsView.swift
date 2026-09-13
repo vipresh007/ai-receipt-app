@@ -118,7 +118,8 @@ struct BudgetsView: View {
     }
 }
 
-private struct BudgetRow: View {
+// internal (not private) — also used by the Dashboard's Budgets summary card.
+struct BudgetRow: View {
     let budget: ReceiptExtractionAPIClient.BudgetDTO
 
     private var category: ExpenseCategory {

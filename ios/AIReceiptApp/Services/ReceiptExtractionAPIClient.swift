@@ -125,9 +125,12 @@ struct ReceiptExtractionAPIClient {
 
     // MARK: - Budgets (bearer only)
 
-    /// Every category with a budget set, plus this month's spend against it.
-    func listBudgets() async throws -> [BudgetDTO] {
-        let request = try authorized("v1/budgets", method: "GET")
+    /// Every category with a budget set, plus its spend for `month`
+    /// (YYYY-MM, defaults to the server's current month).
+    func listBudgets(month: String? = nil) async throws -> [BudgetDTO] {
+        var path = "v1/budgets"
+        if let month { path += "?month=\(month)" }
+        let request = try authorized(path, method: "GET")
         let (data, http) = try await send(request)
         try Self.expectOK(http, data, "Couldn't load your budgets")
         return try JSONDecoder().decode([BudgetDTO].self, from: data)

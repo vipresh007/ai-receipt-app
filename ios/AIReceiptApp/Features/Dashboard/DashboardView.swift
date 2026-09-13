@@ -2,13 +2,22 @@ import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
+    @Environment(AuthManager.self) private var auth
     @Query(sort: \Receipt.date, order: .reverse) private var receipts: [Receipt]
 
     /// A date inside the period currently being viewed.
     @State private var anchor: Date = .now
     @State private var granularity: Granularity = .month
+    @State private var budgets: [ReceiptExtractionAPIClient.BudgetDTO] = []
 
     private let calendar = Calendar.current
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -25,6 +34,18 @@ struct DashboardView: View {
 
     private var periodStart: Date {
         granularity.interval(containing: anchor, calendar: calendar)?.start ?? anchor
+    }
+
+    private var periodMonthString: String {
+        Self.monthFormatter.string(from: periodStart)
+    }
+
+    private func loadBudgets() async {
+        guard granularity == .month, auth.isSignedIn else {
+            budgets = []
+            return
+        }
+        budgets = (try? await AccountSync.listBudgets(auth: auth, month: periodMonthString)) ?? []
     }
 
     private var previousPeriodLabel: String {
@@ -97,6 +118,9 @@ struct DashboardView: View {
                                 currencyCode: currencyCode,
                                 previous: (summary.previousMonthTotal, previousPeriodLabel)
                             )
+                            if granularity == .month, !budgets.isEmpty {
+                                BudgetsSummaryCard(budgets: budgets)
+                            }
                             NavigationLink {
                                 MonthlyHistoryView(
                                     months: SpendingSummary.allMonths(
@@ -139,6 +163,9 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
+            .task(id: "\(granularity.rawValue)-\(periodMonthString)-\(auth.isSignedIn)") {
+                await loadBudgets()
+            }
         }
     }
 

@@ -107,13 +107,11 @@ struct ReceiptListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        // Just the filter here — swipe-to-delete already covers removal, and
+        // adding EditButton alongside the title + filter icon in the same
+        // inline bar row was too cramped.
         ToolbarItem(placement: .navigationBarTrailing) {
             categoryFilterMenu
-        }
-        if !receipts.isEmpty {
-            ToolbarItem {
-                EditButton()
-            }
         }
     }
 

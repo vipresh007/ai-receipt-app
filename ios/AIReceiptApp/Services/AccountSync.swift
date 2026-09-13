@@ -141,12 +141,16 @@ enum AccountSync {
 
     // MARK: - Budgets
 
-    /// Every category with a budget set, plus this month's spend. Signed-in
-    /// only — budgets live on the account so they sync across devices.
+    /// Every category with a budget set, plus its spend for `month` (YYYY-MM,
+    /// defaults to the server's current month). Signed-in only — budgets
+    /// live on the account so they sync across devices.
     @MainActor
-    static func listBudgets(auth: AuthManager) async throws -> [ReceiptExtractionAPIClient.BudgetDTO] {
+    static func listBudgets(
+        auth: AuthManager,
+        month: String? = nil
+    ) async throws -> [ReceiptExtractionAPIClient.BudgetDTO] {
         guard let client = await client(auth: auth) else { throw ReceiptExtractionError.notConfigured }
-        return try await client.listBudgets()
+        return try await client.listBudgets(month: month)
     }
 
     @MainActor

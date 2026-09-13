@@ -163,6 +163,26 @@ struct CategoryBreakdownCard: View {
     }
 }
 
+/// Top few budgets by usage, for the dashboard — full management lives on
+/// the Budgets tab. `BudgetRow` is the same one that tab uses.
+struct BudgetsSummaryCard: View {
+    let budgets: [ReceiptExtractionAPIClient.BudgetDTO]
+
+    var body: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                SectionLabel("Budgets")
+                VStack(spacing: Theme.Space.sm) {
+                    ForEach(Array(budgets.prefix(3).enumerated()), id: \.element.id) { index, budget in
+                        if index > 0 { Divider() }
+                        BudgetRow(budget: budget)
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct InsightsCard: View {
     let insights: [Insight]
 
