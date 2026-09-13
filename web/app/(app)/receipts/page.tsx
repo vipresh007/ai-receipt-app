@@ -33,6 +33,14 @@ interface MonthGroup {
   total: number;
 }
 
+/** Newest first; receipts with no date sort last. */
+function byDateDesc(a: ReceiptOut, b: ReceiptOut): number {
+  const ad = a.purchased_at ?? "";
+  const bd = b.purchased_at ?? "";
+  if (ad === bd) return 0;
+  return ad > bd ? -1 : 1;
+}
+
 function groupByMonth(receipts: ReceiptOut[]): MonthGroup[] {
   const map = new Map<string, ReceiptOut[]>();
   for (const r of receipts) {
@@ -45,7 +53,11 @@ function groupByMonth(receipts: ReceiptOut[]): MonthGroup[] {
     .sort((a, b) => (a[0] < b[0] ? 1 : -1)) // newest month first
     .map(([key, items]) => ({
       key,
-      items: items.slice().sort((a, b) => (monthKey(a.purchased_at) < monthKey(b.purchased_at) ? 1 : -1)),
+      // Regression: this used to compare monthKey(a) vs monthKey(b), which is
+      // identical for every item in the same group (that's how they got
+      // grouped) — the comparator always returned -1, so items within a
+      // month were never actually ordered by date.
+      items: items.slice().sort(byDateDesc),
       total: items.reduce((s, r) => s + Number(r.total), 0),
     }));
 }
