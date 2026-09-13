@@ -123,6 +123,33 @@ struct ReceiptExtractionAPIClient {
         return data
     }
 
+    // MARK: - Budgets (bearer only)
+
+    /// Every category with a budget set, plus this month's spend against it.
+    func listBudgets() async throws -> [BudgetDTO] {
+        let request = try authorized("v1/budgets", method: "GET")
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't load your budgets")
+        return try JSONDecoder().decode([BudgetDTO].self, from: data)
+    }
+
+    /// Create or update the monthly limit for a category.
+    @discardableResult
+    func setBudget(category: String, monthlyLimit: String) async throws -> BudgetDTO {
+        var request = try authorized("v1/budgets/\(category)", method: "PUT")
+        request.httpBody = try JSONEncoder().encode(BudgetWrite(monthlyLimit: monthlyLimit))
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't save the budget")
+        return try JSONDecoder().decode(BudgetDTO.self, from: data)
+    }
+
+    func deleteBudget(category: String) async throws {
+        let request = try authorized("v1/budgets/\(category)", method: "DELETE")
+        let (data, http) = try await send(request)
+        if http.statusCode == 404 { return }
+        try Self.expectOK(http, data, "Couldn't remove the budget")
+    }
+
     // MARK: - Helpers
 
     private func applyAuth(to request: inout URLRequest) {
@@ -281,6 +308,32 @@ struct ReceiptExtractionAPIClient {
 
     struct ImportBody: Encodable {
         let receipts: [ReceiptWrite]
+    }
+
+    struct BudgetWrite: Encodable {
+        let monthlyLimit: String
+
+        enum CodingKeys: String, CodingKey {
+            case monthlyLimit = "monthly_limit"
+        }
+    }
+
+    /// Server → client budget. Matches the backend `BudgetOut` (snake_case).
+    struct BudgetDTO: Decodable, Identifiable {
+        let categorySlug: String
+        let monthlyLimit: String
+        let spent: String
+        let remaining: String
+        let percentUsed: Double
+
+        var id: String { categorySlug }
+
+        enum CodingKeys: String, CodingKey {
+            case categorySlug = "category_slug"
+            case monthlyLimit = "monthly_limit"
+            case spent, remaining
+            case percentUsed = "percent_used"
+        }
     }
 
     /// Server → client receipt. Matches the backend `ReceiptOut` (snake_case).

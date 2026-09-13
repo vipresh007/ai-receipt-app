@@ -10,19 +10,53 @@ private struct MonthGroup: Identifiable {
     let total: Decimal
 }
 
+private struct MonthSectionHeader: View {
+    let group: MonthGroup
+    let currencyCode: String
+
+    var body: some View {
+        HStack {
+            Text(group.label)
+            Spacer()
+            Text(group.total, format: .currency(code: currencyCode))
+                .monospacedDigit()
+        }
+        .font(.appCaption.weight(.medium))
+        .foregroundStyle(Theme.Palette.textSecondary)
+        .textCase(nil)
+    }
+}
+
 struct ReceiptListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var auth
     @Environment(\.calendar) private var calendar
     @Query(sort: \Receipt.date, order: .reverse) private var receipts: [Receipt]
 
+    @State private var searchText = ""
+    @State private var categoryFilter: ExpenseCategory?
+
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
     }
 
+    private var recurringGroups: [RecurringGroup] {
+        RecurringDetector.find(in: receipts, calendar: calendar)
+    }
+
+    /// All filters — search text and category — applied together. Recurring
+    /// detection intentionally runs on the unfiltered list above.
+    private var filteredReceipts: [Receipt] {
+        receipts.filter { receipt in
+            if let categoryFilter, receipt.category != categoryFilter { return false }
+            guard !searchText.isEmpty else { return true }
+            return receipt.merchant.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
     private var monthGroups: [MonthGroup] {
         var buckets: [Date: [Receipt]] = [:]
-        for receipt in receipts {
+        for receipt in filteredReceipts {
             let start = calendar.dateInterval(of: .month, for: receipt.date)?.start ?? receipt.date
             buckets[start, default: []].append(receipt)
         }
@@ -40,48 +74,89 @@ struct ReceiptListView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(monthGroups) { group in
-                    Section {
-                        ForEach(group.items) { receipt in
-                            NavigationLink {
-                                ReceiptDetailView(receipt: receipt)
-                            } label: {
-                                ReceiptRow(receipt: receipt, currencyCode: currencyCode)
-                            }
-                        }
-                        .onDelete { delete(group.items, at: $0) }
-                    } header: {
-                        HStack {
-                            Text(group.label)
-                            Spacer()
-                            Text(group.total, format: .currency(code: currencyCode))
-                                .monospacedDigit()
-                        }
-                        .font(.appCaption.weight(.medium))
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .textCase(nil)
-                    }
-                }
+                recurringSection
+                monthSections
             }
-            .overlay {
-                if receipts.isEmpty {
-                    ContentUnavailableView(
-                        "No receipts",
-                        systemImage: "list.bullet.rectangle",
-                        description: Text("Scanned receipts show up here.")
-                    )
-                }
-            }
+            .overlay { emptyOverlay }
             .navigationTitle("Receipts")
-            .toolbar {
-                if !receipts.isEmpty {
-                    EditButton()
-                }
-            }
+            .searchable(text: $searchText, prompt: "Search merchants")
+            .toolbar { toolbarContent }
             .refreshable {
                 await AccountSync.pull(auth: auth, context: modelContext)
             }
         }
+    }
+
+    @ViewBuilder
+    private var emptyOverlay: some View {
+        if receipts.isEmpty {
+            ContentUnavailableView(
+                "No receipts",
+                systemImage: "list.bullet.rectangle",
+                description: Text("Scanned receipts show up here.")
+            )
+        } else if monthGroups.isEmpty {
+            ContentUnavailableView.search(text: searchText)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            categoryFilterMenu
+        }
+        if !receipts.isEmpty {
+            ToolbarItem {
+                EditButton()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var recurringSection: some View {
+        if !recurringGroups.isEmpty, searchText.isEmpty, categoryFilter == nil {
+            Section {
+                NavigationLink {
+                    RecurringListView(groups: recurringGroups, currencyCode: currencyCode)
+                } label: {
+                    RecurringSummaryRow(groups: recurringGroups, currencyCode: currencyCode)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var monthSections: some View {
+        ForEach(monthGroups) { group in
+            Section {
+                ForEach(group.items) { receipt in
+                    NavigationLink {
+                        ReceiptDetailView(receipt: receipt)
+                    } label: {
+                        ReceiptRow(receipt: receipt, currencyCode: currencyCode)
+                    }
+                }
+                .onDelete { delete(group.items, at: $0) }
+            } header: {
+                MonthSectionHeader(group: group, currencyCode: currencyCode)
+            }
+        }
+    }
+
+    private var categoryFilterMenu: some View {
+        Picker(selection: $categoryFilter) {
+            Text("All Categories").tag(ExpenseCategory?.none)
+            Divider()
+            ForEach(ExpenseCategory.allCases) { category in
+                Text(category.displayName).tag(ExpenseCategory?.some(category))
+            }
+        } label: {
+            Image(
+                systemName: categoryFilter == nil
+                    ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill"
+            )
+        }
+        .pickerStyle(.menu)
     }
 
     private func delete(_ items: [Receipt], at offsets: IndexSet) {
@@ -91,6 +166,39 @@ struct ReceiptListView: View {
                 await AccountSync.delete(receipt, auth: auth, context: modelContext)
             }
         }
+    }
+}
+
+private struct RecurringSummaryRow: View {
+    let groups: [RecurringGroup]
+    let currencyCode: String
+
+    private var monthlyTotal: Decimal {
+        groups.reduce(Decimal(0)) { $0 + $1.averageAmount }
+    }
+
+    private var subtitle: String {
+        let count = groups.count
+        let noun = count == 1 ? "subscription" : "subscriptions"
+        let amount = monthlyTotal.formatted(.currency(code: currencyCode))
+        return "\(count) likely \(noun) · \(amount)/mo"
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Space.md) {
+            Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                .font(.title2)
+                .foregroundStyle(Theme.Palette.accent)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Recurring")
+                    .font(.appCallout.weight(.medium))
+                    .foregroundStyle(Theme.Palette.text)
+                Text(subtitle)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
 

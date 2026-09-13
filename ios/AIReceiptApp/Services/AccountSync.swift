@@ -139,6 +139,33 @@ enum AccountSync {
         try? context.save()
     }
 
+    // MARK: - Budgets
+
+    /// Every category with a budget set, plus this month's spend. Signed-in
+    /// only — budgets live on the account so they sync across devices.
+    @MainActor
+    static func listBudgets(auth: AuthManager) async throws -> [ReceiptExtractionAPIClient.BudgetDTO] {
+        guard let client = await client(auth: auth) else { throw ReceiptExtractionError.notConfigured }
+        return try await client.listBudgets()
+    }
+
+    @MainActor
+    @discardableResult
+    static func setBudget(
+        category: ExpenseCategory,
+        monthlyLimit: String,
+        auth: AuthManager
+    ) async throws -> ReceiptExtractionAPIClient.BudgetDTO {
+        guard let client = await client(auth: auth) else { throw ReceiptExtractionError.notConfigured }
+        return try await client.setBudget(category: category.rawValue, monthlyLimit: monthlyLimit)
+    }
+
+    @MainActor
+    static func deleteBudget(category: ExpenseCategory, auth: AuthManager) async throws {
+        guard let client = await client(auth: auth) else { throw ReceiptExtractionError.notConfigured }
+        try await client.deleteBudget(category: category.rawValue)
+    }
+
     // MARK: - Helpers
 
     @MainActor

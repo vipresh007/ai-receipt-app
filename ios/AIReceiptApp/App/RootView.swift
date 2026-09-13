@@ -16,6 +16,9 @@ struct RootView: View {
             ReceiptListView()
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
 
+            BudgetsView()
+                .tabItem { Label("Budgets", systemImage: "target") }
+
             AccountView()
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }

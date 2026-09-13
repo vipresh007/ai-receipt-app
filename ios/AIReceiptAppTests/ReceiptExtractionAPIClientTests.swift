@@ -117,6 +117,35 @@ final class ReceiptExtractionAPIClientTests: XCTestCase {
         XCTAssertNil(anon.id)
     }
 
+    func testBudgetWriteEncodesMonthlyLimitSnakeCase() throws {
+        let json = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(ReceiptExtractionAPIClient.BudgetWrite(monthlyLimit: "300.00"))
+        ) as? [String: Any]
+        XCTAssertEqual(json?["monthly_limit"] as? String, "300.00")
+        XCTAssertNil(json?["monthlyLimit"])
+    }
+
+    func testBudgetDTODecodesSnakeCase() throws {
+        let dto = try JSONDecoder().decode(
+            ReceiptExtractionAPIClient.BudgetDTO.self,
+            from: Data(
+                #"""
+                {
+                  "category_slug": "groceries",
+                  "monthly_limit": "300.00",
+                  "spent": "75.00",
+                  "remaining": "225.00",
+                  "percent_used": 25.0
+                }
+                """#.utf8
+            )
+        )
+        XCTAssertEqual(dto.categorySlug, "groceries")
+        XCTAssertEqual(dto.spent, "75.00")
+        XCTAssertEqual(dto.percentUsed, 25.0)
+        XCTAssertEqual(dto.id, "groceries")
+    }
+
     func testAuthorizedBuildsRealQueryStringNotEncodedPath() throws {
         // Regression: `appendingPathComponent` used to swallow the whole
         // "v1/receipts?limit=200" string as a literal path segment, so the
