@@ -133,9 +133,27 @@ struct ReceiptExtractionAPIClient {
         }
     }
 
-    private func authorized(_ path: String, method: String) throws -> URLRequest {
+    // internal (not private) so tests can assert the URL it builds — this is
+    // the exact spot the "%3Flimit%3D200" 404 bug lived in.
+    func authorized(_ path: String, method: String) throws -> URLRequest {
         guard let authToken, !authToken.isEmpty else { throw ReceiptExtractionError.notConfigured }
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        // `appendingPathComponent` treats the whole string as a literal path
+        // segment, so a "?query=string" suffix (e.g. listReceipts' "?limit=")
+        // gets percent-encoded instead of parsed as a query — the server then
+        // 404s on a path that literally contains "%3Flimit%3D200". Split the
+        // query off first and attach it as an actual query.
+        let parts = path.split(separator: "?", maxSplits: 1)
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent(String(parts[0])),
+            resolvingAgainstBaseURL: false
+        )
+        if parts.count == 2 {
+            components?.percentEncodedQuery = String(parts[1])
+        }
+        guard let url = components?.url else {
+            throw ReceiptExtractionError.server("Invalid request URL.")
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")

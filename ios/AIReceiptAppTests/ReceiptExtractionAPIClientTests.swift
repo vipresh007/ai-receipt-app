@@ -117,6 +117,31 @@ final class ReceiptExtractionAPIClientTests: XCTestCase {
         XCTAssertNil(anon.id)
     }
 
+    func testAuthorizedBuildsRealQueryStringNotEncodedPath() throws {
+        // Regression: `appendingPathComponent` used to swallow the whole
+        // "v1/receipts?limit=200" string as a literal path segment, so the
+        // "?" and "=" got percent-encoded and the server 404'd on a path
+        // that literally contained "%3Flimit%3D200".
+        let client = ReceiptExtractionAPIClient(
+            baseURL: URL(string: "https://api.example.com")!,
+            authToken: "token"
+        )
+        let request = try client.authorized("v1/receipts?limit=200", method: "GET")
+        XCTAssertEqual(request.url?.path, "/v1/receipts")
+        XCTAssertEqual(request.url?.query, "limit=200")
+        XCTAssertFalse(request.url?.absoluteString.contains("%3F") ?? true)
+    }
+
+    func testAuthorizedHandlesPathWithoutQuery() throws {
+        let client = ReceiptExtractionAPIClient(
+            baseURL: URL(string: "https://api.example.com")!,
+            authToken: "token"
+        )
+        let request = try client.authorized("v1/auth/me", method: "DELETE")
+        XCTAssertEqual(request.url?.path, "/v1/auth/me")
+        XCTAssertNil(request.url?.query)
+    }
+
     func testReceiptDTODecodesSnakeCaseAndMakesReceipt() throws {
         let dto = try JSONDecoder().decode(
             ReceiptExtractionAPIClient.ReceiptDTO.self,
