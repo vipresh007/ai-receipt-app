@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { TrendPoint } from "@/lib/types";
+import { bucketTrend } from "@/lib/period";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SpendingTrend } from "@/components/spending-trend";
 
 function monthName(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
@@ -20,6 +23,7 @@ function monthName(ym: string): string {
 }
 
 export default function MonthsPage() {
+  const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ["trend", "all"],
     queryFn: () => apiGet<TrendPoint[]>("v1/expenses/trend?months=24"),
@@ -31,6 +35,8 @@ export default function MonthsPage() {
     .reverse()
     .filter((p, i) => Number(p.total) > 0 || i === 0);
 
+  const chartData = bucketTrend(data ?? [], "month", 12);
+
   return (
     <div className="space-y-xl">
       <header className="flex items-center justify-between">
@@ -39,6 +45,21 @@ export default function MonthsPage() {
           Back to dashboard
         </Link>
       </header>
+
+      <Card>
+        <CardTitle>Last 12 months</CardTitle>
+        <div className="mt-md">
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <SpendingTrend
+              data={chartData}
+              activeKey=""
+              onSelect={(key) => router.push(`/dashboard?month=${key}`)}
+            />
+          )}
+        </div>
+      </Card>
 
       <Card>
         <div className="divide-y divide-border">

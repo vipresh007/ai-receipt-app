@@ -10,32 +10,37 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { TrendPoint } from "@/lib/types";
 import { money } from "@/lib/format";
-
-function shortMonth(ym: string): string {
-  const [y, m] = ym.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(undefined, {
-    month: "short",
-    timeZone: "UTC",
-  });
-}
 
 function compact(n: number): string {
   return n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(Math.round(n));
 }
 
-/** Month-to-month total spend. The `activeMonth` bar (YYYY-MM) is drawn solid. */
-export function SpendingTrend({ data, activeMonth }: { data: TrendPoint[]; activeMonth: string }) {
-  if (data.every((d) => Number(d.total) === 0)) {
+interface Bucket {
+  key: string;
+  label: string;
+  amount: number;
+}
+
+/** A bar chart over pre-bucketed periods (months, quarters, or years — see
+ * `lib/period.ts`). The `activeKey` bar is drawn solid; clicking a bar calls
+ * `onSelect` with that bucket's key, so the chart doubles as navigation. */
+export function SpendingTrend({
+  data,
+  activeKey,
+  onSelect,
+}: {
+  data: Bucket[];
+  activeKey: string;
+  onSelect?: (key: string) => void;
+}) {
+  if (data.every((d) => d.amount === 0)) {
     return <p className="text-callout text-text-secondary">Not enough history yet.</p>;
   }
 
-  const rows = data.map((d) => ({ month: d.month, label: shortMonth(d.month), amount: Number(d.total) }));
-
   return (
     <ResponsiveContainer width="100%" height={170}>
-      <BarChart data={rows} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
+      <BarChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
         <XAxis
           dataKey="label"
           tickLine={false}
@@ -67,8 +72,15 @@ export function SpendingTrend({ data, activeMonth }: { data: TrendPoint[]; activ
             formatter={(v: number) => (v > 0 ? compact(v) : "")}
             style={{ fill: "var(--c-text-secondary)", fontSize: 10 }}
           />
-          {rows.map((r) => (
-            <Cell key={r.month} fillOpacity={r.month === activeMonth ? 1 : 0.28} />
+          {data.map((r) => (
+            // onClick lives on each Cell (closing over its own row) rather than
+            // on <Bar>, whose onClick payload shape isn't worth depending on.
+            <Cell
+              key={r.key}
+              fillOpacity={r.key === activeKey ? 1 : 0.28}
+              onClick={onSelect ? () => onSelect(r.key) : undefined}
+              cursor={onSelect ? "pointer" : undefined}
+            />
           ))}
         </Bar>
       </BarChart>
