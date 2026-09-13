@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import {
   AuthErrorBanner,
@@ -18,12 +17,11 @@ export default async function Home({
 }) {
   const { authError } = await searchParams;
   const session = await auth0.getSession();
-  if (session) redirect("/dashboard");
 
   return (
     <div className="min-h-dvh bg-bg text-text">
       {authError && <AuthErrorBanner message={authError} />}
-      <SiteHeader />
+      <SiteHeader isSignedIn={!!session} />
       <main>
         <Hero />
         <ReadsReceipts />

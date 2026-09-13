@@ -5,9 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api";
-import type { ReceiptOut } from "@/lib/types";
+import type { ExtractionItem, ReceiptOut } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
-import { money } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +26,9 @@ export default function ReceiptDetailPage() {
   const [merchant, setMerchant] = useState("");
   const [date, setDate] = useState("");
   const [category, setCategory] = useState("other");
+  const [total, setTotal] = useState("");
+  const [tax, setTax] = useState("");
+  const [items, setItems] = useState<ExtractionItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,18 +39,30 @@ export default function ReceiptDetailPage() {
     setMerchant(receipt.merchant);
     setDate(receipt.purchased_at ?? "");
     setCategory(receipt.category_slug);
+    setTotal(receipt.total);
+    setTax(receipt.tax);
+    setItems(receipt.line_items);
   }, [receipt]);
+
+  function updateItem(index: number, patch: Partial<ExtractionItem>) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
 
   const dirty =
     !!receipt &&
-    (merchant !== receipt.merchant || date !== (receipt.purchased_at ?? "") || category !== receipt.category_slug);
+    (merchant !== receipt.merchant ||
+      date !== (receipt.purchased_at ?? "") ||
+      category !== receipt.category_slug ||
+      total !== receipt.total ||
+      tax !== receipt.tax ||
+      JSON.stringify(items) !== JSON.stringify(receipt.line_items));
 
   async function save() {
     if (!receipt || saving) return;
     setSaving(true);
     setError(null);
     try {
-      await apiPatch(`v1/receipts/${id}`, { merchant, date, category });
+      await apiPatch(`v1/receipts/${id}`, { merchant, date, category, total, tax, items });
       await queryClient.invalidateQueries({ queryKey: ["receipt", id] });
       await queryClient.invalidateQueries({ queryKey: ["receipts"] });
       router.push("/receipts");
@@ -141,28 +155,58 @@ export default function ReceiptDetailPage() {
           </div>
         </div>
 
-        <dl className="grid grid-cols-2 gap-md text-callout">
-          <div>
-            <dt className="text-caption text-text-tertiary">Total</dt>
-            <dd className="tabular font-medium text-text">{money(receipt.total, receipt.currency)}</dd>
+        <div className="grid grid-cols-2 gap-md">
+          <div className="space-y-xs">
+            <Label htmlFor="total">Total</Label>
+            <Input
+              id="total"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={total}
+              onChange={(e) => setTotal(e.target.value)}
+            />
           </div>
-          <div>
-            <dt className="text-caption text-text-tertiary">Tax</dt>
-            <dd className="tabular font-medium text-text">{money(receipt.tax, receipt.currency)}</dd>
+          <div className="space-y-xs">
+            <Label htmlFor="tax">Tax</Label>
+            <Input
+              id="tax"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={tax}
+              onChange={(e) => setTax(e.target.value)}
+            />
           </div>
-        </dl>
+        </div>
 
-        {receipt.line_items.length > 0 && (
+        {items.length > 0 && (
           <div className="space-y-xs">
             <p className="text-caption text-text-tertiary">Items</p>
-            <ul className="divide-y divide-border">
-              {receipt.line_items.map((item, i) => (
-                <li key={i} className="flex items-center justify-between py-xs text-callout">
-                  <span className="text-text">{item.name}</span>
-                  <span className="tabular text-text-secondary">{money(item.price, receipt.currency)}</span>
-                </li>
+            <div className="space-y-sm">
+              {items.map((item, i) => (
+                <div key={i} className="flex items-center gap-sm">
+                  <Input
+                    value={item.name}
+                    onChange={(e) => updateItem(i, { name: e.target.value })}
+                    aria-label={`Item ${i + 1} name`}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    value={item.price}
+                    onChange={(e) => updateItem(i, { price: e.target.value })}
+                    aria-label={`Item ${i + 1} price`}
+                    className="w-24"
+                  />
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
 

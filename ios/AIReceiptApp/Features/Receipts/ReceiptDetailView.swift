@@ -39,10 +39,14 @@ struct ReceiptDetailView: View {
 
             Section("Amount") {
                 LabeledContent("Total") {
-                    Text(receipt.total, format: .currency(code: currencyCode))
+                    TextField("Total", value: $receipt.total, format: .currency(code: currencyCode))
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.decimalPad)
                 }
                 LabeledContent("Tax") {
-                    Text(receipt.tax, format: .currency(code: currencyCode))
+                    TextField("Tax", value: $receipt.tax, format: .currency(code: currencyCode))
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.decimalPad)
                 }
             }
 
@@ -57,11 +61,14 @@ struct ReceiptDetailView: View {
 
             if !receipt.items.isEmpty {
                 Section("Items") {
-                    ForEach(receipt.items) { item in
+                    ForEach($receipt.items) { $item in
                         HStack {
-                            Text(item.name)
+                            TextField("Item", text: $item.name)
                             Spacer()
-                            Text(item.price, format: .currency(code: currencyCode))
+                            TextField("Price", value: $item.price, format: .currency(code: currencyCode))
+                                .multilineTextAlignment(.trailing)
+                                .keyboardType(.decimalPad)
+                                .frame(width: 90)
                                 .foregroundStyle(.secondary)
                         }
                     }

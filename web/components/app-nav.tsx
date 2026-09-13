@@ -18,12 +18,12 @@ export function AppNav({ displayName }: { displayName?: string }) {
 
   return (
     <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
-      <div className="mb-xl hidden items-center gap-sm px-md md:flex">
+      <Link href="/" className="mb-xl hidden items-center gap-sm px-md md:flex">
         <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-accent-fg">
           <TallyMark size={24} />
         </div>
         <span className="text-title tracking-tight">Tally</span>
-      </div>
+      </Link>
 
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);

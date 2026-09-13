@@ -20,7 +20,7 @@ const LOGIN = "/auth/login";
 
 /* ─────────────────────────── header ─────────────────────────── */
 
-export function SiteHeader() {
+export function SiteHeader({ isSignedIn = false }: { isSignedIn?: boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-3xl sm:px-4xl">
@@ -34,15 +34,23 @@ export function SiteHeader() {
           >
             How it works
           </a>
-          <a
-            href={LOGIN}
-            className="rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:text-text"
-          >
-            Log in
-          </a>
-          <a href={SIGNUP} className={buttonVariants({ size: "sm" })}>
-            Get started
-          </a>
+          {isSignedIn ? (
+            <a href="/dashboard" className={buttonVariants({ size: "sm" })}>
+              Go to Dashboard
+            </a>
+          ) : (
+            <>
+              <a
+                href={LOGIN}
+                className="rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:text-text"
+              >
+                Log in
+              </a>
+              <a href={SIGNUP} className={buttonVariants({ size: "sm" })}>
+                Get started
+              </a>
+            </>
+          )}
         </nav>
       </div>
     </header>
