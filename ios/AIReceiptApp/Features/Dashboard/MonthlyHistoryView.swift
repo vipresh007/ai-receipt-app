@@ -6,17 +6,40 @@ struct MonthlyHistoryView: View {
     let months: [MonthlyPoint]
     let currencyCode: String
     var onSelect: (Date) -> Void
+    /// Zero-filled last-12-months points for the chart — `months` itself only
+    /// lists months that actually have spending, which leaves gaps.
+    var chartPoints: [MonthlyPoint] = []
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
-            ForEach(Array(months.enumerated()), id: \.element.id) { index, month in
-                Button {
-                    onSelect(month.monthStart)
-                    dismiss()
-                } label: {
-                    row(month, previous: months[safe: index + 1])
+            if !chartPoints.isEmpty {
+                Section {
+                    AppCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                            SectionLabel("Last \(chartPoints.count) months")
+                            SpendingBarChart(
+                                points: chartPoints,
+                                highlighted: chartPoints.last?.monthStart ?? .now,
+                                currencyCode: currencyCode
+                            )
+                        }
+                    }
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+
+            Section {
+                ForEach(Array(months.enumerated()), id: \.element.id) { index, month in
+                    Button {
+                        onSelect(month.monthStart)
+                        dismiss()
+                    } label: {
+                        row(month, previous: months[safe: index + 1])
+                    }
                 }
             }
         }

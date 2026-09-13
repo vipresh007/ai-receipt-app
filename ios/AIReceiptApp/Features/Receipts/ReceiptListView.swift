@@ -50,7 +50,8 @@ struct ReceiptListView: View {
         receipts.filter { receipt in
             if let categoryFilter, receipt.category != categoryFilter { return false }
             guard !searchText.isEmpty else { return true }
-            return receipt.merchant.localizedCaseInsensitiveContains(searchText)
+            if receipt.merchant.localizedCaseInsensitiveContains(searchText) { return true }
+            return receipt.items.contains { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
     }
 
@@ -79,7 +80,11 @@ struct ReceiptListView: View {
             }
             .overlay { emptyOverlay }
             .navigationTitle("Receipts")
-            .searchable(text: $searchText, prompt: "Search merchants")
+            // Inline (not large) — with a search field and a filter button
+            // both in the bar, a large title left the filter icon floating
+            // in its own row above "Receipts" instead of alongside it.
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Search merchants or items")
             .toolbar { toolbarContent }
             .refreshable {
                 await AccountSync.pull(auth: auth, context: modelContext)

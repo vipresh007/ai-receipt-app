@@ -40,9 +40,13 @@ struct MonthlyTotalCard: View {
     }
 }
 
-struct SpendingTrendCard: View {
+/// Just the bar chart — no card chrome or "go to all months" affordance.
+/// Reused by the dashboard's tappable trend card and by the standalone
+/// history/months view.
+struct SpendingBarChart: View {
     let points: [MonthlyPoint]
-    /// Month (its first day) currently being viewed — drawn solid; others faded.
+    /// The period (its start date) currently being viewed — drawn solid;
+    /// others faded.
     let highlighted: Date
     let currencyCode: String
 
@@ -51,10 +55,45 @@ struct SpendingTrendCard: View {
     }
 
     var body: some View {
+        Chart(points) { point in
+            let value = (point.total as NSDecimalNumber).doubleValue
+            BarMark(
+                x: .value("Period", point.label),
+                y: .value("Spent", value)
+            )
+            .foregroundStyle(
+                point.monthStart == highlighted
+                    ? Theme.Palette.accent
+                    : Theme.Palette.accent.opacity(0.28)
+            )
+            .cornerRadius(4)
+            .annotation(position: .top, spacing: 3) {
+                if value > 0 {
+                    Text(compactMoney(point.total, code: currencyCode))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartYScale(domain: 0...(maxTotal * 1.25 + 1))
+        .frame(height: 150)
+    }
+}
+
+struct SpendingTrendCard: View {
+    let points: [MonthlyPoint]
+    /// The period (its start date) currently being viewed — drawn solid.
+    let highlighted: Date
+    let currencyCode: String
+    /// "months" / "quarters" / "years" — matches whatever granularity `points` was built with.
+    var periodNoun = "months"
+
+    var body: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.sm) {
                 HStack {
-                    SectionLabel("Last \(points.count) months")
+                    SectionLabel("Last \(points.count) \(periodNoun)")
                     Spacer()
                     Text("All months")
                         .font(.appCaption.weight(.medium))
@@ -63,29 +102,7 @@ struct SpendingTrendCard: View {
                         .font(.appCaption.weight(.semibold))
                         .foregroundStyle(Theme.Palette.accent)
                 }
-                Chart(points) { point in
-                    let value = (point.total as NSDecimalNumber).doubleValue
-                    BarMark(
-                        x: .value("Month", point.label),
-                        y: .value("Spent", value)
-                    )
-                    .foregroundStyle(
-                        point.monthStart == highlighted
-                            ? Theme.Palette.accent
-                            : Theme.Palette.accent.opacity(0.28)
-                    )
-                    .cornerRadius(4)
-                    .annotation(position: .top, spacing: 3) {
-                        if value > 0 {
-                            Text(compactMoney(point.total, code: currencyCode))
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                        }
-                    }
-                }
-                .chartYAxis(.hidden)
-                .chartYScale(domain: 0...(maxTotal * 1.25 + 1))
-                .frame(height: 150)
+                SpendingBarChart(points: points, highlighted: highlighted, currencyCode: currencyCode)
             }
         }
     }

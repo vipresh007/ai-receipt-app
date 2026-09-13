@@ -30,13 +30,22 @@ struct SpendingSummary {
     let currentMonthByCategory: [CategoryTotal]
     let insights: [Insight]
 
-    init(receipts: [Receipt], calendar: Calendar = .current, now: Date = .now) {
-        let currentMonth = calendar.dateInterval(of: .month, for: now)
-        let previousMonth = calendar.date(byAdding: .month, value: -1, to: now)
-            .flatMap { calendar.dateInterval(of: .month, for: $0) }
+    /// `granularity` defaults to `.month`, which reproduces the exact
+    /// behavior this type always had — quarter/year are additive. Insights
+    /// are a month-over-month concept, so they're empty outside `.month`
+    /// (same call the web dashboard makes).
+    init(
+        receipts: [Receipt],
+        calendar: Calendar = .current,
+        now: Date = .now,
+        granularity: Granularity = .month
+    ) {
+        let currentInterval = granularity.interval(containing: now, calendar: calendar)
+        let previousAnchor = granularity.shift(now, by: -1, calendar: calendar)
+        let previousInterval = granularity.interval(containing: previousAnchor, calendar: calendar)
 
-        let current = receipts.filter { Self.contains(currentMonth, $0.date) }
-        let previous = receipts.filter { Self.contains(previousMonth, $0.date) }
+        let current = receipts.filter { Self.contains(currentInterval, $0.date) }
+        let previous = receipts.filter { Self.contains(previousInterval, $0.date) }
 
         currentMonthTotal = current.reduce(Decimal(0)) { $0 + $1.total }
         previousMonthTotal = previous.reduce(Decimal(0)) { $0 + $1.total }
@@ -45,13 +54,47 @@ struct SpendingSummary {
             .map { CategoryTotal(category: $0.key, amount: $0.value) }
             .sorted { $0.amount > $1.amount }
 
-        insights = Self.makeInsights(
-            current: current,
-            previous: previous,
-            receipts: receipts,
-            calendar: calendar,
-            now: now
-        )
+        insights =
+            granularity == .month
+            ? Self.makeInsights(
+                current: current,
+                previous: previous,
+                receipts: receipts,
+                calendar: calendar,
+                now: now
+            ) : []
+    }
+
+    /// Total spend per period (month, quarter, or year) for the last
+    /// `periods` periods, oldest first, zero-filled.
+    static func periodTrend(
+        receipts: [Receipt],
+        calendar: Calendar = .current,
+        now: Date = .now,
+        granularity: Granularity,
+        periods: Int
+    ) -> [MonthlyPoint] {
+        guard let thisPeriodStart = granularity.interval(containing: now, calendar: calendar)?.start else {
+            return []
+        }
+        var starts: [Date] = []
+        var cursor = thisPeriodStart
+        for _ in 0..<max(1, periods) {
+            starts.append(cursor)
+            cursor = granularity.shift(cursor, by: -1, calendar: calendar)
+        }
+        starts.reverse()
+        return starts.compactMap { start -> MonthlyPoint? in
+            guard let interval = granularity.interval(containing: start, calendar: calendar) else { return nil }
+            let total = receipts
+                .filter { interval.contains($0.date) }
+                .reduce(Decimal(0)) { $0 + $1.total }
+            return MonthlyPoint(
+                monthStart: interval.start,
+                total: total,
+                label: granularity.chartLabel(for: start, calendar: calendar)
+            )
+        }
     }
 
     /// Total spend per month for the last `months` months, oldest first,
