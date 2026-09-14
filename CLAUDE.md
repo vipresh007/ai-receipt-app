@@ -41,7 +41,9 @@ Insights** (telemetry).
   config (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
   empty → the Account screen just hides sign-in. See [`docs/AUTH.md`](docs/AUTH.md).
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
-- Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'`
+- Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'`
+  (adjust the simulator name to whatever's installed locally — Xcode drops
+  older models from `xcodebuild -destination` support on each major update).
 
 ## Web (`web/`)
 
@@ -57,7 +59,9 @@ Insights** (telemetry).
   `middleware.ts` + `app/(app)/layout.tsx`. Full setup: [`docs/AUTH.md`](docs/AUTH.md).
 - Keep `lib/types.ts` in sync with `backend/app/schemas`.
 - The scan screen shows results as already-saved (backend `/v1/extract`
-  persists). Edit-before-save needs a backend change.
+  persists). Merchant/date/category/total/tax/line-items are all editable
+  after the fact via `PATCH /v1/receipts/{id}` — `/receipts/[id]/page.tsx` on
+  web, `ReceiptDetailView` on iOS.
 
 ## Backend (`backend/`)
 
@@ -100,9 +104,14 @@ Insights** (telemetry).
 ## The iOS ⇄ backend contract
 
 `POST /v1/extract` (parse; persists for signed-in) plus the receipt CRUD
-(`GET/POST /v1/receipts`, `PATCH/DELETE /v1/receipts/{id}`, `POST
-/v1/receipts/import`) that iOS sync uses. Request/response shapes and the Azure
-OpenAI prompt live in
+(`GET/POST /v1/receipts`, `PATCH/DELETE /v1/receipts/{id}`, `GET
+/v1/receipts/{id}/image`, `POST /v1/receipts/import`) that iOS sync uses.
+`GET /v1/receipts` also takes `month`, `q` (merchant + line-item search),
+`category`, `min_amount`/`max_amount`. Beyond the core loop: `GET
+/v1/receipts/recurring` (same-merchant-across-months detection, mirrored in
+`app/services/recurring.py` and iOS's `RecurringDetector`), `GET /v1/expenses/
+summary|trend`, and `GET/PUT/DELETE /v1/budgets/{category}` (per-category
+monthly limits). Request/response shapes and the Azure OpenAI prompt live in
 [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md). The iOS side is
 `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift`; the backend side is
 `backend/app/api/routes/receipts.py` + `services/extraction.py`. Change both
