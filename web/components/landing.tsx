@@ -692,9 +692,8 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-2xl flex flex-col items-center justify-between gap-sm border-t border-border pt-lg text-caption text-text-tertiary sm:flex-row">
+        <div className="mt-2xl border-t border-border pt-lg text-caption text-text-tertiary">
           <span>© {new Date().getFullYear()} DATA EAVER INC. All rights reserved.</span>
-          <span>Built by Vipresh Patel</span>
         </div>
       </div>
     </footer>
