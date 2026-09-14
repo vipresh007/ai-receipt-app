@@ -4,8 +4,9 @@ _Last updated: set this to the date you publish. This is a first draft — have 
 reviewed by a lawyer before you rely on it._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
-operated by **Vipresh Patel**, collects when you use the Tally app and
-website, why, and what choices you have. Questions: **vipresh1993@gmail.com**.
+operated by **DATA EAVER INC.**, collects when you use the Tally app and
+website ([tally.dataeaver.ca](https://tally.dataeaver.ca)), why, and what
+choices you have. Questions: **contact@dataeaver.ca**.
 
 ## What we collect
 
@@ -54,9 +55,8 @@ return the extracted data; we then store it as described below.
 
 ## Where your data is stored
 
-Your account and receipts are stored in Microsoft Azure, in the **Canada
-Central** region _(confirm this is where you'll actually host production)_:
-PostgreSQL for records and Azure Blob Storage for receipt images. Some
+Your account and receipts are stored in Microsoft Azure, in the **East US 2**
+region: PostgreSQL for records and Azure Blob Storage for receipt images. Some
 processing by our providers (below) may occur in other regions.
 
 ## Sharing
@@ -94,7 +94,7 @@ or the public.
   processing, to data portability, and to lodge a complaint with your privacy
   regulator (in Canada, the Office of the Privacy Commissioner).
 
-To exercise a right, email **vipresh1993@gmail.com**.
+To exercise a right, email **contact@dataeaver.ca**.
 
 ## Children
 
@@ -114,4 +114,4 @@ material changes, notify you in the app or by email.
 
 ## Contact
 
-**Vipresh Patel** — **vipresh1993@gmail.com**
+**DATA EAVER INC.** — **contact@dataeaver.ca**

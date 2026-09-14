@@ -90,9 +90,19 @@ Apps (`AUTH0_CLIENT_SECRET` / `AUTH0_SECRET` become Container App secrets):
 ./infra/deploy.sh
 ```
 
-`APP_BASE_URL` for the deployed web app is set automatically to its own HTTPS
-FQDN. Remember to add `https://<web-fqdn>/auth/callback` to the Allowed Callback
-URLs (step 1).
+`APP_BASE_URL` for the deployed web app is set automatically — to the custom
+domain (`WEB_CUSTOM_DOMAIN` in `infra/deploy.sh`) when one is bound, otherwise
+the raw `*.azurecontainerapps.io` FQDN. Remember to add the matching URLs to
+the Auth0 **Web application's** allowed lists (step 1) whenever that changes.
+
+**Current dev values** (custom domain `tally.dataeaver.ca` bound as of
+2026-09-14 — add these in the Auth0 dashboard, this file can't do it for you):
+
+- **Allowed Callback URLs**: add `https://tally.dataeaver.ca/auth/callback`
+  (keep the existing `localhost` and `*.azurecontainerapps.io` ones too, so
+  local dev and the raw hostname keep working).
+- **Allowed Logout URLs**: add `https://tally.dataeaver.ca`.
+- **Allowed Web Origins**: add `https://tally.dataeaver.ca`.
 
 ---
 

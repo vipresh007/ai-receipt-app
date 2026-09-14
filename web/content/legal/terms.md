@@ -3,9 +3,10 @@
 _Last updated: set this to the date you publish. This is a first draft — have it
 reviewed by a lawyer before you rely on it._
 
-These terms are a contract between you and **Vipresh Patel** ("we", "us"), the
-developer of **Tally**, for use of the Tally app and website (the "Service").
-By creating an account or using the Service you agree to them.
+These terms are a contract between you and **DATA EAVER INC.** ("we", "us"),
+the developer of **Tally**, for use of the Tally app and website
+([tally.dataeaver.ca](https://tally.dataeaver.ca), the "Service"). By creating
+an account or using the Service you agree to them.
 
 ## The Service
 
@@ -87,4 +88,4 @@ rules. _(Confirm this matches where you're actually based.)_
 
 ## Contact
 
-**Vipresh Patel** — **vipresh1993@gmail.com**
+**DATA EAVER INC.** — **contact@dataeaver.ca**

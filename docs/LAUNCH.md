@@ -60,10 +60,15 @@ build, ✅ = already done.**
 
 ## 3. Web → production
 
-- ⛔ **Custom domains + TLS** for the web app and the API (e.g. `tally.app`
-  and `api.tally.app`). Add custom domains to both Container Apps, managed
-  certs, and update `APP_BASE_URL` / `AUTH0` allowed URLs / iOS
-  `EXTRACTION_API_HOST`.
+- ✅ **Custom domain + TLS** for the web app: **tally.dataeaver.ca**, bound to
+  the Container App with a managed cert. `APP_BASE_URL` and the API's
+  `CORS_ORIGINS` both updated (`infra/deploy.sh` now sets these from
+  `WEB_CUSTOM_DOMAIN`, so future deploys keep using it automatically). **Still
+  needed**: add `https://tally.dataeaver.ca/auth/callback` (and the logout URL
+  + web origin) to the **Auth0 Web application's** allowed URLs — that's an
+  Auth0-dashboard change only you can make; see `docs/AUTH.md`. The API itself
+  (`EXTRACTION_API_HOST` for iOS) still uses its raw `*.azurecontainerapps.io`
+  hostname — a custom domain there is optional, not needed for the web fix.
 - ✅ **Account deletion** on web — `/account` danger zone.
 - ✅ **CORS** — `cors_origins` no longer defaults to `*`; `deploy.sh` sets
   `CORS_ORIGINS` to the web FQDN. Update it when the custom domain lands.
@@ -111,13 +116,19 @@ build, ✅ = already done.**
 ## 5. Legal & data
 
 - 🟡 **Privacy Policy** — drafted at `/privacy` (`web/content/legal/privacy.md`),
-  fully filled in (Vipresh Patel, vipresh1993@gmail.com, no company/address).
-  Get it **legally reviewed**, then it's a ✅.
+  filled in (**DATA EAVER INC.**, contact@dataeaver.ca, tally.dataeaver.ca, no
+  mailing address). Get it **legally reviewed**, then it's a ✅.
 - ✅ **Account & data deletion** mechanism (see §2) — DB rows + best-effort
   blob cleanup. Confirm your backup policy also purges deleted accounts.
 - 🟡 **Terms of Service** — drafted at `/terms` (`web/content/legal/terms.md`),
   same as above; needs the same legal review.
-- ✅ **Publishing entity**: individual, **Vipresh Patel** — no company.
+- 🟡 **Publishing entity**: legal docs now name **DATA EAVER INC.** as
+  operator, but your Apple Developer Program is enrolled as an **Individual**
+  (Vipresh Patel) — the App Store's own "seller" would still read your name,
+  not the company's. Fine for dev/TestFlight; resolve before a real App Store
+  listing (either keep the docs as an individual, or upgrade the Apple account
+  to an Organization — needs a D-U-N-S number). Details in
+  `docs/legal/README.md`.
 - 🟡 Data Processing / sub-processor list if you'll have EU/UK users (GDPR).
 - 🟢 "Export my data" (JSON dump) — nice, not required.
 

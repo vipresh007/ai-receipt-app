@@ -25,6 +25,11 @@ ACR_NAME="${ACR_NAME:-$(printf '%s' "${NAME_PREFIX}acr" | tr -cd 'a-z0-9')}"
 CAE_NAME="${CAE_NAME:-${NAME_PREFIX}-cae}"
 API_APP="${API_APP:-${NAME_PREFIX}-api}"
 WEB_APP="${WEB_APP:-${NAME_PREFIX}-web}"
+# Custom domain bound to $WEB_APP (az containerapp hostname add, done once,
+# outside this script). When set, APP_BASE_URL and CORS_ORIGINS prefer it over
+# the raw *.azurecontainerapps.io hostname so Auth0 redirects land on the
+# branded URL. Empty string disables it.
+WEB_CUSTOM_DOMAIN="${WEB_CUSTOM_DOMAIN-tally.dataeaver.ca}"
 
 OPENAI_NAME="${OPENAI_NAME:-${NAME_PREFIX}-openai}"
 OPENAI_DEPLOYMENT="${OPENAI_DEPLOYMENT:-gpt-5-mini}"
@@ -159,20 +164,26 @@ if [ "$TARGET" = "web" ] || [ "$TARGET" = "both" ]; then
   WEB_FQDN="$(deploy_app "$WEB_APP" "$ACR_SERVER/ai-receipt-web:$TAG" 3000 "$web_secrets" "$web_env")"
 
   # APP_BASE_URL needs the app's own FQDN, known only after the first create.
+  # The custom domain (if bound) wins so Auth0 redirects land there.
+  APP_BASE_HOST="${WEB_CUSTOM_DOMAIN:-$WEB_FQDN}"
   az containerapp update -n "$WEB_APP" -g "$RESOURCE_GROUP" \
-    --set-env-vars APP_BASE_URL="https://$WEB_FQDN" -o none
-  echo "web: https://$WEB_FQDN"
+    --set-env-vars APP_BASE_URL="https://$APP_BASE_HOST" -o none
+  echo "web: https://$APP_BASE_HOST"
 fi
 
-# Lock the API's CORS to the web origin (needs the web FQDN, known only now).
+# Lock the API's CORS to the web origin(s) (needs the web FQDN, known only
+# now). Both the custom domain and the raw *.azurecontainerapps.io hostname
+# are allowed, since the latter still resolves and is useful for testing.
 WEB_FQDN="${WEB_FQDN:-$(az containerapp show -n "$WEB_APP" -g "$RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || true)}"
 if [ -n "$WEB_FQDN" ] && az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
-  say "Set API CORS_ORIGINS -> https://$WEB_FQDN"
+  CORS_VALUE="https://$WEB_FQDN"
+  [ -n "$WEB_CUSTOM_DOMAIN" ] && CORS_VALUE="https://$WEB_CUSTOM_DOMAIN,https://$WEB_FQDN"
+  say "Set API CORS_ORIGINS -> $CORS_VALUE"
   # Best-effort: a transient Azure API error here shouldn't fail a deploy that
-  # otherwise succeeded, and the value is idempotent (same FQDN every time).
+  # otherwise succeeded, and the value is idempotent (same inputs every time).
   az containerapp update -n "$API_APP" -g "$RESOURCE_GROUP" \
-    --set-env-vars CORS_ORIGINS="https://$WEB_FQDN" -o none \
+    --set-env-vars CORS_ORIGINS="$CORS_VALUE" -o none \
     || echo "WARNING: could not update CORS_ORIGINS (non-fatal) — rerun deploy.sh if needed."
 fi
 

@@ -654,7 +654,7 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
     links: [
       { label: "Privacy policy", href: "/privacy" },
       { label: "Terms of service", href: "/terms" },
-      { label: "Contact", href: "mailto:vipresh1993@gmail.com" },
+      { label: "Contact", href: "mailto:contact@dataeaver.ca" },
     ],
   },
 ];
@@ -693,7 +693,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-2xl flex flex-col items-center justify-between gap-sm border-t border-border pt-lg text-caption text-text-tertiary sm:flex-row">
-          <span>© {new Date().getFullYear()} Tally. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} DATA EAVER INC. All rights reserved.</span>
           <span>Built by Vipresh Patel</span>
         </div>
       </div>
