@@ -14,7 +14,7 @@ EXTRACTION_API_HOST =
 // fresh clone / CI builds with working sign-in. The API audience must match the
 // backend's AUTH0_AUDIENCE. Full setup: docs/AUTH.md.
 // Override in Secrets.xcconfig if you point at a different tenant.
-AUTH0_DOMAIN = dev-nvjgstqap8b8wb68.us.auth0.com
+AUTH0_DOMAIN = login.tally.dataeaver.ca
 AUTH0_CLIENT_ID = fO5rWCD0FHGA13ty7Y9pKXXWnrw86ES0
 AUTH0_AUDIENCE = https:/$()/api.ai-receipt
 

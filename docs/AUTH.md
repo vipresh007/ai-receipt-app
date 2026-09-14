@@ -104,6 +104,15 @@ the Auth0 **Web application's** allowed lists (step 1) whenever that changes.
 - **Allowed Logout URLs**: add `https://tally.dataeaver.ca`.
 - **Allowed Web Origins**: add `https://tally.dataeaver.ca`.
 
+The Auth0 **tenant itself** also has a custom domain now (a separate feature
+from the app's own domain above — this is *Auth0's* hosted login pages, e.g.
+the Universal Login screen): **`login.tally.dataeaver.ca`**, Auth0-managed
+cert, verified. `AUTH0_DOMAIN` is set to this everywhere (web/backend
+Container Apps, the `AUTH0_DOMAIN` GitHub Actions secret so future deploys
+don't revert it, and `AIReceiptApp.xcconfig` for iOS) — replacing the raw
+`dev-nvjgstqap8b8wb68.us.auth0.com` tenant domain, which still works but no
+longer shows anywhere in the actual login flow.
+
 ---
 
 ## How it works in code
@@ -186,14 +195,17 @@ fresh `X-Device-Id` each call doesn't get around the quota. See
 
 ### One-time Auth0 setup for iOS (done for the dev tenant)
 
-- A **Native** application `AI Receipt iOS` (client ID
+- A **Native** application `Tally` (renamed from `AI Receipt iOS`; client ID
   `fO5rWCD0FHGA13ty7Y9pKXXWnrw86ES0`, committed in `AIReceiptApp.xcconfig` — it's
   a public client, not a secret). Allowed Callback + Logout URLs (bundle id is
-  `com.vipreshpatel.tally`):
-  `com.vipreshpatel.tally://dev-nvjgstqap8b8wb68.us.auth0.com/ios/com.vipreshpatel.tally/callback`
+  `com.vipreshpatel.tally`) — the callback URL embeds `AUTH0_DOMAIN`, so it
+  changed when the tenant's custom domain went live:
+  `com.vipreshpatel.tally://login.tally.dataeaver.ca/ios/com.vipreshpatel.tally/callback`
   (Auth0.swift's default custom-scheme callback; `useHTTPS()` is **not** used, so
-  no associated-domain entitlement is needed). Keep the old
-  `com.example.AIReceiptApp://…` entry too until every build has moved over.
+  no associated-domain entitlement is needed). The pre-custom-domain entry
+  (`…dev-nvjgstqap8b8wb68.us.auth0.com…`) and the pre-rename
+  `com.example.AIReceiptApp://…` one are both dead now — safe to delete from
+  the Auth0 dashboard once you're sure no old build is still relying on them.
 - Connections enabled for that application: `google-oauth2` and
   `Username-Password-Authentication`.
 - The `CFBundleURLTypes` scheme (`= $(PRODUCT_BUNDLE_IDENTIFIER)`) is registered
