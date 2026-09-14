@@ -16,14 +16,30 @@ const BADGE_COLOR = {
   success: "bg-success-muted text-success",
 };
 
-export function BudgetRow({ budget, onRemove }: { budget: Budget; onRemove?: () => void }) {
+export function BudgetRow({
+  budget,
+  onRemove,
+  onSelect,
+}: {
+  budget: Budget;
+  onRemove?: () => void;
+  onSelect?: () => void;
+}) {
   const meta = categoryMeta(budget.category_slug);
   const Icon = meta.icon;
   const color = categoryColor(budget.category_slug);
   const status = statusColor(budget.percent_used);
 
   return (
-    <div className="flex items-center gap-md py-lg first:pt-0 last:pb-0">
+    <div
+      className={cn(
+        "flex items-center gap-md py-lg text-left first:pt-0 last:pb-0",
+        onSelect && "cursor-pointer transition-colors hover:bg-surface-2",
+      )}
+      onClick={onSelect}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+    >
       <div
         className="grid h-9 w-9 shrink-0 place-items-center rounded-md"
         style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)` }}
@@ -51,7 +67,10 @@ export function BudgetRow({ budget, onRemove }: { budget: Budget; onRemove?: () 
       </div>
       {onRemove && (
         <button
-          onClick={onRemove}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
           className="shrink-0 text-caption text-text-tertiary hover:text-danger"
           aria-label={`Remove ${meta.label} budget`}
         >

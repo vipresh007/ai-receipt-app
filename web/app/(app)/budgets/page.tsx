@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MetricTile } from "@/components/metric-tile";
 import { BudgetRow } from "@/components/budget-row";
 
+type FormMode = { type: "add" } | { type: "edit"; budget: Budget } | null;
+
 export default function BudgetsPage() {
   const queryClient = useQueryClient();
   const { data: budgets, isLoading } = useQuery({
@@ -21,7 +23,7 @@ export default function BudgetsPage() {
     queryFn: () => apiGet<Budget[]>("v1/budgets"),
   });
 
-  const [showAdd, setShowAdd] = useState(false);
+  const [formMode, setFormMode] = useState<FormMode>(null);
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,6 +40,24 @@ export default function BudgetsPage() {
     await queryClient.invalidateQueries({ queryKey: ["budgets"] });
   }
 
+  function openAdd() {
+    setFormMode({ type: "add" });
+    setCategory("");
+    setLimit("");
+    setError(null);
+  }
+
+  function openEdit(budget: Budget) {
+    setFormMode({ type: "edit", budget });
+    setCategory(budget.category_slug);
+    setLimit(budget.monthly_limit);
+    setError(null);
+  }
+
+  function closeForm() {
+    setFormMode(null);
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!category || Number(limit) <= 0 || saving) return;
@@ -45,9 +65,7 @@ export default function BudgetsPage() {
     setError(null);
     try {
       await apiPut(`v1/budgets/${category}`, { monthly_limit: limit });
-      setShowAdd(false);
-      setCategory("");
-      setLimit("");
+      closeForm();
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save the budget.");
@@ -66,8 +84,8 @@ export default function BudgetsPage() {
       <header className="flex items-center justify-between">
         <h1 className="text-title">Budgets</h1>
         {availableCategories.length > 0 && (
-          <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
-            {showAdd ? "Cancel" : "Add budget"}
+          <Button size="sm" onClick={() => (formMode ? closeForm() : openAdd())}>
+            {formMode ? "Cancel" : "Add budget"}
           </Button>
         )}
       </header>
@@ -91,24 +109,30 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {showAdd && (
+      {formMode && (
         <Card>
           <form onSubmit={save} className="space-y-lg">
             <div className="space-y-xs">
               <Label htmlFor="category">Category</Label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-11 w-full rounded-md border border-border bg-surface px-md text-body text-text focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)]"
-              >
-                <option value="">Choose one</option>
-                {availableCategories.map((slug) => (
-                  <option key={slug} value={slug}>
-                    {categoryMeta(slug).label}
-                  </option>
-                ))}
-              </select>
+              {formMode.type === "edit" ? (
+                <p className="flex h-11 items-center text-callout text-text">
+                  {categoryMeta(formMode.budget.category_slug).label}
+                </p>
+              ) : (
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="h-11 w-full rounded-md border border-border bg-surface px-md text-body text-text focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)]"
+                >
+                  <option value="">Choose one</option>
+                  {availableCategories.map((slug) => (
+                    <option key={slug} value={slug}>
+                      {categoryMeta(slug).label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="space-y-xs">
               <Label htmlFor="limit">Monthly limit</Label>
@@ -121,6 +145,7 @@ export default function BudgetsPage() {
                 value={limit}
                 onChange={(e) => setLimit(e.target.value)}
                 placeholder="0.00"
+                autoFocus={formMode.type === "edit"}
               />
             </div>
             {error && <p className="text-caption text-danger">{error}</p>}
@@ -153,7 +178,12 @@ export default function BudgetsPage() {
         <Card>
           <div className="divide-y divide-border">
             {(budgets ?? []).map((b) => (
-              <BudgetRow key={b.category_slug} budget={b} onRemove={() => remove(b.category_slug)} />
+              <BudgetRow
+                key={b.category_slug}
+                budget={b}
+                onSelect={() => openEdit(b)}
+                onRemove={() => remove(b.category_slug)}
+              />
             ))}
           </div>
         </Card>

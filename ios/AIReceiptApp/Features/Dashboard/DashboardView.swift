@@ -45,7 +45,11 @@ struct DashboardView: View {
             budgets = []
             return
         }
-        budgets = (try? await AccountSync.listBudgets(auth: auth, month: periodMonthString)) ?? []
+        do {
+            budgets = try await AccountSync.listBudgets(auth: auth, month: periodMonthString)
+        } catch {
+            print("DashboardView.loadBudgets failed: \(error)")
+        }
     }
 
     private var previousPeriodLabel: String {
@@ -165,6 +169,13 @@ struct DashboardView: View {
             .navigationTitle("Dashboard")
             .task(id: "\(granularity.rawValue)-\(periodMonthString)-\(auth.isSignedIn)") {
                 await loadBudgets()
+            }
+            .onAppear {
+                // TabView keeps this view alive across tab switches, so
+                // .task(id:) alone won't refire just from revisiting this tab
+                // (its id hasn't changed) — e.g. after adding a budget on the
+                // Budgets tab and switching straight back here.
+                Task { await loadBudgets() }
             }
         }
     }
