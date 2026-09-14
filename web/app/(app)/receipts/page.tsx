@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Search } from "lucide-react";
-import { apiGet } from "@/lib/api";
+import { apiDelete, apiGet } from "@/lib/api";
 import type { ReceiptOut, RecurringGroup } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { money, shortDate } from "@/lib/format";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ReceiptRow } from "@/components/receipt-row";
+import { ReceiptRow, SelectableReceiptRow } from "@/components/receipt-row";
 
 function monthKey(iso: string | null): string {
   return iso && iso.length >= 7 ? iso.slice(0, 7) : "0000-00";
@@ -73,10 +74,15 @@ function useDebounced<T>(value: T, delayMs = 300): T {
 }
 
 export default function ReceiptsPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const debouncedSearch = useDebounced(search);
   const filtersActive = debouncedSearch !== "" || category !== "";
+
+  const [editMode, setEditMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const params = new URLSearchParams({ limit: "200" });
   if (debouncedSearch) params.set("q", debouncedSearch);
@@ -95,14 +101,66 @@ export default function ReceiptsPage() {
   const groups = data ? groupByMonth(data) : [];
   const monthlyRecurringTotal = (recurring ?? []).reduce((s, g) => s + Number(g.average_amount), 0);
 
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exitEditMode() {
+    setEditMode(false);
+    setSelected(new Set());
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0 || deleting) return;
+    if (!window.confirm(`Delete ${selected.size} receipt${selected.size === 1 ? "" : "s"}? This can't be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await Promise.all([...selected].map((id) => apiDelete(`v1/receipts/${id}`)));
+      await queryClient.invalidateQueries({ queryKey: ["receipts"] });
+      exitEditMode();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-xl">
       <header className="flex items-center justify-between">
         <h1 className="text-title">Receipts</h1>
-        <Link href="/expenses/new" className="text-callout text-accent hover:underline">
-          Add expense
-        </Link>
+        <div className="flex items-center gap-lg">
+          {!editMode && (
+            <Link href="/expenses/new" className="text-callout text-accent hover:underline">
+              Add expense
+            </Link>
+          )}
+          {(data?.length ?? 0) > 0 && (
+            <button
+              onClick={() => (editMode ? exitEditMode() : setEditMode(true))}
+              className="text-callout text-text-secondary hover:text-text"
+            >
+              {editMode ? "Done" : "Edit"}
+            </button>
+          )}
+        </div>
       </header>
+
+      {editMode && (
+        <div className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-lg py-md">
+          <span className="text-callout text-text-secondary">
+            {selected.size} selected
+          </span>
+          <Button variant="danger" size="sm" onClick={deleteSelected} disabled={selected.size === 0 || deleting}>
+            {deleting ? "Deleting…" : "Delete"}
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-md sm:flex-row">
         <div className="relative flex-1">
@@ -189,9 +247,18 @@ export default function ReceiptsPage() {
           </div>
           <Card>
             <div className="divide-y divide-border">
-              {g.items.map((r) => (
-                <ReceiptRow key={r.id} receipt={r} />
-              ))}
+              {g.items.map((r) =>
+                editMode ? (
+                  <SelectableReceiptRow
+                    key={r.id}
+                    receipt={r}
+                    selected={selected.has(r.id)}
+                    onToggle={() => toggleSelected(r.id)}
+                  />
+                ) : (
+                  <ReceiptRow key={r.id} receipt={r} />
+                ),
+              )}
             </div>
           </Card>
         </section>
