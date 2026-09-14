@@ -49,6 +49,10 @@ enum AccountSync {
         let remote: [ReceiptExtractionAPIClient.ReceiptDTO]
         do {
             remote = try await client.listReceipts()
+        } catch is CancellationError {
+            // Superseded by a newer pull (e.g. app foregrounding mid-request)
+            // — not a real failure.
+            return
         } catch {
             print("AccountSync.pull failed: \(error)")
             return

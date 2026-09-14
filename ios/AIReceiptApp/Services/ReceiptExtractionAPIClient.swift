@@ -199,6 +199,11 @@ struct ReceiptExtractionAPIClient {
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
+        } catch let error as URLError where error.code == .cancelled {
+            // A newer call superseded this one (e.g. rapid tab switching
+            // re-triggering .task/.onAppear) — not a real failure, so don't
+            // wrap it as one; let callers tell it apart from genuine errors.
+            throw CancellationError()
         } catch {
             throw ReceiptExtractionError.server("Network error: \(error.localizedDescription)")
         }

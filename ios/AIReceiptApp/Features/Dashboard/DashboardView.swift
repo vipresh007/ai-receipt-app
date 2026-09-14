@@ -48,6 +48,9 @@ struct DashboardView: View {
         }
         do {
             budgets = try await AccountSync.listBudgets(auth: auth, month: periodMonthString)
+        } catch is CancellationError {
+            // Superseded by a newer load (e.g. .task(id:) and .onAppear both
+            // firing, or rapid tab switching) — not a real failure.
         } catch {
             print("DashboardView.loadBudgets failed: \(error)")
         }
