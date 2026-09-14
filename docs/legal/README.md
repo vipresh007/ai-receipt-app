@@ -22,10 +22,8 @@ still omitted.
   confirmed against the switch to a company operator.
 - Set the **"Last updated" date** on each file when you publish.
 - Registered mailing address for the company, if you want one listed.
-- **Apple Developer Program mismatch**: your Apple account is enrolled as an
-  **Individual** (Vipresh Patel), not an Organization. For an App Store
-  listing under DATA EAVER INC., Apple's own seller name shown to users would
-  still read "Vipresh Patel" unless you upgrade to an Organization account
-  (needs a D-U-N-S number). Not a blocker for dev/testing or for these
-  documents, but worth resolving before an actual App Store submission so the
-  named operator and the App Store seller agree.
+- **Apple Developer Program stays Individual (Vipresh Patel), by choice.**
+  Known and accepted: the App Store's own seller name will read "Vipresh
+  Patel" while these documents name DATA EAVER INC. as operator. Revisit only
+  if it becomes an actual problem at App Store submission — not blocking
+  anything today.
