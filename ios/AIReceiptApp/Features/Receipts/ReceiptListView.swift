@@ -79,11 +79,8 @@ struct ReceiptListView: View {
                 monthSections
             }
             .overlay { emptyOverlay }
+            .safeAreaInset(edge: .top) { categoryFilterChips }
             .navigationTitle("Receipts")
-            // Inline (not large) — with a search field and a filter button
-            // both in the bar, a large title left the filter icon floating
-            // in its own row above "Receipts" instead of alongside it.
-            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Search merchants or items")
             .toolbar { toolbarContent }
             .refreshable {
@@ -107,11 +104,10 @@ struct ReceiptListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        // Just the filter here — swipe-to-delete already covers removal, and
-        // adding EditButton alongside the title + filter icon in the same
-        // inline bar row was too cramped.
-        ToolbarItem(placement: .navigationBarTrailing) {
-            categoryFilterMenu
+        if !receipts.isEmpty {
+            ToolbarItem {
+                EditButton()
+            }
         }
     }
 
@@ -146,20 +142,25 @@ struct ReceiptListView: View {
         }
     }
 
-    private var categoryFilterMenu: some View {
-        Picker(selection: $categoryFilter) {
-            Text("All Categories").tag(ExpenseCategory?.none)
-            Divider()
-            ForEach(ExpenseCategory.allCases) { category in
-                Text(category.displayName).tag(ExpenseCategory?.some(category))
+    /// A horizontal row of category chips — kept out of the toolbar entirely
+    /// (rather than a filter icon crowding the title bar) and pinned above
+    /// the list so it stays visible while scrolling.
+    private var categoryFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Space.sm) {
+                FilterChip(title: "All", isSelected: categoryFilter == nil) {
+                    categoryFilter = nil
+                }
+                ForEach(ExpenseCategory.allCases) { category in
+                    FilterChip(title: category.displayName, isSelected: categoryFilter == category) {
+                        categoryFilter = categoryFilter == category ? nil : category
+                    }
+                }
             }
-        } label: {
-            Image(
-                systemName: categoryFilter == nil
-                    ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill"
-            )
+            .padding(.horizontal, Theme.Space.lg)
+            .padding(.vertical, Theme.Space.sm)
         }
-        .pickerStyle(.menu)
+        .background(Theme.Palette.bg)
     }
 
     private func delete(_ items: [Receipt], at offsets: IndexSet) {
@@ -202,6 +203,30 @@ private struct RecurringSummaryRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+private struct FilterChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.appCaption.weight(.medium))
+                .foregroundStyle(isSelected ? Theme.Palette.accent : Theme.Palette.textSecondary)
+                .padding(.horizontal, Theme.Space.md)
+                .padding(.vertical, Theme.Space.xs)
+                .background(
+                    isSelected ? Theme.Palette.accent.opacity(0.14) : Theme.Palette.surface2,
+                    in: Capsule()
+                )
+                .overlay {
+                    Capsule().strokeBorder(isSelected ? Theme.Palette.accent.opacity(0.4) : .clear)
+                }
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -10,6 +10,7 @@ struct BudgetsView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingAdd = false
+    @State private var editingBudget: ReceiptExtractionAPIClient.BudgetDTO?
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,11 @@ struct BudgetsView: View {
             }
             .navigationTitle("Budgets")
             .toolbar {
+                if auth.isSignedIn, !budgets.isEmpty {
+                    ToolbarItem {
+                        EditButton()
+                    }
+                }
                 if auth.isSignedIn {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
@@ -37,6 +43,11 @@ struct BudgetsView: View {
         .task { await load() }
         .sheet(isPresented: $showingAdd) {
             AddBudgetSheet(existingCategories: Set(budgets.map(\.categorySlug))) { category, limit in
+                await save(category: category, limit: limit)
+            }
+        }
+        .sheet(item: $editingBudget) { budget in
+            AddBudgetSheet(editing: budget) { category, limit in
                 await save(category: category, limit: limit)
             }
         }
@@ -63,7 +74,12 @@ struct BudgetsView: View {
         } else {
             List {
                 ForEach(budgets) { budget in
-                    BudgetRow(budget: budget)
+                    Button {
+                        editingBudget = budget
+                    } label: {
+                        BudgetRow(budget: budget)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .onDelete(perform: delete)
             }
@@ -171,14 +187,30 @@ struct BudgetRow: View {
     }
 }
 
+/// Add a budget for a not-yet-budgeted category, or edit an existing one's
+/// limit (category is fixed once a budget exists — delete and re-add to
+/// change it, same as everywhere else category-scoped things work here).
 private struct AddBudgetSheet: View {
-    let existingCategories: Set<String>
+    var existingCategories: Set<String> = []
+    var editing: ReceiptExtractionAPIClient.BudgetDTO?
     let onSave: (ExpenseCategory, String) async -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var category: ExpenseCategory?
     @State private var limitText = ""
     @State private var isSaving = false
+
+    init(
+        existingCategories: Set<String> = [],
+        editing: ReceiptExtractionAPIClient.BudgetDTO? = nil,
+        onSave: @escaping (ExpenseCategory, String) async -> Void
+    ) {
+        self.existingCategories = existingCategories
+        self.editing = editing
+        self.onSave = onSave
+        _category = State(initialValue: editing.map { ExpenseCategory(rawValue: $0.categorySlug) ?? .other })
+        _limitText = State(initialValue: editing?.monthlyLimit ?? "")
+    }
 
     private var availableCategories: [ExpenseCategory] {
         ExpenseCategory.allCases.filter { !existingCategories.contains($0.rawValue) }
@@ -192,10 +224,16 @@ private struct AddBudgetSheet: View {
         NavigationStack {
             Form {
                 Section("Category") {
-                    Picker("Category", selection: $category) {
-                        Text("Choose one").tag(ExpenseCategory?.none)
-                        ForEach(availableCategories) { category in
-                            Text(category.displayName).tag(ExpenseCategory?.some(category))
+                    if let editing {
+                        let fixedCategory = ExpenseCategory(rawValue: editing.categorySlug) ?? .other
+                        Label(fixedCategory.displayName, systemImage: fixedCategory.systemImage)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    } else {
+                        Picker("Category", selection: $category) {
+                            Text("Choose one").tag(ExpenseCategory?.none)
+                            ForEach(availableCategories) { category in
+                                Text(category.displayName).tag(ExpenseCategory?.some(category))
+                            }
                         }
                     }
                 }
@@ -204,7 +242,7 @@ private struct AddBudgetSheet: View {
                         .keyboardType(.decimalPad)
                 }
             }
-            .navigationTitle("Add Budget")
+            .navigationTitle(editing == nil ? "Add Budget" : "Edit Budget")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
