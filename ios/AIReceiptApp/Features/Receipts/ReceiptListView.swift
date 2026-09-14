@@ -75,12 +75,23 @@ struct ReceiptListView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    categoryFilterChips
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
                 recurringSection
                 monthSections
             }
+            .listStyle(.plain)
             .overlay { emptyOverlay }
-            .safeAreaInset(edge: .top) { categoryFilterChips }
             .navigationTitle("Receipts")
+            // Inline — a safeAreaInset chip row fought with the large title
+            // and .searchable's own layout (it left a large blank gap and
+            // the title never drew). Inline sidesteps that combination.
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Search merchants or items")
             .toolbar { toolbarContent }
             .refreshable {
@@ -143,8 +154,8 @@ struct ReceiptListView: View {
     }
 
     /// A horizontal row of category chips — kept out of the toolbar entirely
-    /// (rather than a filter icon crowding the title bar) and pinned above
-    /// the list so it stays visible while scrolling.
+    /// (rather than a filter icon crowding the title bar), as the first row
+    /// of the list itself so it scrolls with everything else.
     private var categoryFilterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Space.sm) {
@@ -160,7 +171,6 @@ struct ReceiptListView: View {
             .padding(.horizontal, Theme.Space.lg)
             .padding(.vertical, Theme.Space.sm)
         }
-        .background(Theme.Palette.bg)
     }
 
     private func delete(_ items: [Receipt], at offsets: IndexSet) {
