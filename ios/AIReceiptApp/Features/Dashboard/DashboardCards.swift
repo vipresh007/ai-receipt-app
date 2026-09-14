@@ -167,11 +167,25 @@ struct CategoryBreakdownCard: View {
 /// the Budgets tab. `BudgetRow` is the same one that tab uses.
 struct BudgetsSummaryCard: View {
     let budgets: [ReceiptExtractionAPIClient.BudgetDTO]
+    /// Jumps to the Budgets tab — matches web's "Manage →" link.
+    var onManage: () -> Void = {}
 
     var body: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
-                SectionLabel("Budgets")
+                HStack {
+                    SectionLabel("Budgets")
+                    Spacer()
+                    Button(action: onManage) {
+                        HStack(spacing: 3) {
+                            Text("Manage")
+                            Image(systemName: "chevron.right")
+                                .font(.appCaption.weight(.semibold))
+                        }
+                        .font(.appCaption.weight(.medium))
+                        .foregroundStyle(Theme.Palette.accent)
+                    }
+                }
                 VStack(spacing: Theme.Space.sm) {
                     ForEach(Array(budgets.prefix(3).enumerated()), id: \.element.id) { index, budget in
                         if index > 0 { Divider() }

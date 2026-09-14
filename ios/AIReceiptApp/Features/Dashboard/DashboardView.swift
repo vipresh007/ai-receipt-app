@@ -3,6 +3,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AuthManager.self) private var auth
+    @Environment(TabRouter.self) private var router
     @Query(sort: \Receipt.date, order: .reverse) private var receipts: [Receipt]
 
     /// A date inside the period currently being viewed.
@@ -123,7 +124,7 @@ struct DashboardView: View {
                                 previous: (summary.previousMonthTotal, previousPeriodLabel)
                             )
                             if granularity == .month, !budgets.isEmpty {
-                                BudgetsSummaryCard(budgets: budgets)
+                                BudgetsSummaryCard(budgets: budgets, onManage: { router.selection = .budgets })
                             }
                             NavigationLink {
                                 MonthlyHistoryView(
@@ -221,4 +222,6 @@ struct DashboardView: View {
 #Preview {
     DashboardView()
         .modelContainer(for: Receipt.self, inMemory: true)
+        .environment(AuthManager())
+        .environment(TabRouter())
 }
