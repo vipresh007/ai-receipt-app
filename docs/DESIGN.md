@@ -7,8 +7,9 @@ machine-readable values live in [`design/tokens.json`](../design/tokens.json).
 
 1. **Fast over decorative.** The hero action is a 5–10s scan. Nothing in the UI
    should feel slower than the task it replaces.
-2. **Calm surfaces, confident accents.** Warm neutral backgrounds; one saturated
-   accent; category color used sparingly and meaningfully.
+2. **Calm surfaces, one loud moment.** Warm neutral backgrounds and soft-shadow
+   cards everywhere; the one gradient hero card (the period's total) is the
+   single dramatic element per screen — not a style repeated elsewhere.
 3. **Every number legible.** Money and metrics use tabular figures, high
    contrast, generous size. The dashboard is read at a glance.
 4. **One motion vocabulary.** A small set of durations/easings, used
@@ -30,8 +31,30 @@ values in `tokens.json` → `color.light` / `color.dark`.
 | `surface`, `surface-2`, `surface-sunken` | cards, nested cards, wells |
 | `border`, `border-strong` | hairlines, dividers, input borders |
 | `text`, `text-secondary`, `text-tertiary` | primary copy, labels, hints |
-| `accent`, `accent-hover`, `accent-fg`, `accent-muted` | primary actions, focus, selection |
+| `accent`, `accent-hover`, `accent-fg`, `accent-muted` | primary actions, focus, selection (a deep teal — see "Ledger" below) |
+| `gold` | the hero card's spotlight color **only** — eyebrow label, delta chip, sparkline. Never a button, link, or anything outside the hero. |
 | `success` / `warning` / `danger` / `info` (+ `-muted`) | status, insight direction, validation |
+
+### The "Ledger" direction
+
+Chosen after a round of visual exploration (bolder, more "fintech" than the
+original flat/bordered look, without going full dark-mode-banking-app). The
+signature move: **one gradient hero card per screen**, everything else stays
+calm.
+
+- **Hero card** — `hero-gradient` (an ink-to-teal diagonal, `tokens.json` →
+  `color.*.hero-gradient`), always dark regardless of the app's light/dark
+  mode (it's a fixed "card sitting on the page," not a themed surface).
+  Carries the period's total: `hero-text` (warm off-white) for the number,
+  `gold` for the eyebrow label and the delta chip, a small sparkline in
+  `gold` echoing the trend. Radius `xl` (24). One per screen — the
+  "This month" metric on the dashboard. Don't reuse the gradient elsewhere.
+- **Cards lost their border.** Every other surface (`Card`, `AppCard`) is now
+  a soft shadow (`e1`) at radius `lg` (20) instead of a `border` hairline —
+  see Elevation below.
+- **Accent is teal, not blue** — `#0E6E58` light / `#35C79A` dark. Used for
+  links, primary buttons, the trend chart line/bars, and focus rings. `info`
+  mirrors `accent` as before.
 
 **Category palette** (`tokens.json` → `category.*`): the 9 `ExpenseCategory`
 slugs, each with a light and dark value, tuned to sit together in a chart and
@@ -54,10 +77,12 @@ surfaces or text with it.
 
 - **Space scale** (`space.*`): `2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64`.
   Screen gutters `16`. Card padding `16`. Vertical rhythm between cards `20`.
-- **Radius** (`radius.*`): inputs/buttons `md` (12), cards `lg` (16), sheets
-  `2xl` (28), chips/avatars `pill`.
-- **Elevation** (`elevation.*`): `e0` (border only) is the default. `e1` for a
-  raised card, `e2` for popovers/sheets. Never stack more than one level.
+- **Radius** (`radius.*`): inputs/buttons `md` (12), cards `lg` (20), the hero
+  card `xl` (24), sheets `2xl` (28), chips/avatars `pill`.
+- **Elevation** (`elevation.*`): `e1` (soft, diffused shadow) is the default
+  for every card — no border. `e2` for popovers/sheets/the hero card. `e0`
+  (nothing) only for elements that sit flush against a surface. Never stack
+  more than one level.
 
 ## Motion
 
@@ -76,9 +101,15 @@ surfaces or text with it.
 
 Same anatomy and states on both platforms; native controls underneath.
 
-- **Card** — `surface`, `radius.lg`, `border` (or `e1`), padding `16`.
-- **Metric tile** — eyebrow (`micro`, `text-tertiary`) · value (`display`/`title`,
-  tabular) · optional delta (`success`/`danger` + arrow glyph).
+- **Card** — `surface`, `radius.lg`, `e1` shadow, no border, padding `16`.
+- **Hero card** — the one gradient card per screen (see "Ledger" above):
+  `hero-gradient`, `radius.xl`, `e2` shadow. Eyebrow + delta chip in `gold`,
+  value in `hero-text`, `display`/`title` size, tabular, weight 800 — plain
+  Inter/system font, no display serif.
+- **Metric tile** — for a *secondary* number only (e.g. "previous month"):
+  eyebrow (`micro`, `text-tertiary`) · value (`display`/`title`, tabular) ·
+  optional delta (`success`/`danger` + arrow glyph). The primary number is
+  always the hero card, never a plain metric tile.
 - **List row** — min height `56`; leading category glyph, title + `subhead`
   metadata, trailing amount (tabular, `weight 600`).
 - **Buttons** — primary (`accent` fill), secondary (`border` outline), ghost

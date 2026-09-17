@@ -18,7 +18,7 @@ import {
 import { money } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MetricTile } from "@/components/metric-tile";
+import { HeroMetric } from "@/components/hero-metric";
 import { CategoryBreakdown } from "@/components/category-breakdown";
 import { SpendingTrend } from "@/components/spending-trend";
 import { InsightList } from "@/components/insight-list";
@@ -141,16 +141,16 @@ export default function DashboardPage() {
 
       <div className="space-y-md">
         <div className="flex justify-center">
-          <div className="inline-flex rounded-md border border-border bg-surface p-hair">
+          <div className="inline-flex rounded-pill bg-surface-2 p-hair">
             {GRANULARITIES.map((g) => (
               <button
                 key={g.value}
                 type="button"
                 onClick={() => setGranularity(g.value)}
                 className={cn(
-                  "rounded-sm px-lg py-xs text-caption font-medium transition-colors",
+                  "rounded-pill px-lg py-xs text-caption font-medium transition-colors",
                   granularity === g.value
-                    ? "bg-accent text-accent-fg"
+                    ? "bg-surface text-text shadow-e1"
                     : "text-text-secondary hover:text-text",
                 )}
               >
@@ -183,27 +183,20 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-lg sm:grid-cols-2">
-        <MetricTile
-          label={isCurrentPeriod ? CURRENT_WORD[granularity] : periodLabel(month, granularity)}
-          loading={periodSummary.isLoading}
-          value={periodTotal !== undefined ? money(periodTotal) : "—"}
-          delta={
-            showDelta
-              ? {
-                  text: `${money(Math.abs(delta))} vs ${PREVIOUS_WORD[granularity].toLowerCase()}`,
-                  dir: delta > 0 ? "up" : "down",
-                }
-              : undefined
-          }
-        />
-        <MetricTile
-          label={PREVIOUS_WORD[granularity]}
-          loading={previousSummary.isLoading}
-          value={previousTotal !== undefined ? money(previousTotal) : "—"}
-          muted
-        />
-      </div>
+      <HeroMetric
+        label={isCurrentPeriod ? CURRENT_WORD[granularity] : periodLabel(month, granularity)}
+        loading={periodSummary.isLoading}
+        value={periodTotal !== undefined ? money(periodTotal) : "—"}
+        delta={
+          showDelta
+            ? {
+                text: `${money(Math.abs(delta))} vs ${PREVIOUS_WORD[granularity].toLowerCase()}`,
+                dir: delta > 0 ? "up" : "down",
+              }
+            : undefined
+        }
+        sparkline={chartData.length > 1 ? chartData.map((d) => d.amount) : undefined}
+      />
 
       {granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0 && (
         <Card>

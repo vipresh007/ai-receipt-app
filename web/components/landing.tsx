@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { TallyMark } from "@/components/tally-mark";
-import { categoryColor } from "@/lib/categories";
+import { Sparkline } from "@/components/hero-metric";
+import { categoryColor, categoryMeta } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 const SIGNUP = "/auth/login?screen_hint=signup";
@@ -86,7 +87,7 @@ function Wordmark({ size = "default" }: { size?: "default" | "lg" }) {
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* soft dual glow — product blue + the landing-only warm accent */}
+      {/* soft dual glow — product teal + the landing-only gold accent */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 right-[-10%] h-[420px] w-[420px] rounded-pill bg-accent-muted blur-[110px]"
@@ -206,51 +207,45 @@ function BrowserFrame({ children }: { children: ReactNode }) {
 
 function DashboardMock() {
   const cats = [
-    { slug: "groceries", label: "Groceries", pct: 88, amt: "$412.90" },
-    { slug: "restaurants", label: "Restaurants", pct: 64, amt: "$305.14" },
-    { slug: "transport", label: "Transport", pct: 36, amt: "$168.40" },
-    { slug: "shopping", label: "Shopping", pct: 21, amt: "$98.20" },
-    { slug: "utilities", label: "Utilities", pct: 14, amt: "$61.75" },
+    { slug: "groceries", amt: "$412" },
+    { slug: "restaurants", amt: "$268" },
+    { slug: "transport", amt: "$143" },
+    { slug: "shopping", amt: "$311" },
   ];
   return (
-    <div className="space-y-lg">
-      <div className="grid grid-cols-2 gap-md">
-        <div className="rounded-xl border border-border bg-bg p-md">
-          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">
-            This month
+    <div className="space-y-md">
+      <div className="flex items-center justify-between gap-md rounded-xl bg-hero p-md">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gold">This month</p>
+          <p className="mt-hair text-2xl font-extrabold tabular text-hero-text">$1,284.50</p>
+          <p className="mt-xs inline-flex items-center rounded-pill bg-hero-chip px-sm py-hair text-[10px] font-semibold text-hero-text">
+            ↓ $92 vs last month
           </p>
-          <p className="mt-hair text-2xl font-bold tabular">$1,284.50</p>
-          <p className="mt-hair text-[11px] text-success">↓ $92 vs last month</p>
         </div>
-        <div className="rounded-xl border border-border bg-bg p-md">
-          <p className="text-[10px] uppercase tracking-wide text-text-tertiary">
-            Receipts
-          </p>
-          <p className="mt-hair text-2xl font-bold tabular">37</p>
-          <p className="mt-hair text-[11px] text-text-tertiary">this month</p>
-        </div>
+        <span className="shrink-0 text-gold">
+          <Sparkline points={[1420, 1550, 1376, 1284]} width={96} height={44} />
+        </span>
       </div>
 
-      <div className="space-y-sm">
-        {cats.map((c) => (
-          <div key={c.slug} className="flex items-center gap-md">
-            <span className="w-20 shrink-0 text-[11px] text-text-secondary">
-              {c.label}
-            </span>
-            <span className="h-2 flex-1 overflow-hidden rounded-pill bg-surface-2">
+      <div className="flex gap-sm">
+        {cats.map((c) => {
+          const Icon = categoryMeta(c.slug).icon;
+          const color = categoryColor(c.slug);
+          return (
+            <div key={c.slug} className="flex flex-1 flex-col items-center gap-hair">
               <span
-                className="block h-full rounded-pill"
-                style={{ width: `${c.pct}%`, background: categoryColor(c.slug) }}
-              />
-            </span>
-            <span className="w-14 shrink-0 text-right text-[11px] tabular text-text-secondary">
-              {c.amt}
-            </span>
-          </div>
-        ))}
+                className="grid h-8 w-8 place-items-center rounded-md"
+                style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+              >
+                <Icon size={14} />
+              </span>
+              <span className="text-[10px] font-semibold tabular">{c.amt}</span>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="rounded-xl border border-border bg-bg p-sm text-[11px] text-text-secondary">
+      <div className="rounded-xl bg-bg p-sm text-[11px] text-text-secondary">
         <span className="text-accent">✦ Insight </span>
         Restaurants are up 18% for the third month running.
       </div>
@@ -600,18 +595,18 @@ function FeatData() {
 export function BottomCTA() {
   return (
     <section className="px-lg py-4xl">
-      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl border border-[#1c356b] bg-[linear-gradient(135deg,#26467f,#1b3563)] px-lg py-3xl text-center text-white sm:px-2xl">
+      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl bg-hero px-lg py-3xl text-center shadow-e2 sm:px-2xl">
         {/* glyph watermark */}
         <TallyMark
           size={280}
-          className="pointer-events-none absolute -right-12 -top-16 text-white/[0.07]"
+          className="pointer-events-none absolute -right-12 -top-16 text-white/[0.06]"
         />
         <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
           <SparklesIconInline />
-          <h2 className="text-[1.9rem] font-extrabold leading-tight tracking-tight sm:text-title">
-            Your <span className="text-[#ffb89a]">last</span> manual expense entry
+          <h2 className="text-[1.9rem] font-extrabold leading-tight tracking-tight text-hero-text sm:text-title">
+            Your <span className="text-gold">last</span> manual expense entry
           </h2>
-          <p className="text-callout text-white/80">
+          <p className="text-callout text-hero-text opacity-80">
             Sign in with Google or email and scan your first receipt in the next
             minute. Free forever tier, no card.
           </p>
@@ -619,7 +614,7 @@ export function BottomCTA() {
             href={SIGNUP}
             className={cn(
               buttonVariants({ variant: "secondary" }),
-              "border-transparent bg-white px-xl text-accent hover:bg-white/90",
+              "border-transparent bg-hero-text px-xl text-hero-cta hover:bg-hero-cta-hover",
             )}
           >
             Get started free <ArrowRight size={16} />
@@ -632,7 +627,7 @@ export function BottomCTA() {
 
 function SparklesIconInline() {
   return (
-    <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/15">
+    <span className="grid h-11 w-11 place-items-center rounded-xl bg-hero-chip text-hero-text">
       <Sparkles size={20} />
     </span>
   );

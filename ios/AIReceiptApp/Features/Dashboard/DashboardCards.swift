@@ -1,12 +1,51 @@
 import SwiftUI
 import Charts
 
-struct MonthlyTotalCard: View {
+/// A tiny inline trend line drawn straight from the same points as the trend
+/// chart below it — decorative context for the hero number, not a
+/// replacement for the real (labeled, tappable) `SpendingTrendCard`.
+private struct HeroSparkline: View {
+    let values: [Double]
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let minV = values.min() ?? 0
+            let maxV = values.max() ?? 1
+            let range = Swift.max(maxV - minV, 0.0001)
+            let step = values.count > 1 ? w / CGFloat(values.count - 1) : 0
+            let points = values.enumerated().map { i, v -> CGPoint in
+                CGPoint(x: CGFloat(i) * step, y: h - CGFloat((v - minV) / range) * h)
+            }
+
+            Path { path in
+                guard let first = points.first else { return }
+                path.move(to: first)
+                for p in points.dropFirst() { path.addLine(to: p) }
+            }
+            .stroke(Theme.Palette.gold, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+            if let last = points.last {
+                Circle().fill(Theme.Palette.gold).frame(width: 6, height: 6).position(last)
+            }
+        }
+    }
+}
+
+/// The one gradient "moment" per screen — the current period's total. See
+/// docs/DESIGN.md "The Ledger direction". Always this dark ink-to-teal
+/// gradient regardless of light/dark mode; a secondary number (e.g. a
+/// previous period elsewhere) should use a plain `AppCard`, never this.
+struct HeroMetricCard: View {
     var label = "This month"
     let amount: Decimal
     let currencyCode: String
     /// Prior month's total + its name, for the "vs" line. Nil hides it.
     var previous: (amount: Decimal, label: String)?
+    /// Recent period totals (oldest → newest) for the mini trend line. Fewer
+    /// than 2 values hides it.
+    var sparklineValues: [Double] = []
 
     private var delta: Decimal? {
         guard let previous, previous.amount > 0 else { return nil }
@@ -14,15 +53,18 @@ struct MonthlyTotalCard: View {
     }
 
     var body: some View {
-        AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                SectionLabel(label)
-                Text(amount, format: .currency(code: currencyCode))
-                    .font(.appDisplay)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.Palette.text)
-                    .contentTransition(.numericText())
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(label.uppercased())
+                .font(.appMicro)
+                .tracking(0.5)
+                .foregroundStyle(Theme.Palette.gold)
+            Text(amount, format: .currency(code: currencyCode))
+                .font(.appDisplay)
+                .monospacedDigit()
+                .foregroundStyle(Theme.Palette.heroText)
+                .contentTransition(.numericText())
 
+            HStack(alignment: .center, spacing: Theme.Space.md) {
                 if let delta, let previous {
                     let up = delta > 0
                     HStack(spacing: 3) {
@@ -30,13 +72,32 @@ struct MonthlyTotalCard: View {
                         Text(abs(delta), format: .currency(code: currencyCode))
                             .monospacedDigit()
                         Text("vs \(previous.label)")
-                            .foregroundStyle(Theme.Palette.textSecondary)
                     }
-                    .font(.appCaption)
-                    .foregroundStyle(up ? Theme.Palette.danger : Theme.Palette.success)
+                    .font(.appCaption.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.heroText)
+                    .padding(.horizontal, Theme.Space.sm)
+                    .padding(.vertical, 5)
+                    .background(Theme.Palette.heroChipBackground, in: Capsule())
+                }
+                Spacer(minLength: 0)
+                if sparklineValues.count > 1 {
+                    HeroSparkline(values: sparklineValues)
+                        .frame(width: 110, height: 34)
                 }
             }
+            .padding(.top, 2)
         }
+        .padding(Theme.Space.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [Theme.Palette.heroGradientStart, Theme.Palette.heroGradientMid, Theme.Palette.heroGradientEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+        )
+        .shadow(color: Theme.Palette.heroGradientEnd.opacity(0.28), radius: 20, x: 0, y: 10)
     }
 }
 
@@ -57,26 +118,40 @@ struct SpendingBarChart: View {
     var body: some View {
         Chart(points) { point in
             let value = (point.total as NSDecimalNumber).doubleValue
-            BarMark(
-                x: .value("Period", point.label),
-                y: .value("Spent", value)
-            )
-            .foregroundStyle(
-                point.monthStart == highlighted
-                    ? Theme.Palette.accent
-                    : Theme.Palette.accent.opacity(0.28)
-            )
-            .cornerRadius(4)
-            .annotation(position: .top, spacing: 3) {
-                if value > 0 {
-                    Text(compactMoney(point.total, code: currencyCode))
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                }
+            let isHighlighted = point.monthStart == highlighted
+
+            AreaMark(x: .value("Period", point.label), y: .value("Spent", value))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Theme.Palette.accent.opacity(0.32), Theme.Palette.accent.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.monotone)
+
+            LineMark(x: .value("Period", point.label), y: .value("Spent", value))
+                .foregroundStyle(Theme.Palette.accent)
+                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.monotone)
+
+            if isHighlighted {
+                PointMark(x: .value("Period", point.label), y: .value("Spent", value))
+                    .foregroundStyle(Theme.Palette.accent)
+                    .symbolSize(70)
+                    .annotation(position: .top, spacing: 6) {
+                        Text(compactMoney(point.total, code: currencyCode))
+                            .font(.system(size: 11, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.Palette.surface)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Theme.Palette.text, in: Capsule())
+                    }
             }
         }
         .chartYAxis(.hidden)
-        .chartYScale(domain: 0...(maxTotal * 1.25 + 1))
+        .chartYScale(domain: 0...(maxTotal * 1.3 + 1))
         .frame(height: 150)
     }
 }
@@ -137,29 +212,28 @@ struct CategoryBreakdownCard: View {
                         .font(.appCallout)
                         .foregroundStyle(Theme.Palette.textSecondary)
                 } else {
-                    Chart(breakdown) { entry in
-                        BarMark(
-                            x: .value("Amount", amount(entry.amount)),
-                            y: .value("Category", entry.category.displayName)
-                        )
-                        .foregroundStyle(entry.category.tint)
-                        .cornerRadius(4)
-                        .annotation(position: .trailing) {
-                            Text(entry.amount, format: .currency(code: currencyCode))
-                                .font(.appCaption)
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.Palette.textSecondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: Theme.Space.md) {
+                            ForEach(breakdown) { entry in
+                                VStack(spacing: Theme.Space.xs) {
+                                    CategoryGlyph(category: entry.category, size: 46)
+                                    Text(entry.amount, format: .currency(code: currencyCode).precision(.fractionLength(0)))
+                                        .font(.appCaption.weight(.semibold))
+                                        .monospacedDigit()
+                                        .foregroundStyle(Theme.Palette.text)
+                                    Text(entry.category.displayName)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Theme.Palette.textTertiary)
+                                        .lineLimit(1)
+                                }
+                                .frame(width: 64)
+                            }
                         }
+                        .padding(.vertical, Theme.Space.xs)
                     }
-                    .chartXAxis(.hidden)
-                    .frame(height: CGFloat(breakdown.count) * 36 + 8)
                 }
             }
         }
-    }
-
-    private func amount(_ decimal: Decimal) -> Double {
-        NSDecimalNumber(decimal: decimal).doubleValue
     }
 }
 

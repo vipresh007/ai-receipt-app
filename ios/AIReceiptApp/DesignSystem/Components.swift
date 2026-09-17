@@ -1,7 +1,10 @@
 import SwiftUI
 
-/// A bordered surface card — the primary container on the dashboard.
+/// A soft-shadow surface card — the primary container on the dashboard.
+/// No border (Ledger direction): elevation comes from the shadow + the
+/// existing surface/bg contrast, not a hairline.
 struct AppCard<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -12,10 +15,10 @@ struct AppCard<Content: View>: View {
                 Theme.Palette.surface,
                 in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
             )
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
-                    .strokeBorder(Theme.Palette.border)
-            }
+            .shadow(
+                color: Theme.Palette.cardShadow.opacity(colorScheme == .dark ? 0.5 : 0.08),
+                radius: 16, x: 0, y: 8
+            )
     }
 }
 
@@ -32,7 +35,9 @@ struct SectionLabel: View {
     }
 }
 
-/// The rounded, tinted category icon used in every receipt row.
+/// The rounded, tinted category icon used in every receipt row, budget row,
+/// and the category strip. Radius scales with size so it reads as the same
+/// "icon-chip" shape whether it's a 28pt row glyph or a 46pt strip badge.
 struct CategoryGlyph: View {
     let category: ExpenseCategory
     var size: CGFloat = 32
@@ -43,8 +48,8 @@ struct CategoryGlyph: View {
             .foregroundStyle(category.tint)
             .frame(width: size, height: size)
             .background(
-                category.tint.opacity(0.14),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                category.tint.opacity(0.16),
+                in: RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
             )
     }
 }
@@ -75,7 +80,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.appCallout.weight(.semibold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.accentForeground)
             .background(
                 Theme.Palette.accent,
                 in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)

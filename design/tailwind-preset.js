@@ -34,10 +34,15 @@ const preset = {
           fg: "var(--c-accent-fg)",
           muted: "var(--c-accent-muted)",
         },
+        gold: "var(--c-gold)",
         success: { DEFAULT: "var(--c-success)", muted: "var(--c-success-muted)" },
         warning: { DEFAULT: "var(--c-warning)", muted: "var(--c-warning-muted)" },
         danger: { DEFAULT: "var(--c-danger)", muted: "var(--c-danger-muted)" },
         info: { DEFAULT: "var(--c-info)", muted: "var(--c-info-muted)" },
+        "hero-text": "var(--c-hero-text)",
+        "hero-chip": "var(--c-hero-chip-bg)",
+        "hero-cta": "var(--c-hero-cta-text)",
+        "hero-cta-hover": "var(--c-hero-cta-hover)",
         category: {
           groceries: "var(--cat-groceries)",
           restaurants: "var(--cat-restaurants)",
@@ -87,6 +92,9 @@ const preset = {
       boxShadow: {
         e1: "var(--e1)",
         e2: "var(--e2)",
+      },
+      backgroundImage: {
+        hero: "var(--hero-gradient)",
       },
       transitionTimingFunction: {
         standard: "var(--ease-standard)",

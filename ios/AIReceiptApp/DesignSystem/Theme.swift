@@ -48,10 +48,34 @@ enum Theme {
         static let text = Color(light: "#1A1A19", dark: "#F5F5F4")
         static let textSecondary = Color(light: "#6B6B66", dark: "#A2A2A0")
         static let textTertiary = Color(light: "#9A9A93", dark: "#6E6E6D")
-        static let accent = Color(light: "#3373F1", dark: "#528CFF")
+
+        /// "Ledger" direction — a deep teal, not blue. `accentForeground` is the
+        /// text/icon color for anything filled with `accent` (white in light
+        /// mode, but dark mode's accent is bright enough that it needs dark
+        /// text — same convention as `accent-fg` in tokens.json).
+        static let accent = Color(light: "#0E6E58", dark: "#35C79A")
+        static let accentForeground = Color(light: "#FFFFFF", dark: "#0F0F10")
+
+        /// The hero card's spotlight color only — eyebrow label, delta chip,
+        /// sparkline. Never used for a button, link, or anything else.
+        static let gold = Color(light: "#D9AE5C", dark: "#EAC471")
+
+        /// The hero card's own gradient — always this dark ink-to-teal
+        /// diagonal regardless of light/dark mode (a fixed card sitting on
+        /// the page, not a themed surface). `heroText`/`heroChipBackground`
+        /// are its on-gradient text/chip colors.
+        static let heroGradientStart = Color(light: "#0F1E19", dark: "#090E0C")
+        static let heroGradientMid = Color(light: "#123A32", dark: "#0F2B25")
+        static let heroGradientEnd = Color(light: "#0E6E58", dark: "#167A62")
+        static let heroText = Color(hex: "#F2EEE1")
+        static let heroChipBackground = Color.white.opacity(0.12)
+
         static let success = Color(light: "#1F9D57", dark: "#37C77E")
         static let warning = Color(light: "#C1841A", dark: "#E4A63E")
         static let danger = Color(light: "#D5473B", dark: "#F26A5C")
+
+        /// Default card shadow (Ledger direction) — replaces the old border.
+        static let cardShadow = Color(light: "#141812", dark: "#000000")
     }
 
     enum Space {
@@ -68,8 +92,8 @@ enum Theme {
     enum Radius {
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
-        static let lg: CGFloat = 16
-        static let xl: CGFloat = 20
+        static let lg: CGFloat = 20
+        static let xl: CGFloat = 24
         static let xxl: CGFloat = 28
     }
 
@@ -83,7 +107,10 @@ enum Theme {
 // MARK: - Typography
 
 extension Font {
-    static let appDisplay = Font.system(size: 34, weight: .bold, design: .rounded)
+    // Plain system (SF Pro), not `.rounded` — matches the web's plain Inter
+    // for the big figures (the Ledger direction dropped the rounded/display
+    // treatment in favor of the same workhorse sans everywhere).
+    static let appDisplay = Font.system(size: 34, weight: .heavy)
     static let appTitle = Font.system(size: 28, weight: .bold)
     static let appHeadline = Font.system(size: 20, weight: .semibold)
     static let appBody = Font.system(size: 16)

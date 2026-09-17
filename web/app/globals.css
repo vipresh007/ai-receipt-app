@@ -2,22 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Marketing-page-only warm accent (the product UI keeps the blue --c-accent
-   everywhere). Used sparingly on the landing page for emphasis — an italic
-   word in a headline, a highlight dot — never for actionable UI elements. */
+/* Marketing-page-only warm accent — the same gold family as the product's
+   hero card (see docs/DESIGN.md "Ledger" direction), just darkened enough to
+   stay legible on a plain white/dark page background instead of the hero's
+   own gradient. Used sparingly on the landing page for emphasis — a headline
+   word, a highlight dot — never for actionable UI elements. */
 :root {
-  --c-landing-accent: #b8472a;
-  --c-landing-accent-muted: rgba(184, 71, 42, 0.12);
+  --c-landing-accent: #a97317;
+  --c-landing-accent-muted: rgba(169, 115, 23, 0.12);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-landing-accent: #ff9269;
-    --c-landing-accent-muted: rgba(255, 146, 105, 0.16);
+    --c-landing-accent: #eac471;
+    --c-landing-accent-muted: rgba(234, 196, 113, 0.16);
   }
 }
 :root[data-theme="dark"] {
-  --c-landing-accent: #ff9269;
-  --c-landing-accent-muted: rgba(255, 146, 105, 0.16);
+  --c-landing-accent: #eac471;
+  --c-landing-accent-muted: rgba(234, 196, 113, 0.16);
 }
 
 /* Wire the actually-loaded Inter (next/font, see lib/fonts.ts) in ahead of

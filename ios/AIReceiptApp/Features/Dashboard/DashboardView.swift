@@ -120,11 +120,12 @@ struct DashboardView: View {
                         VStack(spacing: Theme.Space.xl) {
                             granularityPicker
                             periodSwitcher
-                            MonthlyTotalCard(
+                            HeroMetricCard(
                                 label: periodLabel,
                                 amount: summary.currentMonthTotal,
                                 currencyCode: currencyCode,
-                                previous: (summary.previousMonthTotal, previousPeriodLabel)
+                                previous: (summary.previousMonthTotal, previousPeriodLabel),
+                                sparklineValues: trendPoints.map { ($0.total as NSDecimalNumber).doubleValue }
                             )
                             if granularity == .month, !budgets.isEmpty {
                                 BudgetsSummaryCard(budgets: budgets, onManage: { router.selection = .budgets })

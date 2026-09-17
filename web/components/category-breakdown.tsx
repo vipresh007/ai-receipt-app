@@ -1,6 +1,3 @@
-"use client";
-
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CategoryTotal } from "@/lib/types";
 import { categoryColor, categoryMeta } from "@/lib/categories";
 import { money } from "@/lib/format";
@@ -10,41 +7,25 @@ export function CategoryBreakdown({ data }: { data: CategoryTotal[] }) {
     return <p className="text-callout text-text-secondary">No spending this month yet.</p>;
   }
 
-  const rows = data.map((d) => ({
-    slug: d.category_slug,
-    label: categoryMeta(d.category_slug).label,
-    amount: Number(d.amount),
-  }));
-
   return (
-    <ResponsiveContainer width="100%" height={Math.max(140, rows.length * 40)}>
-      <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
-        <XAxis type="number" hide />
-        <YAxis
-          type="category"
-          dataKey="label"
-          width={100}
-          tickLine={false}
-          axisLine={false}
-          tick={{ fill: "var(--c-text-secondary)", fontSize: 12 }}
-        />
-        <Tooltip
-          cursor={{ fill: "var(--c-surface-2)" }}
-          contentStyle={{
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-border)",
-            borderRadius: 12,
-            fontSize: 12,
-            color: "var(--c-text)",
-          }}
-          formatter={(v: number) => [money(v), "Spent"]}
-        />
-        <Bar dataKey="amount" radius={[0, 6, 6, 0]} barSize={18}>
-          {rows.map((r) => (
-            <Cell key={r.slug} fill={categoryColor(r.slug)} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="-mx-hair flex gap-md overflow-x-auto pb-xs">
+      {data.map((d) => {
+        const meta = categoryMeta(d.category_slug);
+        const Icon = meta.icon;
+        const color = categoryColor(d.category_slug);
+        return (
+          <div key={d.category_slug} className="flex w-16 shrink-0 flex-col items-center text-center">
+            <div
+              className="mb-xs grid h-12 w-12 place-items-center rounded-lg"
+              style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+            >
+              <Icon size={20} />
+            </div>
+            <p className="tabular text-caption font-semibold text-text">{money(Number(d.amount))}</p>
+            <p className="w-full truncate text-[10px] text-text-tertiary">{meta.label}</p>
+          </div>
+        );
+      })}
+    </div>
   );
 }
