@@ -91,7 +91,7 @@ struct AccountView: View {
         }
 
         Button(role: .destructive) {
-            Task { await auth.signOut() }
+            Task { await AccountSync.signOut(auth: auth, context: modelContext) }
         } label: {
             Text("Sign out")
         }

@@ -1,7 +1,9 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   <!-- Tally app icon — full-bleed square (for iOS the system applies the mask).
-       Brand blue #3373F1 with a white tally-of-five. -->
-  <rect width="1024" height="1024" fill="#3373F1"/>
+       Flat "Ledger" teal (the app's accent color, see docs/DESIGN.md) with a
+       white tally-of-five. Flat, not the hero card's gradient — reads better
+       at icon sizes and as a launch-screen background. -->
+  <rect width="1024" height="1024" fill="#0E6E58"/>
   <g fill="none" stroke="#ffffff" stroke-width="92" stroke-linecap="round">
     <line x1="344" y1="300" x2="344" y2="724"/>
     <line x1="459" y1="300" x2="459" y2="724"/>

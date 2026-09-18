@@ -118,6 +118,22 @@ enum AccountSync {
         try? context.save()
     }
 
+    /// Sign out and forget this device's local copy of the account's data —
+    /// the account itself, and its receipts server-side, are untouched.
+    /// Without this, everything ever pulled onto the device stays in
+    /// SwiftData after sign-out: visible to the next person using the app,
+    /// and liable to look like it belongs to whichever account signs in
+    /// after (`pull()` only cleans up a stale receipt once it notices the
+    /// signed-in account's list doesn't contain it).
+    @MainActor
+    static func signOut(auth: AuthManager, context: ModelContext) async {
+        for receipt in (try? context.fetch(FetchDescriptor<Receipt>())) ?? [] {
+            context.delete(receipt)
+        }
+        try? context.save()
+        await auth.signOut()
+    }
+
     /// Permanently delete the account on the backend, then sign out and wipe
     /// the local store. Throws if the server call fails (nothing is wiped then).
     @MainActor

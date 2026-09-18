@@ -214,16 +214,16 @@ function DashboardMock() {
   ];
   return (
     <div className="space-y-md">
-      <div className="flex items-center justify-between gap-md rounded-xl bg-hero p-md">
-        <div>
+      <div className="flex items-center gap-md rounded-xl bg-hero p-md">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wide text-gold">This month</p>
           <p className="mt-hair text-2xl font-extrabold tabular text-hero-text">$1,284.50</p>
           <p className="mt-xs inline-flex items-center rounded-pill bg-hero-chip px-sm py-hair text-[10px] font-semibold text-hero-text">
             ↓ $92 vs last month
           </p>
         </div>
-        <span className="shrink-0 text-gold">
-          <Sparkline points={[1420, 1550, 1376, 1284]} width={96} height={44} />
+        <span className="min-w-0 flex-1 text-gold">
+          <Sparkline points={[1420, 1550, 1376, 1284]} height={48} stretch />
         </span>
       </div>
 

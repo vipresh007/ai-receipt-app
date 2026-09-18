@@ -53,18 +53,18 @@ struct HeroMetricCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text(label.uppercased())
-                .font(.appMicro)
-                .tracking(0.5)
-                .foregroundStyle(Theme.Palette.gold)
-            Text(amount, format: .currency(code: currencyCode))
-                .font(.appDisplay)
-                .monospacedDigit()
-                .foregroundStyle(Theme.Palette.heroText)
-                .contentTransition(.numericText())
+        HStack(alignment: .center, spacing: Theme.Space.lg) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text(label.uppercased())
+                    .font(.appMicro)
+                    .tracking(0.5)
+                    .foregroundStyle(Theme.Palette.gold)
+                Text(amount, format: .currency(code: currencyCode))
+                    .font(.appDisplay)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.Palette.heroText)
+                    .contentTransition(.numericText())
 
-            HStack(alignment: .center, spacing: Theme.Space.md) {
                 if let delta, let previous {
                     let up = delta > 0
                     HStack(spacing: 3) {
@@ -78,14 +78,18 @@ struct HeroMetricCard: View {
                     .padding(.horizontal, Theme.Space.sm)
                     .padding(.vertical, 5)
                     .background(Theme.Palette.heroChipBackground, in: Capsule())
-                }
-                Spacer(minLength: 0)
-                if sparklineValues.count > 1 {
-                    HeroSparkline(values: sparklineValues)
-                        .frame(width: 110, height: 34)
+                    .padding(.top, 2)
                 }
             }
-            .padding(.top, 2)
+
+            // Fills whatever width is left over next to the text column, and
+            // centers on the full label+value+chip height — not just next to
+            // the chip, which is what made it read as small and off-center.
+            if sparklineValues.count > 1 {
+                HeroSparkline(values: sparklineValues)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 64)
+            }
         }
         .padding(Theme.Space.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,6 +108,10 @@ struct HeroMetricCard: View {
 /// Just the bar chart — no card chrome or "go to all months" affordance.
 /// Reused by the dashboard's tappable trend card and by the standalone
 /// history/months view.
+///
+/// Scrubbable: dragging a finger across the plot shows that period's value,
+/// via `chartXSelection` (iOS 17+) — no gesture plumbing of our own needed.
+/// While nothing is being touched, it falls back to `highlighted`.
 struct SpendingBarChart: View {
     let points: [MonthlyPoint]
     /// The period (its start date) currently being viewed — drawn solid;
@@ -111,14 +119,24 @@ struct SpendingBarChart: View {
     let highlighted: Date
     let currencyCode: String
 
+    /// The x-axis is categorical (`point.label`, not `point.monthStart`), so
+    /// that's the value type `chartXSelection` hands back.
+    @State private var selectedLabel: String?
+
     private var maxTotal: Double {
         points.map { ($0.total as NSDecimalNumber).doubleValue }.max() ?? 0
+    }
+
+    private var activePoint: MonthlyPoint? {
+        if let selectedLabel, let match = points.first(where: { $0.label == selectedLabel }) {
+            return match
+        }
+        return points.first(where: { $0.monthStart == highlighted })
     }
 
     var body: some View {
         Chart(points) { point in
             let value = (point.total as NSDecimalNumber).doubleValue
-            let isHighlighted = point.monthStart == highlighted
 
             AreaMark(x: .value("Period", point.label), y: .value("Spent", value))
                 .foregroundStyle(
@@ -135,24 +153,34 @@ struct SpendingBarChart: View {
                 .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 .interpolationMethod(.monotone)
 
-            if isHighlighted {
+            if point.id == activePoint?.id {
+                RuleMark(x: .value("Period", point.label))
+                    .foregroundStyle(Theme.Palette.textTertiary.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+
                 PointMark(x: .value("Period", point.label), y: .value("Spent", value))
                     .foregroundStyle(Theme.Palette.accent)
                     .symbolSize(70)
                     .annotation(position: .top, spacing: 6) {
-                        Text(compactMoney(point.total, code: currencyCode))
-                            .font(.system(size: 11, weight: .bold))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.Palette.surface)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Theme.Palette.text, in: Capsule())
+                        VStack(spacing: 1) {
+                            Text(point.label)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(Theme.Palette.surface.opacity(0.7))
+                            Text(compactMoney(point.total, code: currencyCode))
+                                .font(.system(size: 11, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.Palette.surface)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.Palette.text, in: Capsule())
                     }
             }
         }
         .chartYAxis(.hidden)
         .chartYScale(domain: 0...(maxTotal * 1.3 + 1))
         .frame(height: 150)
+        .chartXSelection(value: $selectedLabel)
     }
 }
 
