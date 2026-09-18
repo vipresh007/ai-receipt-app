@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { Budget, CategoryTotal, Insight, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
+import type { Budget, CategoryTotal, Insight, Me, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
 import {
   type Granularity,
   anchorFromPeriodKey,
@@ -48,6 +48,13 @@ function thisMonth(): string {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
 }
 
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 function mergeCategoryTotals(summaries: SpendingSummary[]): CategoryTotal[] {
   const totals = new Map<string, number>();
   for (const s of summaries) {
@@ -63,6 +70,8 @@ function mergeCategoryTotals(summaries: SpendingSummary[]): CategoryTotal[] {
 export default function DashboardPage() {
   const [month, setMonth] = useState(thisMonth);
   const [granularity, setGranularity] = useState<Granularity>("month");
+  const me = useQuery({ queryKey: ["me"], queryFn: () => apiGet<Me>("v1/auth/me") });
+  const firstName = me.data?.display_name?.split(" ")[0];
 
   // Allow deep-linking a month, e.g. from /months.
   useEffect(() => {
@@ -128,7 +137,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-xl">
       <header className="flex items-center justify-between">
-        <h1 className="text-title">Dashboard</h1>
+        <div>
+          {firstName && <p className="text-micro uppercase text-text-tertiary">{greeting()}</p>}
+          <h1 className="text-title">{firstName ?? "Dashboard"}</h1>
+        </div>
         <div className="flex items-center gap-md text-callout">
           <Link href="/expenses/new" className="text-text-secondary hover:text-text">
             Add expense

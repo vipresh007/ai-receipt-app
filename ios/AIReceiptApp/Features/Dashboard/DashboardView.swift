@@ -118,6 +118,7 @@ struct DashboardView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: Theme.Space.xl) {
+                            greetingHeader
                             granularityPicker
                             periodSwitcher
                             HeroMetricCard(
@@ -172,6 +173,7 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
+            .navigationBarTitleDisplayMode(.inline)
             .task(id: "\(granularity.rawValue)-\(periodMonthString)-\(auth.isSignedIn)") {
                 await loadBudgets()
             }
@@ -181,6 +183,59 @@ struct DashboardView: View {
                 // (its id hasn't changed) — e.g. after adding a budget on the
                 // Budgets tab and switching straight back here.
                 Task { await loadBudgets() }
+            }
+        }
+    }
+
+    /// First name from the signed-in account; `nil` while anonymous, in which
+    /// case `greetingHeader` shows just the time-of-day greeting alone.
+    private var firstName: String? {
+        guard case .signedIn(let name, _) = auth.state, let name,
+            let first = name.split(separator: " ").first, !first.isEmpty
+        else { return nil }
+        return String(first)
+    }
+
+    private var greeting: String {
+        switch calendar.component(.hour, from: .now) {
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
+
+    private var greetingHeader: some View {
+        HStack(spacing: Theme.Space.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let firstName {
+                    Text(greeting.uppercased())
+                        .font(.appMicro)
+                        .tracking(0.5)
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                    Text(firstName)
+                        .font(.appTitle)
+                        .foregroundStyle(Theme.Palette.text)
+                } else {
+                    Text(greeting)
+                        .font(.appTitle)
+                        .foregroundStyle(Theme.Palette.text)
+                }
+            }
+            Spacer(minLength: 0)
+            if let firstName {
+                Button {
+                    router.selection = .account
+                } label: {
+                    ZStack {
+                        Circle().fill(Theme.Palette.accent.opacity(0.14))
+                        Text(firstName.prefix(1).uppercased())
+                            .font(.appCallout.weight(.semibold))
+                            .foregroundStyle(Theme.Palette.accent)
+                    }
+                    .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Account")
             }
         }
     }
