@@ -184,9 +184,15 @@ final class AuthManager {
         isBusy = true
         defer { isBusy = false }
 
-        if let domain = AppConfig.auth0Domain, let clientID = AppConfig.auth0ClientID {
-            try? await Auth0.webAuth(clientId: clientID, domain: domain).logout()
-        }
+        // No `Auth0.webAuth(...).logout()` here: that opens an
+        // ASWebAuthenticationSession purely to clear Auth0's browser-side SSO
+        // cookie, which only ever existed for the Google flow (a web view) —
+        // Apple's native sign-in never touches a browser session at all. All
+        // it accomplished was a confusing system "wants to use ... to sign
+        // in" prompt during sign-*out*. Clearing local tokens below is what
+        // actually signs this device out; a stale Google browser session at
+        // worst skips the account picker on a future Google sign-in, not a
+        // security issue.
         try? credentialsManager?.clear()
         defaults.removeObject(forKey: Key.name)
         defaults.removeObject(forKey: Key.email)
