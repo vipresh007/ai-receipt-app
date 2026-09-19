@@ -33,7 +33,10 @@ struct QuotaWallView: View {
             Spacer()
 
             if auth.isConfigured {
-                SignInButton(title: "Sign in to keep scanning") { dismiss() }
+                VStack(spacing: Theme.Space.sm) {
+                    SignInButton(title: "Sign in to keep scanning") { dismiss() }
+                    AppleSignInButton { dismiss() }
+                }
             } else {
                 Text("Sign-in isn't available in this build.")
                     .font(.appCaption)

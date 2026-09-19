@@ -1,7 +1,6 @@
 # Privacy Policy
 
-_Last updated: set this to the date you publish. This is a first draft — have it
-reviewed by a lawyer before you rely on it._
+_Last updated: September 18, 2026._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
 operated by **DATA EAVER INC.**, collects when you use the Tally app and

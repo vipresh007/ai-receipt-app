@@ -27,10 +27,17 @@ build, ✅ = already done.**
 
 ## 2. Apple / iOS
 
-- ⛔ **Apple Developer Program** enrollment ($99/yr) — required for TestFlight
-  and the App Store. Nothing iOS ships without it. Enroll as an **Individual**
-  (your legal name, Vipresh Patel, shows as the seller) — no D-U-N-S number or
-  business registration needed, unlike an Organization account.
+- ✅ **Apple Developer Program** enrollment — done, enrolled as an
+  **Individual** (Vipresh Patel). 🟡 **Converting to an Organization
+  account (DATA EAVER INC.)** is in progress, so the App Store seller name
+  matches the legal docs' operator instead of reading "Vipresh Patel". Apple's
+  "Convert to Organization" migration (submitted from the Developer account,
+  `developer.apple.com/contact/request/migrate-individual-account`) keeps the
+  existing Team ID / app records — it's not a fresh enrollment — but needs a
+  D-U-N-S number + Tax ID for DATA EAVER INC. and Apple's verification
+  turnaround (days). Next concrete steps now that the account exists: register
+  the Explicit App ID (`com.vipreshpatel.tally`) under Certificates, IDs &
+  Profiles, and create the App Store Connect app record.
 - ⛔ **Sign in with Apple.** App Review guideline 4.8: if you offer a
   third-party sign-in (we offer Google) you must also offer Sign in with Apple.
   Add it: Auth0 Apple connection (needs a Services ID, a Sign-in-with-Apple key
@@ -115,20 +122,21 @@ build, ✅ = already done.**
 
 ## 5. Legal & data
 
-- 🟡 **Privacy Policy** — drafted at `/privacy` (`web/content/legal/privacy.md`),
-  filled in (**DATA EAVER INC.**, contact@dataeaver.ca, tally.dataeaver.ca, no
-  mailing address). Get it **legally reviewed**, then it's a ✅.
+- ✅ **Privacy Policy** — `/privacy` (`web/content/legal/privacy.md`), filled in
+  (**DATA EAVER INC.**, contact@dataeaver.ca, tally.dataeaver.ca, no mailing
+  address). Reviewed and accepted as final by the business owner 2026-09-18 —
+  not run past outside legal counsel; see `docs/legal/README.md` for the
+  accepted-risk note and remaining known gaps (governing-law assumption, no
+  mailing address).
 - ✅ **Account & data deletion** mechanism (see §2) — DB rows + best-effort
   blob cleanup. Confirm your backup policy also purges deleted accounts.
-- 🟡 **Terms of Service** — drafted at `/terms` (`web/content/legal/terms.md`),
-  same as above; needs the same legal review.
-- 🟡 **Publishing entity**: legal docs now name **DATA EAVER INC.** as
-  operator, but your Apple Developer Program is enrolled as an **Individual**
-  (Vipresh Patel) — the App Store's own "seller" would still read your name,
-  not the company's. Fine for dev/TestFlight; resolve before a real App Store
-  listing (either keep the docs as an individual, or upgrade the Apple account
-  to an Organization — needs a D-U-N-S number). Details in
-  `docs/legal/README.md`.
+- ✅ **Terms of Service** — `/terms` (`web/content/legal/terms.md`), same
+  status as the Privacy Policy above.
+- 🟡 **Publishing entity**: legal docs name **DATA EAVER INC.** as operator;
+  the Apple seller name is being brought in line with that via the
+  Individual → Organization conversion (see §2 above and
+  `docs/legal/README.md`). Not blocking TestFlight either way — resolve before
+  a real App Store listing.
 - 🟡 Data Processing / sub-processor list if you'll have EU/UK users (GDPR).
 - 🟢 "Export my data" (JSON dump) — nice, not required.
 
@@ -146,11 +154,15 @@ build, ✅ = already done.**
 
 ## Suggested order
 
-1. Rotate secrets (§4) + real bundle id (§1) — cheap, unblock everything.
-2. Apple Developer Program (§2) — has a lead time.
-3. Backend: `DELETE /v1/me` + account-deletion UI (§2/§3/§5) — needed for review.
-4. Sign in with Apple (§2).
-5. Privacy Policy + Terms (§5), hosted on the marketing site.
-6. Production env + custom domains (§3/§4).
-7. `PrivacyInfo.xcprivacy`, launch screen, screenshots, store listing (§2).
-8. TestFlight → external testers → submit.
+Done: real bundle id, Apple Developer Program enrollment, account deletion,
+Privacy Policy + Terms, `PrivacyInfo.xcprivacy`, launch screen. Remaining, in
+order:
+
+1. Register the Explicit App ID + create the App Store Connect app record
+   (§2) — unblocked now that the Developer account exists.
+2. Individual → Organization conversion for the Apple seller name (§2/§5) —
+   submit it now; it runs in the background while you do everything else.
+3. **Sign in with Apple** (§2) — the other hard blocker (App Review 4.8).
+4. Production env + fresh secrets + custom domains (§3/§4).
+5. Screenshots, App Store listing copy, App Privacy answers (§2).
+6. TestFlight → external testers → submit.

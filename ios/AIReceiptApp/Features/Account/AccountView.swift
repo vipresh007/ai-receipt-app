@@ -137,6 +137,7 @@ struct AccountView: View {
 
         if auth.isConfigured {
             SignInButton()
+            AppleSignInButton()
         } else {
             Text("Sign-in isn't available in this build.")
                 .font(.appCaption)

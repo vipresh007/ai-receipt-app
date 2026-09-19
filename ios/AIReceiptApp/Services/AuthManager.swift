@@ -1,12 +1,14 @@
 import Auth0
+import AuthenticationServices
 import Foundation
 import Observation
 
 /// Owns the app's identity: an always-present anonymous device ID, plus an
-/// optional Google sign-in through Auth0 that unlocks web access + sync.
+/// optional Google or Apple sign-in through Auth0 that unlocks web access +
+/// sync.
 ///
 /// Local-first: the app is fully usable while `state == .anonymous`. Signing in
-/// is a one-way upgrade (see `docs/AUTH.md`). Only Google is wired up for now.
+/// is a one-way upgrade (see `docs/AUTH.md`).
 @MainActor
 @Observable
 final class AuthManager {
@@ -115,6 +117,63 @@ final class AuthManager {
             name = info.name
             email = info.email
         }
+        defaults.set(name, forKey: Key.name)
+        defaults.set(email, forKey: Key.email)
+        state = .signedIn(name: name, email: email)
+        scansRemaining = nil
+    }
+
+    /// Signs in with the credential from a completed native `ASAuthorizationController`
+    /// request (see `AppleSignInButton`). Exchanges Apple's authorization code for
+    /// Auth0 credentials via the Apple **Native** connection — the Client ID
+    /// configured on that connection must be this app's bundle id, not a Services ID
+    /// (that's the web-flow identifier; see `docs/AUTH.md`).
+    func signInWithApple(credential: ASAuthorizationAppleIDCredential) async throws {
+        guard
+            let domain = AppConfig.auth0Domain,
+            let clientID = AppConfig.auth0ClientID,
+            let audience = AppConfig.auth0Audience,
+            let manager = credentialsManager,
+            let codeData = credential.authorizationCode,
+            let code = String(data: codeData, encoding: .utf8)
+        else { throw AuthError.notConfigured }
+
+        isBusy = true
+        defer { isBusy = false }
+
+        let credentials = try await Auth0
+            .authentication(clientId: clientID, domain: domain)
+            .login(
+                appleAuthorizationCode: code,
+                fullName: credential.fullName,
+                profile: nil,
+                audience: audience,
+                scope: "openid profile email offline_access"
+            )
+            .start()
+
+        try manager.store(credentials: credentials)
+
+        var name: String?
+        var email: String?
+        if let info = try? await Auth0
+            .authentication(clientId: clientID, domain: domain)
+            .userInfo(withAccessToken: credentials.accessToken)
+            .start()
+        {
+            name = info.name
+            email = info.email
+        }
+        // Apple hands us the real name/email only on the very first
+        // authorization ever — fall back to what the credential itself
+        // carried if Auth0's /userinfo didn't have them (e.g. a private
+        // relay email, or a re-authorization that Apple stayed silent on).
+        if name == nil, let components = credential.fullName {
+            let formatted = PersonNameComponentsFormatter().string(from: components)
+            if !formatted.isEmpty { name = formatted }
+        }
+        email = email ?? credential.email
+
         defaults.set(name, forKey: Key.name)
         defaults.set(email, forKey: Key.email)
         state = .signedIn(name: name, email: email)

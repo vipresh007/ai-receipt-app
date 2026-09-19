@@ -56,6 +56,11 @@ targets:
         # Allow plain-HTTP only to localhost / *.local for local backend dev.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+    entitlements:
+      path: AIReceiptApp/Generated/AIReceiptApp.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.vipreshpatel.tally
