@@ -13,6 +13,11 @@ import {
 } from "recharts";
 import { money } from "@/lib/format";
 
+/** "$287", "$1,284" — the chart callout, same currency format as elsewhere. */
+function wholeDollars(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
 function compact(n: number): string {
   return n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(Math.round(n));
 }
@@ -201,7 +206,7 @@ function activeDot(
   t: (typeof TONE)[Tone],
 ) {
   if (cx === undefined || cy === undefined || !payload || payload.key !== activeKey) return null;
-  const label = compact(payload.amount);
+  const label = wholeDollars(payload.amount);
   const width = 22 + label.length * 7.5;
   return (
     <>

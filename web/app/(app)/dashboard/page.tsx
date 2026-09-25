@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronLeft, ChevronRight, Plus, ScanLine } from "lucide-react";
@@ -170,6 +170,42 @@ export default function DashboardPage() {
   const hasBudgets = granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0;
   const hasSide = showInsights || hasBudgets;
 
+  // Budgets go under whichever of "Where it went" / Insights is shorter, so
+  // the two columns end as close to level as possible. Measured live (the
+  // cards' heights depend on the data), and only the two cards themselves are
+  // compared — never including Budgets — so moving it can't flip the result.
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const insightsRef = useRef<HTMLDivElement>(null);
+  const [budgetsLeft, setBudgetsLeft] = useState(false);
+  useEffect(() => {
+    const measure = () => {
+      const left = categoriesRef.current?.offsetHeight ?? 0;
+      const right = insightsRef.current?.offsetHeight ?? 0;
+      setBudgetsLeft(left <= right);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (categoriesRef.current) ro.observe(categoriesRef.current);
+    if (insightsRef.current) ro.observe(insightsRef.current);
+    return () => ro.disconnect();
+  }, [showInsights, hasBudgets]);
+
+  const budgetsCard = hasBudgets ? (
+    <Card>
+      <div className="flex items-center justify-between">
+        <CardTitle>Budgets</CardTitle>
+        <Link href="/budgets" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+          Manage <ArrowRight size={13} />
+        </Link>
+      </div>
+      <div className="mt-lg divide-y divide-border">
+        {budgets.data!.slice(0, 3).map((b) => (
+          <BudgetRow key={b.category_slug} budget={b} />
+        ))}
+      </div>
+    </Card>
+  ) : null;
+
   return (
     <div className="space-y-2xl">
       <header className="flex flex-wrap items-end justify-between gap-lg">
@@ -261,44 +297,36 @@ export default function DashboardPage() {
           hasSide && "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]",
         )}
       >
-        <Card>
-          <div className="flex items-center justify-between">
-            <CardTitle>Where it went</CardTitle>
-            <Link href="/months" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
-              All months <ArrowRight size={13} />
-            </Link>
+        <div className="space-y-2xl">
+          <div ref={categoriesRef}>
+            <Card>
+              <div className="flex items-center justify-between">
+                <CardTitle>Where it went</CardTitle>
+                <Link href="/months" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+                  All months <ArrowRight size={13} />
+                </Link>
+              </div>
+              <div className="mt-xl">
+                {periodSummary.isLoading ? <Skeleton className="h-56 w-full" /> : <CategoryBreakdown data={byCategory} />}
+              </div>
+            </Card>
           </div>
-          <div className="mt-xl">
-            {periodSummary.isLoading ? <Skeleton className="h-56 w-full" /> : <CategoryBreakdown data={byCategory} />}
-          </div>
-        </Card>
+          {hasBudgets && budgetsLeft && budgetsCard}
+        </div>
 
         {hasSide && (
           <div className="space-y-2xl">
             {showInsights && (
-              <Card>
-                <CardTitle>Insights</CardTitle>
-                <div className="mt-lg">
-                  <InsightList items={insights} />
-                </div>
-              </Card>
+              <div ref={insightsRef}>
+                <Card>
+                  <CardTitle>Insights</CardTitle>
+                  <div className="mt-lg">
+                    <InsightList items={insights} />
+                  </div>
+                </Card>
+              </div>
             )}
-
-            {hasBudgets && (
-              <Card>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Budgets</CardTitle>
-                  <Link href="/budgets" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
-                    Manage <ArrowRight size={13} />
-                  </Link>
-                </div>
-                <div className="mt-lg divide-y divide-border">
-                  {budgets.data!.slice(0, 3).map((b) => (
-                    <BudgetRow key={b.category_slug} budget={b} />
-                  ))}
-                </div>
-              </Card>
-            )}
+            {hasBudgets && !budgetsLeft && budgetsCard}
           </div>
         )}
       </div>
