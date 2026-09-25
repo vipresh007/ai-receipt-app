@@ -27,3 +27,9 @@ which reads muddy at icon/launch-screen sizes.
 
 The web favicon is `web/app/icon.svg`; the in-app wordmark is
 `web/components/tally-mark.tsx`.
+
+## App Store screenshots
+
+`app-store/` — raw simulator captures (`raw/`), the captioned 6.9" set
+(`out/`), and `build.py`, which composes one from the other. Listing copy is
+in [`docs/APP_STORE.md`](../docs/APP_STORE.md).

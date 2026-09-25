@@ -21,9 +21,10 @@ build, ✅ = already done.**
   `com.vipreshpatel.tally://dev-…auth0.com/ios/com.vipreshpatel.tally/callback`.
   When you enroll in the Apple Developer Program, register this exact id as an
   Explicit App ID and create the App Store Connect record with it.
-- 🟡 App Store name (30 chars) + subtitle (30). "Tally" alone may be taken —
-  plan a qualified store name like `Tally: Receipts & Spending`.
-- 🟡 Marketing site copy, screenshots, an App Store description + keywords.
+- ✅ App Store name, subtitle, description, keywords, URLs, review notes —
+  ready to paste from [`APP_STORE.md`](APP_STORE.md).
+- ✅ Screenshots (6.9") — `brand/app-store/out/`, rebuilt by
+  `brand/app-store/build.py`.
 
 ## 2. Apple / iOS
 
@@ -51,19 +52,20 @@ build, ✅ = already done.**
   see `backend/app/api/deps.py`); an Apple "Hide My Email" address won't match
   and gets a separate account, which is expected.
 - ✅ **In-app account deletion.** `DELETE /v1/auth/me` wipes expenses,
-  receipts, insights, the `users` row, and (best-effort) the Blob images.
+  receipts, budgets, the `users` row, and (best-effort) the Blob images.
   UI: iOS Account → "Delete account" (confirmation dialog); web `/account` →
   danger zone (type `DELETE`). Both sign out afterwards.
-- ✅ **Privacy manifest** `PrivacyInfo.xcprivacy` — in the bundle. First pass:
-  declares email/name/photos/other-user-content (app functionality) + crash/
-  perf/interaction, and required-reason APIs (UserDefaults `CA92.1`, file
-  timestamp `0A2A.1`). **Reconcile with the App Privacy answers below.**
-- 🟡 **App Privacy answers** in App Store Connect ("nutrition label"): we
-  collect email (account), photos/receipts (app functionality), and diagnostics
-  via App Insights. Not used for tracking. Must match `PrivacyInfo.xcprivacy`.
-- 🟡 Screenshots for 6.9"/6.7" iPhone (and 13" iPad if you keep iPad — the app
-  is iPhone-only today: `TARGETED_DEVICE_FAMILY = "1"`).
-- 🟡 Age rating (4+), primary category **Finance**, support URL, marketing URL.
+- ✅ **Privacy manifest** `PrivacyInfo.xcprivacy` — email, name, photos,
+  other user content, purchase history (linked); device ID, crash,
+  performance, product interaction (not linked); required-reason APIs
+  (UserDefaults `CA92.1`, file timestamp `0A2A.1`).
+- ✅ **App Privacy answers** — the table in [`APP_STORE.md`](APP_STORE.md),
+  matched to the manifest line for line. Enter them in App Store Connect.
+- ✅ Age rating 4+, category Finance, support/marketing/privacy URLs — in
+  `APP_STORE.md`.
+- 🟡 Create an App Review demo account (email/password) and add a budget to
+  it — see `APP_STORE.md` → App Review information.
+- 🟡 Bump `MARKETING_VERSION` to `1.0.0` for the submission build.
 - ✅ `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — reworded
   to be user-facing.
 - ✅ Launch screen — ink background + centred gold/teal Tally mark
@@ -105,10 +107,14 @@ build, ✅ = already done.**
   prod application (own client secret), a separate Google OAuth client, a fresh
   `AUTH0_SECRET`, and a new Postgres password. The values used in dev are
   effectively public and must never guard real user data.
-- ⛔ **A production environment** separate from `rg-ai-receipt-dev`: its own
-  resource group, Postgres, Blob, Key Vault, Container Apps, Auth0
-  tenant/application, Azure OpenAI deployment. `infra/provision.sh` +
-  `infra/deploy.sh` are parameterised on `ENV` — run with `ENV=prod`.
+- ✅ **Decision (2026-09-25): the current environment (`rg-ai-receipt-dev`)
+  is production for launch.** It costs little, and a separate prod stack
+  (`ENV=prod` with `infra/provision.sh` + `infra/deploy.sh`) only makes sense
+  once there are enough users to justify double the bill. Moving later means
+  a data migration (pg_dump/restore + blob copy) and repointing
+  `tally.dataeaver.ca` and the iOS `EXTRACTION_API_HOST` (a new app build).
+  Before real users, the dev env still needs the essentials in
+  "Keep-as-prod essentials" below.
 - 🟡 **Postgres**: enable automated backups + point-in-time restore, set a
   retention window, consider zone-redundant HA, and **remove the "allow all
   Azure services" firewall rule** — scope to the Container App's outbound IPs
@@ -128,6 +134,25 @@ build, ✅ = already done.**
   1 for prod (`az containerapp update --min-replicas 1`) — ~$15–30/mo.
 - 🟢 Structured request logging, a `/version` endpoint, DB connection pool
   tuning.
+
+### Keep-as-prod essentials (checked 2026-09-25)
+
+What the current resources actually have, and the cheap fixes:
+
+| Item | Today | Fix | Cost |
+|---|---|---|---|
+| Blob lifecycle | **No rule.** The privacy policy promises images are deleted after 24 months | Management policy: delete blobs older than 730 days | Free |
+| Blob soft delete | Off | 7-day soft delete (undo an accidental delete) | ~Free |
+| Postgres backups | 7 days, locally redundant | 35 days | Backup storage beyond 32 GB only |
+| Postgres storage auto-grow | Off (32 GB) | On, so a full disk can't take the API down | Free until used |
+| Postgres firewall | "Allow all Azure services" | Keep. A Consumption environment has hundreds of shared outbound IPs, so scoping is impractical. The real fix (VNet + private endpoint) needs a new Container Apps environment, so it's part of a future prod stack. Mitigate with a fresh DB password | — |
+| Secrets | Dev values, some seen in terminal output | Rotate the Postgres password, `AUTH0_SECRET`, Auth0 web client secret, Azure OpenAI key, and storage key | Free |
+| API cold start | `minReplicas 0` (10–20 s first scan) | `minReplicas 1` on the API only (web can stay 0) | ≈$10/mo |
+| Log Analytics | No daily cap | 0.5 GB/day cap | Free |
+| Spend | No budget alert | Resource-group budget ($50/mo) with email alerts at 80%/100% | Free |
+
+Geo-redundant backup and zone HA can't be added to this Postgres server
+after creation. Accept that on the single-server plan.
 
 ## 5. Legal & data
 
@@ -173,7 +198,8 @@ in order:
 2. Individual → Organization conversion for the Apple seller name (§2/§5) —
    submit it now if not already; it runs in the background while you do
    everything else.
-3. Screenshots, App Store listing copy, App Privacy answers (§2).
+3. ~~Screenshots, App Store listing copy, App Privacy answers (§2).~~ Done:
+   enter them from `APP_STORE.md`, plus the review demo account.
 4. TestFlight build → internal testing → submit for review.
-5. Production env + fresh secrets (§3/§4) — can trail TestFlight, but must
-   land before real users sign up for real.
+5. The keep-as-prod essentials (§4). They can trail TestFlight, but must
+   land before real users sign up.
