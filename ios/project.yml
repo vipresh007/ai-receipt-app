@@ -38,6 +38,9 @@ targets:
         # Only HTTPS and Apple's own crypto — exempt from export documentation,
         # so App Store Connect stops asking on every upload.
         ITSAppUsesNonExemptEncryption: false
+        # XcodeGen otherwise writes its own 1.0 / 1, ignoring the settings above.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: Tally
         UILaunchScreen:
           UIColorName: LaunchBackground
