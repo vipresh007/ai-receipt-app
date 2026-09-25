@@ -50,18 +50,18 @@ export function BudgetRow({
         <div className="flex items-center justify-between gap-md">
           <span className="text-callout font-medium text-text">{meta.label}</span>
           <span
-            className={cn("shrink-0 rounded-full px-sm py-hair text-micro font-semibold tabular", BADGE_COLOR[status])}
+            className={cn("shrink-0 rounded-full px-sm py-hair font-mono text-[11px] font-medium tabular", BADGE_COLOR[status])}
           >
             {Math.round(budget.percent_used)}%
           </span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
           <div
             className={cn("h-full rounded-full transition-[width]", BAR_COLOR[status])}
             style={{ width: `${Math.min(budget.percent_used, 100)}%` }}
           />
         </div>
-        <p className="tabular text-caption text-text-secondary">
+        <p className="font-mono text-[12px] tabular text-text-secondary">
           {money(budget.spent)} of {money(budget.monthly_limit)}
         </p>
       </div>

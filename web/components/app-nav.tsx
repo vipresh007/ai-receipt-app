@@ -18,11 +18,11 @@ export function AppNav({ displayName }: { displayName?: string }) {
 
   return (
     <nav className="flex shrink-0 items-stretch gap-xs md:w-52 md:flex-col">
-      <Link href="/" className="mb-xl hidden items-center gap-sm px-md md:flex">
-        <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent text-accent-fg">
-          <TallyMark size={24} />
-        </div>
-        <span className="text-title tracking-tight">Tally</span>
+      <Link href="/" className="mb-2xl hidden items-center gap-md px-md md:flex">
+        <span className="grid h-10 w-10 place-items-center rounded-[11px] bg-hero text-gold ring-1 ring-white/5">
+          <TallyMark size={22} />
+        </span>
+        <span className="font-display text-[24px] font-extrabold tracking-[-0.03em]">Tally</span>
       </Link>
 
       {LINKS.map(({ href, label, icon: Icon }) => {
@@ -33,9 +33,9 @@ export function AppNav({ displayName }: { displayName?: string }) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 items-center justify-center gap-sm rounded-md px-md py-sm text-callout transition-colors md:flex-none md:justify-start",
+              "flex flex-1 items-center justify-center gap-md rounded-pill px-lg py-sm text-callout transition-colors md:flex-none md:justify-start",
               active
-                ? "bg-accent-muted font-medium text-accent"
+                ? "bg-accent-muted font-semibold text-accent"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text",
             )}
           >

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Plus, ScanLine } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import type { Budget, CategoryTotal, Insight, Me, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
 import {
@@ -16,11 +16,11 @@ import {
   shiftPeriod,
 } from "@/lib/period";
 import { money } from "@/lib/format";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { HeroMetric } from "@/components/hero-metric";
+import { PeriodHero } from "@/components/period-hero";
 import { CategoryBreakdown } from "@/components/category-breakdown";
-import { SpendingTrend } from "@/components/spending-trend";
 import { InsightList } from "@/components/insight-list";
 import { ReceiptRow } from "@/components/receipt-row";
 import { BudgetRow } from "@/components/budget-row";
@@ -42,6 +42,11 @@ const PREVIOUS_WORD: Record<Granularity, string> = {
   month: "Previous month",
   quarter: "Previous quarter",
   year: "Previous year",
+};
+const AGAINST_WORD: Record<Granularity, string> = {
+  month: "the month before",
+  quarter: "the quarter before",
+  year: "the year before",
 };
 
 function thisMonth(): string {
@@ -65,6 +70,15 @@ function mergeCategoryTotals(summaries: SpendingSummary[]): CategoryTotal[] {
   return [...totals.entries()]
     .map(([category_slug, amount]) => ({ category_slug, amount: String(amount) }))
     .sort((a, b) => Number(b.amount) - Number(a.amount));
+}
+
+/** Days the period covers — up to today if it's the current one. */
+function daysCovered(months: string[], isCurrent: boolean): number {
+  const [y0, m0] = months[0].split("-").map(Number);
+  const [y1, m1] = months[months.length - 1].split("-").map(Number);
+  const start = new Date(y0, m0 - 1, 1);
+  const end = isCurrent ? new Date() : new Date(y1, m1, 0);
+  return Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1);
 }
 
 export default function DashboardPage() {
@@ -127,6 +141,7 @@ export default function DashboardPage() {
   const byCategory = periodSummary.data ? mergeCategoryTotals(periodSummary.data) : [];
   const delta = periodTotal !== undefined && previousTotal !== undefined ? periodTotal - previousTotal : 0;
   const showDelta = previousTotal !== undefined && previousTotal > 0;
+  const perDay = periodTotal !== undefined ? periodTotal / daysCovered(periodMonths, isCurrentPeriod) : undefined;
 
   const earliestMonth = earliestBound.data?.earliest_month;
   const canGoBack = !earliestMonth || previousPeriodMonths.some((m) => m >= earliestMonth);
@@ -134,158 +149,168 @@ export default function DashboardPage() {
 
   const chartData = bucketTrend(trend.data ?? [], granularity, TREND_TAKE[granularity]);
 
+  const showInsights = granularity === "month" && isCurrentPeriod;
+  const hasBudgets = granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0;
+  const hasSide = showInsights || hasBudgets;
+
   return (
-    <div className="space-y-xl">
-      <header className="flex items-center justify-between">
+    <div className="space-y-2xl">
+      <header className="flex flex-wrap items-end justify-between gap-lg">
         <div>
-          {firstName && <p className="text-micro uppercase text-text-tertiary">{greeting()}</p>}
-          <h1 className="text-title">{firstName ?? "Dashboard"}</h1>
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
+            {firstName ? greeting() : "Overview"}
+          </p>
+          <h1 className="mt-xs font-display text-[40px] font-extrabold leading-none tracking-[-0.04em] md:text-[48px]">
+            {firstName ?? "Dashboard"}
+          </h1>
         </div>
-        <div className="flex items-center gap-md text-callout">
-          <Link href="/expenses/new" className="text-text-secondary hover:text-text">
-            Add expense
+        <div className="flex gap-sm">
+          <Link href="/expenses/new" className={buttonVariants({ variant: "secondary" })}>
+            <Plus size={16} /> Add expense
           </Link>
-          <Link href="/scan" className="text-accent hover:underline">
-            Scan a receipt →
+          <Link href="/scan" className={buttonVariants()}>
+            <ScanLine size={16} /> Scan a receipt
           </Link>
         </div>
       </header>
 
-      <div className="space-y-md">
-        <div className="flex justify-center">
-          <div className="inline-flex rounded-pill bg-surface-2 p-hair">
-            {GRANULARITIES.map((g) => (
-              <button
-                key={g.value}
-                type="button"
-                onClick={() => setGranularity(g.value)}
-                className={cn(
-                  "rounded-pill px-lg py-xs text-caption font-medium transition-colors",
-                  granularity === g.value
-                    ? "bg-surface text-text shadow-e1"
-                    : "text-text-secondary hover:text-text",
-                )}
-              >
-                {g.label}
-              </button>
-            ))}
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-md">
+        <div className="inline-flex rounded-pill bg-surface-2 p-hair ring-1 ring-border">
+          {GRANULARITIES.map((g) => (
+            <button
+              key={g.value}
+              type="button"
+              onClick={() => setGranularity(g.value)}
+              aria-pressed={granularity === g.value}
+              className={cn(
+                "rounded-pill px-lg py-xs text-caption font-semibold transition-colors",
+                granularity === g.value ? "bg-surface text-text shadow-e1" : "text-text-secondary hover:text-text",
+              )}
+            >
+              {g.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-center justify-center gap-lg">
+        <div className="flex items-center gap-sm">
           <button
             type="button"
             onClick={() => setMonth((m) => shiftPeriod(m, granularity, -1))}
             disabled={!canGoBack}
             aria-label="Previous period"
-            className="rounded-md p-xs text-text-secondary hover:bg-surface-2 disabled:opacity-30"
+            className="grid h-9 w-9 place-items-center rounded-pill text-text-secondary ring-1 ring-border transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-30"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
-          <span className="min-w-[12rem] text-center text-headline">{periodLabel(month, granularity)}</span>
+          <span className="min-w-[10.5rem] text-center font-display text-[20px] font-bold tracking-[-0.02em]">
+            {periodLabel(month, granularity)}
+          </span>
           <button
             type="button"
             onClick={() => setMonth((m) => shiftPeriod(m, granularity, 1))}
             disabled={!canGoForward}
             aria-label="Next period"
-            className="rounded-md p-xs text-text-secondary hover:bg-surface-2 disabled:opacity-30"
+            className="grid h-9 w-9 place-items-center rounded-pill text-text-secondary ring-1 ring-border transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-30"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
-      <HeroMetric
-        label={isCurrentPeriod ? CURRENT_WORD[granularity] : periodLabel(month, granularity)}
+      <PeriodHero
+        label={isCurrentPeriod ? `${CURRENT_WORD[granularity]} · ${periodLabel(month, granularity)}` : periodLabel(month, granularity)}
+        total={periodTotal}
         loading={periodSummary.isLoading}
-        value={periodTotal !== undefined ? money(periodTotal) : "—"}
-        delta={
-          showDelta
-            ? {
-                text: `${money(Math.abs(delta))} vs ${PREVIOUS_WORD[granularity].toLowerCase()}`,
-                dir: delta > 0 ? "up" : "down",
-              }
-            : undefined
-        }
-        sparkline={chartData.length > 1 ? chartData.map((d) => d.amount) : undefined}
+        delta={showDelta ? { amount: delta, against: AGAINST_WORD[granularity] } : undefined}
+        figures={[
+          {
+            label: PREVIOUS_WORD[granularity],
+            value: previousTotal !== undefined ? money(previousTotal) : "—",
+          },
+          {
+            label: isCurrentPeriod ? "Per day so far" : "Per day",
+            value: perDay !== undefined ? money(perDay) : "—",
+          },
+        ]}
+        trend={chartData}
+        trendLoading={trend.isLoading}
+        activeKey={periodKey(month, granularity)}
+        onSelect={(key) => setMonth(anchorFromPeriodKey(key, granularity))}
       />
 
-      {granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0 && (
+      <div
+        className={cn(
+          "grid items-start gap-2xl",
+          hasSide && "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]",
+        )}
+      >
         <Card>
           <div className="flex items-center justify-between">
-            <CardTitle>Budgets</CardTitle>
-            <Link href="/budgets" className="text-caption text-text-secondary hover:text-text">
-              Manage →
+            <CardTitle>Where it went</CardTitle>
+            <Link href="/months" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+              All months <ArrowRight size={13} />
             </Link>
           </div>
-          <div className="mt-sm divide-y divide-border">
-            {budgets.data!.slice(0, 3).map((b) => (
-              <BudgetRow key={b.category_slug} budget={b} />
-            ))}
+          <div className="mt-xl">
+            {periodSummary.isLoading ? <Skeleton className="h-56 w-full" /> : <CategoryBreakdown data={byCategory} />}
           </div>
         </Card>
-      )}
 
-      <Card>
-        <div className="flex items-center justify-between">
-          <CardTitle>
-            Last {TREND_TAKE[granularity]} {granularity === "month" ? "months" : `${granularity}s`}
-          </CardTitle>
-          <Link href="/months" className="text-caption text-text-secondary hover:text-text">
-            All months →
-          </Link>
-        </div>
-        <div className="mt-md">
-          {trend.isLoading ? (
-            <Skeleton className="h-40 w-full" />
-          ) : (
-            <SpendingTrend
-              data={chartData}
-              activeKey={periodKey(month, granularity)}
-              onSelect={(key) => setMonth(anchorFromPeriodKey(key, granularity))}
-            />
-          )}
-        </div>
-      </Card>
+        {hasSide && (
+          <div className="space-y-2xl">
+            {showInsights && (
+              <Card>
+                <CardTitle>Insights</CardTitle>
+                <div className="mt-lg">
+                  {insights.isLoading ? <Skeleton className="h-20 w-full" /> : <InsightList items={insights.data ?? []} />}
+                </div>
+              </Card>
+            )}
 
-      <Card>
-        <CardTitle>By category</CardTitle>
-        <div className="mt-md">
-          {periodSummary.isLoading ? <Skeleton className="h-48 w-full" /> : <CategoryBreakdown data={byCategory} />}
-        </div>
-      </Card>
-
-      {granularity === "month" && isCurrentPeriod && (
-        <Card>
-          <CardTitle>Insights</CardTitle>
-          <div className="mt-md">
-            {insights.isLoading ? (
-              <Skeleton className="h-16 w-full" />
-            ) : (
-              <InsightList items={insights.data ?? []} />
+            {hasBudgets && (
+              <Card>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Budgets</CardTitle>
+                  <Link href="/budgets" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+                    Manage <ArrowRight size={13} />
+                  </Link>
+                </div>
+                <div className="mt-lg divide-y divide-border">
+                  {budgets.data!.slice(0, 3).map((b) => (
+                    <BudgetRow key={b.category_slug} budget={b} />
+                  ))}
+                </div>
+              </Card>
             )}
           </div>
-        </Card>
-      )}
+        )}
+      </div>
 
       {granularity === "month" && (
         <Card>
           <div className="flex items-center justify-between">
-            <CardTitle>{isCurrentPeriod ? "Recent" : "Receipts"}</CardTitle>
-            <Link href="/receipts" className="text-caption text-text-secondary hover:text-text">
-              All receipts
+            <CardTitle>{isCurrentPeriod ? "Recent receipts" : "Receipts"}</CardTitle>
+            <Link href="/receipts" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+              All receipts <ArrowRight size={13} />
             </Link>
           </div>
-          <div className="mt-sm divide-y divide-border">
+          <div className="mt-md grid gap-x-3xl md:grid-cols-2">
             {receipts.isLoading &&
-              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="my-sm h-10 w-full" />)}
-            {receipts.data?.map((r) => <ReceiptRow key={r.id} receipt={r} />)}
-            {!receipts.isLoading && receipts.data?.length === 0 && (
-              <p className="py-lg text-center text-callout text-text-secondary">
-                No receipts in {periodLabel(month, granularity)}.
-              </p>
-            )}
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="my-sm h-11 w-full" />)}
+            {receipts.data?.map((r) => (
+              <div key={r.id} className="border-b border-border last:border-b-0 md:[&:nth-last-child(2):nth-child(odd)]:border-b-0">
+                <ReceiptRow receipt={r} />
+              </div>
+            ))}
           </div>
+          {!receipts.isLoading && receipts.data?.length === 0 && (
+            <div className="flex flex-col items-center gap-md py-2xl text-center">
+              <p className="text-callout text-text-secondary">No receipts in {periodLabel(month, granularity)} yet.</p>
+              <Link href="/scan" className={buttonVariants({ size: "sm" })}>
+                <ScanLine size={15} /> Scan your first one
+              </Link>
+            </div>
+          )}
         </Card>
       )}
     </div>

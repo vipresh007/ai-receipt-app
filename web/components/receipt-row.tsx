@@ -13,21 +13,21 @@ export function ReceiptRowContent({ receipt }: { receipt: ReceiptOut }) {
   return (
     <>
       <div
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-md"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-md"
         style={{
           background: `color-mix(in srgb, ${color} 14%, transparent)`,
           color,
         }}
       >
-        <Icon size={16} />
+        <Icon size={17} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-callout">{receipt.merchant || "Unknown merchant"}</p>
-        <p className="text-caption text-text-secondary">
+        <p className="truncate text-callout font-medium">{receipt.merchant || "Unknown merchant"}</p>
+        <p className="text-caption text-text-tertiary">
           {[shortDate(receipt.purchased_at), meta.label].filter(Boolean).join(" · ")}
         </p>
       </div>
-      <p className="tabular text-callout font-medium">
+      <p className="font-mono text-callout tabular">
         {money(receipt.total, receipt.currency)}
       </p>
     </>
@@ -38,7 +38,7 @@ export function ReceiptRow({ receipt }: { receipt: ReceiptOut }) {
   return (
     <Link
       href={`/receipts/${receipt.id}`}
-      className="flex items-center gap-md py-sm transition-colors hover:bg-surface-2"
+      className="-mx-sm flex items-center gap-md rounded-md px-sm py-md transition-colors hover:bg-surface-2"
     >
       <ReceiptRowContent receipt={receipt} />
     </Link>

@@ -164,6 +164,81 @@
   to { opacity: 1; transform: none; }
 }
 
+/* Privacy / Terms (Markdown) in the landing's ink look. */
+.ledger .legal-doc {
+  color: var(--cream-2);
+  font-size: 17px;
+  line-height: 1.7;
+}
+.ledger .legal-doc h1 {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: clamp(2.6rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--cream);
+  margin-bottom: 1.25rem;
+}
+.ledger .legal-doc h1 + p em {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-style: normal;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.ledger .legal-doc h2 {
+  font-family: var(--font-display), var(--font-sans);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--cream);
+  margin-top: 3.25rem;
+  margin-bottom: 0.9rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule);
+}
+.ledger .legal-doc h3 {
+  color: var(--cream);
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.ledger .legal-doc li::marker {
+  color: var(--gold);
+}
+.ledger .legal-doc a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-decoration-color: rgba(217, 174, 92, 0.4);
+  text-underline-offset: 3px;
+}
+.ledger .legal-doc a:hover {
+  color: var(--gold-2);
+  text-decoration-color: currentColor;
+}
+.ledger .legal-doc strong {
+  color: var(--cream);
+}
+.ledger .legal-doc em {
+  color: var(--cream-3);
+}
+.ledger .legal-doc code {
+  background: var(--ink-3);
+  color: var(--cream);
+}
+.ledger .legal-doc table {
+  font-size: 0.92rem;
+}
+.ledger .legal-doc th,
+.ledger .legal-doc td {
+  border-color: var(--rule-2);
+}
+.ledger .legal-doc th {
+  color: var(--cream);
+  background: var(--ink-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .l-scan { display: none; }
   .l-draw path, .l-draw line, .l-rise { animation: none; }

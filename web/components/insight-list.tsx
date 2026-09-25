@@ -10,12 +10,12 @@ const ICON: Record<InsightKind, typeof Minus> = {
   summary: Minus,
 };
 
-const COLOR: Record<InsightKind, string> = {
-  up: "text-danger",
-  down: "text-success",
-  streak: "text-warning",
-  neutral: "text-text-tertiary",
-  summary: "text-text-tertiary",
+const TONE: Record<InsightKind, string> = {
+  up: "bg-danger-muted text-danger",
+  down: "bg-success-muted text-success",
+  streak: "bg-warning-muted text-warning",
+  neutral: "bg-surface-2 text-text-tertiary",
+  summary: "bg-surface-2 text-text-tertiary",
 };
 
 export function InsightList({ items }: { items: Insight[] }) {
@@ -28,13 +28,20 @@ export function InsightList({ items }: { items: Insight[] }) {
   }
 
   return (
-    <ul className="space-y-sm">
+    <ul className="divide-y divide-border">
       {items.map((insight) => {
         const Icon = ICON[insight.kind] ?? Minus;
         return (
-          <li key={insight.id} className="flex items-start gap-sm text-callout">
-            <Icon size={16} className={cn("mt-hair shrink-0", COLOR[insight.kind] ?? "text-text-tertiary")} />
-            <span>{insight.message}</span>
+          <li key={insight.id} className="flex items-start gap-md py-md first:pt-0 last:pb-0">
+            <span
+              className={cn(
+                "mt-[1px] grid h-7 w-7 shrink-0 place-items-center rounded-pill",
+                TONE[insight.kind] ?? TONE.neutral,
+              )}
+            >
+              <Icon size={15} />
+            </span>
+            <span className="text-callout leading-[1.5]">{insight.message}</span>
           </li>
         );
       })}

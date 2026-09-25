@@ -78,6 +78,9 @@ const preset = {
       },
       fontFamily: {
         sans: "var(--font-sans)",
+        // Loaded by web/lib/fonts.ts (next/font); fall back to the body face.
+        display: ["var(--font-display)", "var(--font-sans)"],
+        mono: ["var(--font-mono)", "ui-monospace", "SF Mono", "Menlo", "monospace"],
       },
       fontSize: {
         display: ["var(--fs-display)", { lineHeight: "var(--lh-display)", letterSpacing: "-0.02em", fontWeight: "700" }],

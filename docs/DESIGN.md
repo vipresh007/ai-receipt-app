@@ -31,8 +31,8 @@ values in `tokens.json` → `color.light` / `color.dark`.
 | `surface`, `surface-2`, `surface-sunken` | cards, nested cards, wells |
 | `border`, `border-strong` | hairlines, dividers, input borders |
 | `text`, `text-secondary`, `text-tertiary` | primary copy, labels, hints |
-| `accent`, `accent-hover`, `accent-fg`, `accent-muted` | primary actions, focus, selection (a deep teal — see "Ledger" below) |
-| `gold` | the hero card's spotlight color **only** — eyebrow label, delta chip, sparkline. Never a button, link, or anything outside the hero. |
+| `accent`, `accent-hover`, `accent-fg`, `accent-muted` | primary actions, focus, selection — gold (deep gold `#8A5E0F` in light for contrast; `#D9AE5C` in dark). See "Ledger" below. |
+| `gold` | the bright gold (`#D9AE5C`) on the always-ink hero panel — eyebrow label, chart line. In dark mode it equals `accent`. |
 | `success` / `warning` / `danger` / `info` (+ `-muted`) | status, insight direction, validation |
 
 ### The "Ledger" direction
@@ -42,19 +42,24 @@ original flat/bordered look, without going full dark-mode-banking-app). The
 signature move: **one gradient hero card per screen**, everything else stays
 calm.
 
-- **Hero card** — `hero-gradient` (an ink-to-teal diagonal, `tokens.json` →
-  `color.*.hero-gradient`), always dark regardless of the app's light/dark
-  mode (it's a fixed "card sitting on the page," not a themed surface).
-  Carries the period's total: `hero-text` (warm off-white) for the number,
-  `gold` for the eyebrow label and the delta chip, a small sparkline in
-  `gold` echoing the trend. Radius `xl` (24). One per screen — the
-  "This month" metric on the dashboard. Don't reuse the gradient elsewhere.
-- **Cards lost their border.** Every other surface (`Card`, `AppCard`) is now
-  a soft shadow (`e1`) at radius `lg` (20) instead of a `border` hairline —
-  see Elevation below.
-- **Accent is teal, not blue** — `#0E6E58` light / `#35C79A` dark. Used for
-  links, primary buttons, the trend chart line/bars, and focus rings. `info`
-  mirrors `accent` as before.
+**v0.3 (Sept 2026): the app now matches the landing page.** Warm paper
+grounds in light mode (`#F3EEE3`), ink in dark (`#0C1412`), gold as the
+action color, Bricolage Grotesque for display figures/headings and IBM Plex
+Mono for labels and money (`--font-display` / `--font-mono`, Tailwind
+`font-display` / `font-mono`). The landing page itself is always ink
+(`.ledger` scope in `web/app/globals.css`).
+
+- **Hero panel** — `hero-gradient` (ink with a gold glow in the top-right
+  corner), always ink regardless of the app's light/dark mode. On the web
+  dashboard it's `PeriodHero`: the period's total in the display face (cents
+  dimmed), a comparison chip, two small figures, and the trend chart in gold
+  — one panel instead of a separate hero card + chart card. One per screen;
+  don't reuse the gradient elsewhere.
+- **Cards** — `surface` at radius `xl` (24) with a hairline `border` ring
+  plus a soft `e1` shadow; section titles are small uppercase mono labels.
+- **Buttons** — pill-shaped; primary is `accent` (gold) fill.
+- **`info`** stays teal (`#0E6E58` / `#35C79A`), as does the "less than
+  before" delta on the hero.
 
 **Category palette** (`tokens.json` → `category.*`): the 9 `ExpenseCategory`
 slugs, each with a light and dark value, tuned to sit together in a chart and

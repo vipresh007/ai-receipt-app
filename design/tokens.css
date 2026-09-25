@@ -2,47 +2,45 @@
    Hand-kept in sync until design/build script exists. Import once, globally. */
 
 :root {
-  /* color — light */
-  --c-bg: #FAFAF9;
-  --c-surface: #FFFFFF;
-  --c-surface-2: #F4F4F2;
-  --c-surface-sunken: #F0EFEC;
-  --c-border: #E7E5E1;
-  --c-border-strong: #D6D3CD;
-  --c-text: #1A1A19;
-  --c-text-secondary: #6B6B66;
-  --c-text-tertiary: #9A9A93;
-  --c-text-inverse: #FFFFFF;
+  /* color — light ("paper") */
+  --c-bg: #F3EEE3;
+  --c-surface: #FBF8F2;
+  --c-surface-2: #EDE7DA;
+  --c-surface-sunken: #E8E1D2;
+  --c-border: #E2DACA;
+  --c-border-strong: #CFC5B1;
+  --c-text: #1E2321;
+  --c-text-secondary: #5B5F59;
+  --c-text-tertiary: #8B8D85;
+  --c-text-inverse: #FBF8F2;
 
-  --c-accent: #0E6E58;
-  --c-accent-hover: #0B5A48;
+  /* Deep gold: the light-mode stand-in for the landing page's gold buttons,
+     dark enough for 4.5:1 as link text on paper and under white button text. */
+  --c-accent: #8A5E0F;
+  --c-accent-hover: #74500C;
   --c-accent-fg: #FFFFFF;
-  --c-accent-muted: rgba(14, 110, 88, 0.12);
-  --c-focus-ring: rgba(14, 110, 88, 0.45);
+  --c-accent-muted: rgba(138, 94, 15, 0.12);
+  --c-focus-ring: rgba(138, 94, 15, 0.4);
 
   --c-gold: #D9AE5C;
 
-  --c-success: #1F9D57;
-  --c-success-muted: rgba(31, 157, 87, 0.14);
-  --c-warning: #C1841A;
-  --c-warning-muted: rgba(193, 132, 26, 0.16);
-  --c-danger: #D5473B;
-  --c-danger-muted: rgba(213, 71, 59, 0.14);
+  --c-success: #1F8A57;
+  --c-success-muted: rgba(31, 138, 87, 0.13);
+  --c-warning: #B7791A;
+  --c-warning-muted: rgba(183, 121, 26, 0.15);
+  --c-danger: #C8453A;
+  --c-danger-muted: rgba(200, 69, 58, 0.13);
   --c-info: #0E6E58;
   --c-info-muted: rgba(14, 110, 88, 0.12);
 
-  /* hero card — the one gradient "moment" per screen (Ledger direction) */
-  --hero-gradient: linear-gradient(135deg, #0F1E19 0%, #123A32 48%, #0E6E58 100%);
-  --c-hero-text: #F2EEE1;
-  --c-hero-chip-bg: rgba(255, 255, 255, 0.12);
-  /* Text for a button/chip filled with --c-hero-text itself (always this
-     light cream regardless of theme) — a fixed dark ink, never the
-     theme-switching --c-accent, which turns bright/light in dark mode and
-     would go illegible against an also-light fill. */
-  --c-hero-cta-text: #12241E;
-  /* Hover fill for that same button — a touch darker than --c-hero-text,
-     not `opacity-90` (which faded the whole button toward the dark hero
-     gradient behind it and washed out the text along with it). */
+  /* hero panel — the one loud moment per screen. Always ink, in both
+     themes, with a gold glow in the corner (matches the landing page). */
+  --hero-gradient: radial-gradient(120% 140% at 100% 0%, rgba(217, 174, 92, 0.18) 0%, transparent 55%),
+    linear-gradient(160deg, #0C1412 0%, #14231F 100%);
+  --c-hero-text: #F1ECE1;
+  --c-hero-chip-bg: rgba(255, 255, 255, 0.08);
+  /* Text for a button/chip filled with --c-hero-text (always light cream). */
+  --c-hero-cta-text: #0C1412;
   --c-hero-cta-hover: #E6DFC9;
 
   /* category — light */
@@ -76,8 +74,8 @@
   --fs-micro: 11px;    --lh-micro: 14px;
 
   /* elevation — soft shadow is the default card treatment now, no border */
-  --e1: 0 10px 28px rgba(20, 24, 20, 0.08), 0 2px 8px rgba(20, 24, 20, 0.05);
-  --e2: 0 14px 34px rgba(20, 24, 20, 0.12), 0 4px 12px rgba(20, 24, 20, 0.07);
+  --e1: 0 10px 28px rgba(48, 38, 18, 0.07), 0 2px 8px rgba(48, 38, 18, 0.05);
+  --e2: 0 16px 38px rgba(48, 38, 18, 0.12), 0 4px 12px rgba(48, 38, 18, 0.07);
 
   /* motion */
   --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms; --dur-deliberate: 480ms;
@@ -95,39 +93,38 @@
 /* dark — system default, unless explicitly light */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --c-bg: #0F0F10;
-    --c-surface: #17171A;
-    --c-surface-2: #202024;
-    --c-surface-sunken: #0B0B0C;
-    --c-border: #2B2B30;
-    --c-border-strong: #3B3B42;
-    --c-text: #F5F5F4;
-    --c-text-secondary: #A2A2A0;
-    --c-text-tertiary: #6E6E6D;
-    --c-text-inverse: #17171A;
+    --c-bg: #0C1412;
+    --c-surface: #121D1A;
+    --c-surface-2: #182723;
+    --c-surface-sunken: #08100E;
+    --c-border: #21302B;
+    --c-border-strong: #2F413B;
+    --c-text: #F1ECE1;
+    --c-text-secondary: #A7ADA5;
+    --c-text-tertiary: #6E766F;
+    --c-text-inverse: #121D1A;
 
-    --c-accent: #35C79A;
-    /* Darken on hover here too, like light mode — a lighter/brighter hover
-       looked washed out against dark-mode's already-bright base accent. */
-    --c-accent-hover: #2A9F7B;
-    --c-accent-fg: #0F0F10;
-    --c-accent-muted: rgba(53, 199, 154, 0.16);
-    --c-focus-ring: rgba(53, 199, 154, 0.55);
+    --c-accent: #D9AE5C;
+    --c-accent-hover: #E8C67F;
+    --c-accent-fg: #0C1412;
+    --c-accent-muted: rgba(217, 174, 92, 0.14);
+    --c-focus-ring: rgba(217, 174, 92, 0.5);
 
-    --c-gold: #EAC471;
+    --c-gold: #D9AE5C;
 
     --c-success: #37C77E;
-    --c-success-muted: rgba(55, 199, 126, 0.18);
+    --c-success-muted: rgba(55, 199, 126, 0.16);
     --c-warning: #E4A63E;
-    --c-warning-muted: rgba(228, 166, 62, 0.18);
+    --c-warning-muted: rgba(228, 166, 62, 0.16);
     --c-danger: #F26A5C;
-    --c-danger-muted: rgba(242, 106, 92, 0.18);
+    --c-danger-muted: rgba(242, 106, 92, 0.16);
     --c-info: #35C79A;
     --c-info-muted: rgba(53, 199, 154, 0.16);
 
-    --hero-gradient: linear-gradient(135deg, #090E0C 0%, #0F2B25 48%, #167A62 100%);
-    --c-hero-text: #F2EEE1;
-    --c-hero-chip-bg: rgba(255, 255, 255, 0.10);
+    --hero-gradient: radial-gradient(120% 140% at 100% 0%, rgba(217, 174, 92, 0.16) 0%, transparent 55%),
+      linear-gradient(160deg, #0A110F 0%, #172824 100%);
+    --c-hero-text: #F1ECE1;
+    --c-hero-chip-bg: rgba(255, 255, 255, 0.08);
 
     --cat-groceries: #46C088;
     --cat-restaurants: #F2A25C;
@@ -146,37 +143,38 @@
 
 /* dark — explicit toggle wins in both directions */
 :root[data-theme="dark"] {
-  --c-bg: #0F0F10;
-  --c-surface: #17171A;
-  --c-surface-2: #202024;
-  --c-surface-sunken: #0B0B0C;
-  --c-border: #2B2B30;
-  --c-border-strong: #3B3B42;
-  --c-text: #F5F5F4;
-  --c-text-secondary: #A2A2A0;
-  --c-text-tertiary: #6E6E6D;
-  --c-text-inverse: #17171A;
+  --c-bg: #0C1412;
+  --c-surface: #121D1A;
+  --c-surface-2: #182723;
+  --c-surface-sunken: #08100E;
+  --c-border: #21302B;
+  --c-border-strong: #2F413B;
+  --c-text: #F1ECE1;
+  --c-text-secondary: #A7ADA5;
+  --c-text-tertiary: #6E766F;
+  --c-text-inverse: #121D1A;
 
-  --c-accent: #35C79A;
-  --c-accent-hover: #2A9F7B;
-  --c-accent-fg: #0F0F10;
-  --c-accent-muted: rgba(53, 199, 154, 0.16);
-  --c-focus-ring: rgba(53, 199, 154, 0.55);
+  --c-accent: #D9AE5C;
+  --c-accent-hover: #E8C67F;
+  --c-accent-fg: #0C1412;
+  --c-accent-muted: rgba(217, 174, 92, 0.14);
+  --c-focus-ring: rgba(217, 174, 92, 0.5);
 
-  --c-gold: #EAC471;
+  --c-gold: #D9AE5C;
 
   --c-success: #37C77E;
-  --c-success-muted: rgba(55, 199, 126, 0.18);
+  --c-success-muted: rgba(55, 199, 126, 0.16);
   --c-warning: #E4A63E;
-  --c-warning-muted: rgba(228, 166, 62, 0.18);
+  --c-warning-muted: rgba(228, 166, 62, 0.16);
   --c-danger: #F26A5C;
-  --c-danger-muted: rgba(242, 106, 92, 0.18);
+  --c-danger-muted: rgba(242, 106, 92, 0.16);
   --c-info: #35C79A;
   --c-info-muted: rgba(53, 199, 154, 0.16);
 
-  --hero-gradient: linear-gradient(135deg, #090E0C 0%, #0F2B25 48%, #167A62 100%);
-  --c-hero-text: #F2EEE1;
-  --c-hero-chip-bg: rgba(255, 255, 255, 0.10);
+  --hero-gradient: radial-gradient(120% 140% at 100% 0%, rgba(217, 174, 92, 0.16) 0%, transparent 55%),
+    linear-gradient(160deg, #0A110F 0%, #172824 100%);
+  --c-hero-text: #F1ECE1;
+  --c-hero-chip-bg: rgba(255, 255, 255, 0.08);
 
   --cat-groceries: #46C088;
   --cat-restaurants: #F2A25C;

@@ -30,12 +30,12 @@ export function SiteHeader({ isSignedIn = false }: { isSignedIn?: boolean }) {
           <Wordmark />
         </Link>
         <nav className="flex items-center gap-2 sm:gap-6">
-          <a
-            href="#how"
+          <Link
+            href="/#how"
             className="hidden text-[15px] text-[color:var(--cream-2)] transition-colors hover:text-[color:var(--cream)] sm:block"
           >
             How it works
-          </a>
+          </Link>
           {isSignedIn ? (
             <a href="/dashboard" className="l-btn l-btn-sm">
               Go to dashboard
@@ -113,9 +113,9 @@ export function Hero() {
             <a href={SIGNUP} className="l-btn">
               Start free <ArrowRight size={17} />
             </a>
-            <a href="#how" className="l-btn l-btn-ghost">
+            <Link href="/#how" className="l-btn l-btn-ghost">
               See how it works
-            </a>
+            </Link>
           </div>
           <p
             className="l-mono l-rise mt-8 text-[12.5px] tracking-wide text-[color:var(--cream-3)]"
@@ -637,7 +637,7 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
   {
     heading: "Product",
     links: [
-      { label: "How it works", href: "#how" },
+      { label: "How it works", href: "/#how" },
       { label: "Get started", href: SIGNUP },
       { label: "Log in", href: LOGIN },
     ],
