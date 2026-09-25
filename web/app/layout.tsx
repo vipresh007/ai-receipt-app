@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Auth0Provider } from "@auth0/nextjs-auth0";
 import "./tokens.css";
 import "./globals.css";
-import { inter } from "@/lib/fonts";
+import { display, inter, mono } from "@/lib/fonts";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
@@ -20,7 +20,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${display.variable} ${mono.variable}`}
+    >
       <body>
         <Auth0Provider>
           <Providers>{children}</Providers>

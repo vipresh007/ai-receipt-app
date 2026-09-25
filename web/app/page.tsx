@@ -3,8 +3,10 @@ import {
   AuthErrorBanner,
   BottomCTA,
   Features,
+  Figures,
   Hero,
   HowItWorks,
+  Privacy,
   ReadsReceipts,
   SiteFooter,
   SiteHeader,
@@ -19,14 +21,16 @@ export default async function Home({
   const session = await auth0.getSession();
 
   return (
-    <div className="min-h-dvh bg-bg text-text">
+    <div className="ledger min-h-dvh">
       {authError && <AuthErrorBanner message={authError} />}
       <SiteHeader isSignedIn={!!session} />
       <main>
         <Hero />
+        <Figures />
         <ReadsReceipts />
         <HowItWorks />
         <Features />
+        <Privacy />
         <BottomCTA />
       </main>
       <SiteFooter />

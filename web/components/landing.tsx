@@ -1,53 +1,54 @@
-import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  Camera,
-  Check,
-  CircleCheckBig,
-  Database,
-  FileText,
-  Sparkles,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
 import { TallyMark } from "@/components/tally-mark";
-import { Sparkline } from "@/components/hero-metric";
-import { categoryColor, categoryMeta } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 const SIGNUP = "/auth/login?screen_hint=signup";
 const LOGIN = "/auth/login";
 
+/** Dark-theme category hues from design/tokens.json — the landing page is
+ *  always on the ink ground, so it uses these directly rather than the
+ *  theme-switching CSS vars. */
+const CAT = {
+  groceries: "#46C088",
+  restaurants: "#F2A25C",
+  transport: "#5AA0E0",
+  shopping: "#EC85B8",
+  other: "#9A9A94",
+} as const;
+
+const vars = (v: Record<string, string | number>) => v as CSSProperties;
+
 /* ─────────────────────────── header ─────────────────────────── */
 
 export function SiteHeader({ isSignedIn = false }: { isSignedIn?: boolean }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border/70 bg-bg/80 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-3xl sm:px-4xl">
-        <span className="flex items-center gap-sm">
-          <Wordmark size="lg" />
-        </span>
-        <nav className="flex items-center gap-xs">
+    <header className="sticky top-0 z-30 border-b border-[color:var(--rule)] bg-[rgba(12,20,18,0.82)] backdrop-blur-md">
+      <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-6">
+        <Link href="/" aria-label="Tally home">
+          <Wordmark />
+        </Link>
+        <nav className="flex items-center gap-2 sm:gap-6">
           <a
             href="#how"
-            className="hidden rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:text-text sm:block"
+            className="hidden text-[15px] text-[color:var(--cream-2)] transition-colors hover:text-[color:var(--cream)] sm:block"
           >
             How it works
           </a>
           {isSignedIn ? (
-            <a href="/dashboard" className={buttonVariants({ size: "sm" })}>
-              Go to Dashboard
+            <a href="/dashboard" className="l-btn l-btn-sm">
+              Go to dashboard
             </a>
           ) : (
             <>
               <a
                 href={LOGIN}
-                className="rounded-md px-md py-sm text-callout text-text-secondary transition-colors hover:text-text"
+                className="px-3 text-[15px] text-[color:var(--cream-2)] transition-colors hover:text-[color:var(--cream)]"
               >
                 Log in
               </a>
-              <a href={SIGNUP} className={buttonVariants({ size: "sm" })}>
+              <a href={SIGNUP} className="l-btn l-btn-sm">
                 Get started
               </a>
             </>
@@ -58,26 +59,13 @@ export function SiteHeader({ isSignedIn = false }: { isSignedIn?: boolean }) {
   );
 }
 
-function Wordmark({ size = "default" }: { size?: "default" | "lg" }) {
-  const isLarge = size === "lg";
+function Wordmark() {
   return (
-    <span className="flex items-center gap-sm">
-      <span
-        className={cn(
-          "grid place-items-center rounded-lg bg-accent text-accent-fg shadow-e1",
-          isLarge ? "h-12 w-12 rounded-xl" : "h-9 w-9",
-        )}
-      >
-        <TallyMark size={isLarge ? 28 : 22} />
+    <span className="flex items-center gap-3">
+      <span className="grid h-10 w-10 place-items-center rounded-[11px] bg-[color:var(--ink-3)] text-[color:var(--gold)] ring-1 ring-[color:var(--rule)]">
+        <TallyMark size={22} />
       </span>
-      <span
-        className={cn(
-          "font-extrabold tracking-tight",
-          isLarge ? "text-title" : "text-headline",
-        )}
-      >
-        Tally
-      </span>
+      <span className="l-display text-[22px] font-extrabold">Tally</span>
     </span>
   );
 }
@@ -87,549 +75,559 @@ function Wordmark({ size = "default" }: { size?: "default" | "lg" }) {
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* soft dual glow — product teal + the landing-only gold accent */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 right-[-10%] h-[420px] w-[420px] rounded-pill bg-accent-muted blur-[110px]"
+        className="pointer-events-none absolute right-[-12%] top-[-30%] h-[720px] w-[720px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(53,199,154,0.13), transparent 62%)" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute left-[-8%] top-[18%] h-[320px] w-[320px] rounded-pill blur-[110px]"
-        style={{ background: "var(--c-landing-accent-muted)" }}
+        className="pointer-events-none absolute left-[-18%] top-[30%] h-[520px] w-[520px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(217,174,92,0.10), transparent 64%)" }}
       />
 
-      <div className="relative mx-auto grid max-w-content gap-3xl px-lg pb-4xl pt-3xl lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-2xl lg:pt-4xl">
+      <div className="relative mx-auto grid max-w-[1180px] items-center gap-16 px-6 pb-24 pt-14 lg:grid-cols-[1.08fr_1fr] lg:gap-10 lg:pb-32 lg:pt-20">
         <div>
-          <span className="inline-flex items-center gap-xs rounded-pill border border-border bg-surface/80 px-md py-hair text-micro uppercase tracking-wide text-text-secondary backdrop-blur">
-            <Sparkles size={12} style={{ color: "var(--c-landing-accent)" }} />
-            Expense tracking, minus the tracking
-          </span>
-
-          <h1 className="mt-lg text-[2.75rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.4rem] lg:text-[3.75rem]">
+          <p className="l-eyebrow l-rise">Expense tracking, minus the typing</p>
+          <h1
+            className="l-display l-rise mt-6 text-[clamp(3rem,7.2vw,5.9rem)] font-extrabold leading-[0.95]"
+            style={vars({ "--d": "80ms" })}
+          >
             Snap a receipt.
             <br />
-            <span style={{ color: "var(--c-landing-accent)" }}>It tallies itself.</span>
+            <span className="text-[color:var(--gold)]">It tallies itself.</span>
           </h1>
-
-          <p className="mt-lg max-w-md text-body text-text-secondary sm:text-[1.0625rem]">
-            Point your camera at any receipt — crumpled, faded, handwritten. AI
-            pulls the merchant, total, tax and category and drops it into your
-            spending in about five seconds.
+          <p
+            className="l-rise mt-8 max-w-[34rem] text-[19px] leading-[1.6] text-[color:var(--cream-2)]"
+            style={vars({ "--d": "160ms" })}
+          >
+            Point your camera at any receipt &mdash; crumpled, faded, handwritten.
+            Tally reads the merchant, total, tax and every line item, files it
+            under the right category, and adds it to your month in about five
+            seconds.
           </p>
-
-          <div className="mt-xl flex flex-col gap-sm sm:flex-row">
-            <a
-              href={SIGNUP}
-              className={cn(buttonVariants(), "h-12 px-xl text-body")}
-            >
-              Get started free <ArrowRight size={16} />
+          <div
+            className="l-rise mt-10 flex flex-col gap-3 sm:flex-row"
+            style={vars({ "--d": "240ms" })}
+          >
+            <a href={SIGNUP} className="l-btn">
+              Start free <ArrowRight size={17} />
             </a>
-            <a
-              href="#how"
-              className={cn(
-                buttonVariants({ variant: "secondary" }),
-                "h-12 px-xl text-body",
-              )}
-            >
+            <a href="#how" className="l-btn l-btn-ghost">
               See how it works
             </a>
           </div>
-
-          <ul className="mt-xl flex flex-wrap items-center gap-x-lg gap-y-xs text-caption text-text-tertiary">
-            {["~5-second scans", "Reads faded & handwritten", "Auto-categorized"].map(
-              (t) => (
-                <li key={t} className="flex items-center gap-xs">
-                  <Check size={13} className="text-accent" />
-                  {t}
-                </li>
-              ),
-            )}
-          </ul>
+          <p
+            className="l-mono l-rise mt-8 text-[12.5px] tracking-wide text-[color:var(--cream-3)]"
+            style={vars({ "--d": "320ms" })}
+          >
+            Free forever tier &middot; No card &middot; Web now, iPhone soon
+          </p>
         </div>
 
-        <HeroVisual />
+        <HeroScan />
       </div>
     </section>
   );
 }
 
-function HeroVisual() {
-  return (
-    <div className="relative mx-auto w-full max-w-md pt-lg lg:max-w-none lg:pt-0">
-      {/* main dashboard mock, angled */}
-      <div className="relative rotate-[1.5deg] transition-transform duration-500 hover:rotate-0">
-        <BrowserFrame>
-          <DashboardMock />
-        </BrowserFrame>
-      </div>
-
-      {/* receipt card, layered in front */}
-      <div className="absolute -bottom-lg -left-sm w-36 -rotate-6 drop-shadow-xl sm:-left-xl sm:w-44">
-        <ReceiptCard compact />
-      </div>
-
-      {/* floating "saved" chip */}
-      <div className="absolute -right-xs -top-sm rotate-3 rounded-xl border border-border bg-surface px-md py-sm shadow-e2 sm:-right-lg sm:top-6">
-        <div className="flex items-center gap-xs text-caption font-medium">
-          <span className="grid h-5 w-5 place-items-center rounded-pill bg-success-muted text-success">
-            <Check size={12} />
-          </span>
-          Saved in 4s
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────── framed mock ─────────────────────────── */
-
-function BrowserFrame({ children }: { children: ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-e2">
-      <div className="flex items-center gap-sm border-b border-border px-md py-sm">
-        <span className="flex gap-xs">
-          {["#ef4444", "#eab308", "#22c55e"].map((c) => (
-            <span
-              key={c}
-              className="h-2.5 w-2.5 rounded-pill opacity-70"
-              style={{ background: c }}
-            />
-          ))}
+function HeroScan() {
+  const chips: { k: string; v: ReactNode; x: string }[] = [
+    { k: "Merchant", v: "Bluebird Cafe", x: "lg:ml-6" },
+    { k: "Date", v: "Sep 5, 2026", x: "lg:ml-14" },
+    {
+      k: "Category",
+      v: (
+        <span className="inline-flex items-center gap-2">
+          <i className="h-2 w-2 rounded-full" style={{ background: CAT.restaurants }} />
+          Restaurants
         </span>
-        <span className="mx-auto rounded-md bg-surface-2 px-md py-hair text-[10px] text-text-tertiary">
-          app.aireceipt.com/dashboard
-        </span>
-      </div>
-      <div className="p-lg text-left">{children}</div>
-    </div>
-  );
-}
-
-function DashboardMock() {
-  const cats = [
-    { slug: "groceries", amt: "$412" },
-    { slug: "restaurants", amt: "$268" },
-    { slug: "transport", amt: "$143" },
-    { slug: "shopping", amt: "$311" },
+      ),
+      x: "lg:ml-10",
+    },
+    { k: "Total", v: "$8.43", x: "lg:ml-3" },
   ];
+
   return (
-    <div className="space-y-md">
-      <div className="flex items-center gap-md rounded-xl bg-hero p-md">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-gold">This month</p>
-          <p className="mt-hair text-2xl font-extrabold tabular text-hero-text">$1,284.50</p>
-          <p className="mt-xs inline-flex items-center rounded-pill bg-hero-chip px-sm py-hair text-[10px] font-semibold text-hero-text">
-            ↓ $92 vs last month
-          </p>
+    <div className="relative flex flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-0">
+      <div className="relative w-[272px] shrink-0 -rotate-[2.5deg] sm:w-[300px]">
+        <Receipt />
+      </div>
+
+      <div className="z-10 grid w-full max-w-[300px] grid-cols-2 gap-3 lg:-ml-3 lg:flex lg:w-auto lg:max-w-none lg:flex-col lg:gap-3.5">
+        {chips.map((c, i) => (
+          <div
+            key={c.k}
+            className={cn(
+              "l-rise rounded-2xl bg-[rgba(24,39,35,0.95)] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-1 ring-[color:var(--rule-2)] backdrop-blur",
+              c.x,
+            )}
+            style={vars({ "--d": `${700 + i * 160}ms` })}
+          >
+            <p className="l-mono text-[10.5px] uppercase tracking-[0.12em] text-[color:var(--cream-3)]">
+              {c.k}
+            </p>
+            <p className="mt-0.5 text-[15px] font-medium tabular-nums">{c.v}</p>
+          </div>
+        ))}
+        <div
+          className={cn(
+            "l-rise col-span-2 inline-flex items-center gap-2 self-start rounded-full bg-[color:var(--teal-soft)] px-3.5 py-2 text-[13px] font-medium text-[color:var(--teal)] lg:ml-8",
+          )}
+          style={vars({ "--d": "1380ms" })}
+        >
+          <Check size={14} strokeWidth={2.5} /> Saved to September &middot; 4.6s
         </div>
-        <span className="min-w-0 flex-1 text-gold">
-          <Sparkline points={[1420, 1550, 1376, 1284]} height={48} stretch />
-        </span>
-      </div>
-
-      <div className="flex gap-sm">
-        {cats.map((c) => {
-          const Icon = categoryMeta(c.slug).icon;
-          const color = categoryColor(c.slug);
-          return (
-            <div key={c.slug} className="flex flex-1 flex-col items-center gap-hair">
-              <span
-                className="grid h-8 w-8 place-items-center rounded-md"
-                style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
-              >
-                <Icon size={14} />
-              </span>
-              <span className="text-[10px] font-semibold tabular">{c.amt}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="rounded-xl bg-bg p-sm text-[11px] text-text-secondary">
-        <span className="text-accent">✦ Insight </span>
-        Restaurants are up 18% for the third month running.
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────── receipt → data ─────────────────────────── */
-
-function ReceiptCard({ compact }: { compact?: boolean }) {
+function Receipt({ size = "lg" }: { size?: "lg" | "md" }) {
+  const lg = size === "lg";
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-surface p-md font-mono shadow-e1",
-        compact ? "text-[9px] leading-[1.5]" : "text-[11px] leading-relaxed",
+        "l-receipt overflow-visible",
+        lg ? "px-7 py-8 text-[13px] leading-[1.6]" : "px-6 py-7 text-[12px] leading-[1.6]",
       )}
     >
-      <p className="text-center font-semibold tracking-wide">BLUEBIRD CAFE</p>
-      <p className="text-center text-text-tertiary">123 Main St</p>
-      <div className="my-sm border-t border-dashed border-border" />
-      <div className="flex justify-between">
-        <span>Latte</span>
-        <span>4.50</span>
+      <div className="text-center">
+        <p className="l-display text-[21px] font-extrabold tracking-[-0.01em]">BLUEBIRD CAFE</p>
+        <p className="text-[color:var(--graphite-2)]">123 Main St</p>
+        <p className="text-[color:var(--graphite-2)]">09/05/2026 &nbsp;08:14</p>
       </div>
-      <div className="flex justify-between">
-        <span>Croissant</span>
-        <span>3.25</span>
-      </div>
-      <div className="my-sm border-t border-dashed border-border" />
-      <div className="flex justify-between text-text-tertiary">
-        <span>Subtotal</span>
-        <span>7.75</span>
-      </div>
-      <div className="flex justify-between text-text-tertiary">
-        <span>Tax</span>
-        <span>0.68</span>
-      </div>
-      <div className="flex justify-between font-semibold">
+      <div className="my-4 border-t border-dashed border-[rgba(30,35,33,0.35)]" />
+      <Line k="Oat latte" v="4.50" />
+      <Line k="Almond croissant" v="3.25" />
+      <div className="my-4 border-t border-dashed border-[rgba(30,35,33,0.35)]" />
+      <Line k="Subtotal" v="7.75" muted />
+      <Line k="Tax" v="0.68" muted />
+      <div className="mt-1.5 flex justify-between text-[15px] font-medium">
         <span>TOTAL</span>
         <span>8.43</span>
       </div>
+      <p className="mt-6 text-center text-[11px] tracking-[0.2em] text-[color:var(--graphite-2)]">
+        THANK YOU
+      </p>
+      <div
+        aria-hidden
+        className="mx-auto mt-3 h-9 w-[78%] opacity-80"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg,#1e2321 0 2px,transparent 2px 4px,#1e2321 4px 5px,transparent 5px 8px,#1e2321 8px 11px,transparent 11px 12px,#1e2321 12px 13px,transparent 13px 16px)",
+        }}
+      />
+      {lg && <div aria-hidden className="l-scan" style={vars({ "--scan-travel": "400px" })} />}
     </div>
   );
 }
 
-function ExtractedCard() {
-  const fields = [
-    ["Merchant", "Bluebird Cafe"],
-    ["Date", "Sep 5, 2026"],
-    ["Total", "$8.43"],
-    ["Tax", "$0.68"],
+function Line({ k, v, muted }: { k: string; v: string; muted?: boolean }) {
+  return (
+    <div className={cn("flex items-baseline gap-2", muted && "text-[color:var(--graphite-2)]")}>
+      <span className="whitespace-nowrap">{k}</span>
+      <span className="l-leader" />
+      <span>{v}</span>
+    </div>
+  );
+}
+
+/* ─────────────────────────── figures strip ─────────────────────────── */
+
+export function Figures() {
+  const figs = [
+    { n: "~5", u: "sec", label: "from photo to a filed expense" },
+    { n: "0", u: "forms", label: "to fill in — nothing to type" },
+    { n: "1", u: "place", label: "for every receipt you keep" },
   ];
   return (
-    <div className="rounded-xl border border-border bg-surface p-lg shadow-e1">
-      <span
-        className="inline-flex items-center gap-xs rounded-pill px-sm py-hair text-[11px] font-medium"
-        style={{
-          background: `color-mix(in srgb, ${categoryColor("restaurants")} 15%, transparent)`,
-          color: categoryColor("restaurants"),
-        }}
-      >
-        <FileText size={11} /> Restaurants
-      </span>
-      <dl className="mt-md grid grid-cols-2 gap-md">
-        {fields.map(([k, v]) => (
-          <div key={k}>
-            <dt className="text-[11px] text-text-tertiary">{k}</dt>
-            <dd className="text-callout tabular">{v}</dd>
+    <section className="border-y border-[color:var(--rule)] bg-[color:var(--ink-2)]">
+      <div className="mx-auto grid max-w-[1180px] px-6 sm:grid-cols-3">
+        {figs.map((f, i) => (
+          <div
+            key={f.label}
+            className={cn(
+              "py-10 sm:py-12",
+              i > 0 && "border-t border-[color:var(--rule)] sm:border-l sm:border-t-0 sm:pl-10",
+            )}
+          >
+            <p className="l-display flex items-baseline gap-2 text-[56px] font-extrabold leading-none">
+              {f.n}
+              <span className="l-mono text-[14px] font-medium tracking-normal text-[color:var(--gold)]">
+                {f.u}
+              </span>
+            </p>
+            <p className="mt-3 text-[15px] text-[color:var(--cream-2)]">{f.label}</p>
           </div>
         ))}
-      </dl>
-      <div className="mt-md flex items-center gap-xs text-caption text-success">
-        <Check size={14} /> Saved to September
-      </div>
-    </div>
-  );
-}
-
-export function ReadsReceipts() {
-  return (
-    <section className="border-t border-border px-lg py-4xl">
-      <div className="mx-auto max-w-content">
-        <h2 className="max-w-lg text-title font-extrabold tracking-tight">
-          It reads the whole receipt.
-        </h2>
-        <p className="mt-sm max-w-lg text-callout text-text-secondary">
-          Merchant, date, subtotal, tax and every line item — lifted from the
-          photo, not retyped. You just glance and confirm.
-        </p>
-        <div className="mt-2xl grid items-center gap-lg sm:grid-cols-[1fr_auto_1fr]">
-          <div className="mx-auto w-full max-w-[200px] -rotate-2">
-            <ReceiptCard />
-          </div>
-          <div className="flex items-center justify-center gap-xs text-text-tertiary">
-            <span className="hidden text-micro uppercase tracking-wide sm:block">
-              AI
-            </span>
-            <ArrowRight className="rotate-90 sm:rotate-0" size={20} />
-          </div>
-          <div className="mx-auto w-full max-w-xs">
-            <ExtractedCard />
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-/* ─────────────────────────── how it works ─────────────────────────── */
+/* ─────────────────────────── reads the whole receipt ─────────────────────────── */
+
+export function ReadsReceipts() {
+  const reads = ["Merchant & address", "Date & time", "Every line item", "Subtotal, tax & total", "Category"];
+  return (
+    <section className="px-6 py-28 lg:py-36">
+      <div className="mx-auto grid max-w-[1180px] items-center gap-16 lg:grid-cols-[1fr_1.05fr] lg:gap-24">
+        <div>
+          <p className="l-eyebrow">What it reads</p>
+          <h2 className="l-display mt-5 text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+            The whole receipt, not just the total.
+          </h2>
+          <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.65] text-[color:var(--cream-2)]">
+            Everything on the paper becomes clean, searchable data &mdash; lifted
+            from the photo, never retyped. You glance, confirm, and move on.
+          </p>
+          <ul className="mt-10 border-t border-[color:var(--rule)]">
+            {reads.map((r) => (
+              <li
+                key={r}
+                className="flex items-center justify-between border-b border-[color:var(--rule)] py-3.5 text-[16px]"
+              >
+                {r}
+                <Check size={16} className="text-[color:var(--gold)]" />
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <ExtractedRecord />
+      </div>
+    </section>
+  );
+}
+
+function ExtractedRecord() {
+  return (
+    <div className="relative">
+      <div
+        aria-hidden
+        className="absolute -inset-8 rounded-[40px]"
+        style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(217,174,92,0.10), transparent 65%)" }}
+      />
+      <div className="relative overflow-hidden rounded-[28px] bg-[color:var(--ink-3)] ring-1 ring-[color:var(--rule-2)] shadow-[0_40px_80px_rgba(0,0,0,0.45)]">
+        <div className="flex items-center justify-between border-b border-[color:var(--rule)] px-7 py-5">
+          <div>
+            <p className="l-display text-[22px] font-bold tracking-[-0.02em]">Bluebird Cafe</p>
+            <p className="l-mono text-[12px] text-[color:var(--cream-3)]">Fri, Sep 5, 2026 &middot; 08:14</p>
+          </div>
+          <span
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-medium"
+            style={{ background: "rgba(242,162,92,0.14)", color: CAT.restaurants }}
+          >
+            <i className="h-2 w-2 rounded-full" style={{ background: CAT.restaurants }} />
+            Restaurants
+          </span>
+        </div>
+
+        <div className="l-mono px-7 py-6 text-[14px] tabular-nums">
+          <p className="mb-3 text-[11px] uppercase tracking-[0.14em] text-[color:var(--cream-3)]">
+            Line items
+          </p>
+          {[
+            ["Oat latte", "1", "4.50"],
+            ["Almond croissant", "1", "3.25"],
+          ].map(([name, qty, amt]) => (
+            <div key={name} className="flex items-baseline gap-2 py-1.5">
+              <span className="text-[color:var(--cream)]">{name}</span>
+              <span className="text-[color:var(--cream-3)]">&times;{qty}</span>
+              <span className="l-leader text-[color:var(--cream)]" />
+              <span>{amt}</span>
+            </div>
+          ))}
+          <div className="my-4 border-t border-[color:var(--rule)]" />
+          {[
+            ["Subtotal", "7.75"],
+            ["Tax", "0.68"],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-baseline gap-2 py-1 text-[color:var(--cream-2)]">
+              <span>{k}</span>
+              <span className="l-leader" />
+              <span>{v}</span>
+            </div>
+          ))}
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="text-[12px] uppercase tracking-[0.14em] text-[color:var(--cream-3)]">Total</span>
+            <span className="l-display text-[34px] font-extrabold tracking-[-0.03em] text-[color:var(--gold)]">
+              $8.43
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 border-t border-[color:var(--rule)] bg-[color:var(--ink-2)] px-7 py-4 text-[14px] text-[color:var(--teal)]">
+          <Check size={15} strokeWidth={2.5} /> Filed to September &mdash; nothing typed
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── how it works (paper band) ─────────────────────────── */
 
 export function HowItWorks() {
   const steps = [
     {
-      icon: Camera,
       title: "Point & shoot",
-      body: "Snap it or pick from your library. Bad lighting and coffee stains are fine.",
-      visual: <StepCameraViz />,
+      body: "Snap it, or pick a photo you already took. Bad lighting and coffee stains are fine.",
     },
     {
-      icon: Check,
       title: "Glance & confirm",
-      body: "One screen shows what the AI read. Tap to fix anything — usually nothing.",
-      visual: <StepConfirmViz />,
+      body: "One screen shows what Tally read. Tap anything to fix it — usually there's nothing to fix.",
     },
     {
-      icon: CircleCheckBig,
       title: "It's filed",
-      body: "Categorized, dated, and on your dashboard before your phone's back in your pocket.",
-      visual: <StepFiledViz />,
+      body: "Dated, categorized and counted in your month before your phone is back in your pocket.",
     },
   ];
   return (
-    <section
-      id="how"
-      className="scroll-mt-16 border-t border-border bg-surface-2 px-lg py-4xl"
-    >
-      <div className="mx-auto max-w-content">
-        <p className="text-micro uppercase tracking-wide text-text-tertiary">
+    <section id="how" className="scroll-mt-20 bg-[color:var(--paper)] px-6 py-28 text-[color:var(--graphite)] lg:py-36">
+      <div className="mx-auto max-w-[1180px]">
+        <p className="l-mono text-[12px] uppercase tracking-[0.14em] text-[color:var(--graphite-2)]">
           How it works
         </p>
-        <h2 className="mt-sm max-w-lg text-title font-extrabold tracking-tight">
-          From shoebox to dashboard in three taps
+        <h2 className="l-display mt-5 max-w-[16ch] text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+          From shoebox to spending, in three taps.
         </h2>
 
-        <div className="relative mt-2xl">
-          {/* connecting line (desktop) */}
-          <div
-            aria-hidden
-            className="absolute left-[16.66%] right-[16.66%] top-6 hidden h-px bg-border-strong sm:block"
-          />
-          <ol className="grid gap-xl sm:grid-cols-3">
-            {steps.map(({ icon: Icon, title, body, visual }, i) => (
-              <li key={title} className="flex flex-col items-center text-center">
-                <span className="relative z-10 grid h-12 w-12 place-items-center rounded-pill bg-gradient-to-br from-accent to-[color:var(--cat-transport)] text-white shadow-e1">
-                  <Icon size={20} />
-                </span>
-                <span className="mt-sm text-micro uppercase tracking-wide text-text-tertiary">
-                  Step {i + 1}
-                </span>
-                <div className="mt-md w-full max-w-[240px] rounded-xl border border-border bg-surface p-md">
-                  {visual}
-                </div>
-                <h3 className="mt-md text-headline">{title}</h3>
-                <p className="mt-xs max-w-xs text-callout text-text-secondary">
-                  {body}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <ol className="mt-16 grid gap-12 border-t border-[rgba(30,35,33,0.15)] pt-12 md:grid-cols-3 md:gap-10">
+          {steps.map((s, i) => (
+            <li key={s.title}>
+              <StepStrokes count={i + 1} />
+              <h3 className="l-display mt-7 text-[26px] font-bold tracking-[-0.02em]">{s.title}</h3>
+              <p className="mt-3 max-w-[30ch] text-[16.5px] leading-[1.6] text-[color:var(--graphite-2)]">
+                {s.body}
+              </p>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
 }
 
-function StepCameraViz() {
+/** Step N drawn as N hand-drawn tally strokes. */
+function StepStrokes({ count }: { count: number }) {
+  const xs = [8, 26, 44];
   return (
-    <div className="relative grid h-24 place-items-center rounded-lg bg-bg">
-      <div className="absolute inset-3 rounded-md border border-dashed border-border-strong" />
-      <div className="h-12 w-9 rotate-[-4deg] rounded-sm border border-border bg-surface shadow-e1" />
-      <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-pill bg-accent text-accent-fg">
-        <Camera size={13} />
-      </span>
-    </div>
-  );
-}
-
-function StepConfirmViz() {
-  return (
-    <div className="flex h-24 flex-col justify-center gap-sm rounded-lg bg-bg px-md">
-      {[70, 45].map((w) => (
-        <span key={w} className="flex items-center gap-sm">
-          <span className="h-2 rounded-pill bg-surface-2" style={{ width: `${w}%` }} />
-          <Check size={12} className="text-success" />
-        </span>
+    <svg
+      viewBox="0 0 56 48"
+      className="l-draw h-12 w-14"
+      role="img"
+      aria-label={`Step ${count}`}
+      fill="none"
+      stroke="#1e2321"
+      strokeWidth={5}
+      strokeLinecap="round"
+    >
+      {xs.slice(0, count).map((x, i) => (
+        <path
+          key={x}
+          pathLength={1}
+          style={vars({ "--i": i })}
+          d={`M${x} 6 C${x + 1.5} 18 ${x - 1} 30 ${x + 0.5} 42`}
+        />
       ))}
-      <span className="flex items-center gap-sm">
-        <span className="h-2 w-1/3 rounded-pill bg-accent-muted" />
-        <span className="text-[10px] text-accent">Save</span>
-      </span>
-    </div>
+    </svg>
   );
 }
 
-function StepFiledViz() {
-  return (
-    <div className="flex h-24 flex-col justify-center gap-xs rounded-lg bg-bg px-md">
-      {["groceries", "restaurants", "transport"].map((slug, i) => (
-        <span key={slug} className="flex items-center gap-sm">
-          <span
-            className="h-2.5 w-2.5 rounded-pill"
-            style={{ background: categoryColor(slug) }}
-          />
-          <span
-            className="h-1.5 rounded-pill bg-surface-2"
-            style={{ width: `${64 - i * 14}%` }}
-          />
-          {i === 0 && <Check size={12} className="ml-auto text-success" />}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/* ─────────────────────────── features ─────────────────────────── */
+/* ─────────────────────────── spending preview ─────────────────────────── */
 
 export function Features() {
-  const feats = [
-    {
-      icon: Zap,
-      accent: "restaurants",
-      title: "Nothing to type",
-      body: "No forms, no “select a category”. Point the camera and you're done.",
-      viz: <FeatNoType />,
-    },
-    {
-      icon: TrendingUp,
-      accent: "transport",
-      title: "Spending that explains itself",
-      body: "Monthly totals, category breakdowns and plain-English nudges when something creeps up.",
-      viz: <FeatTrend />,
-    },
-    {
-      icon: Database,
-      accent: "groceries",
-      title: "Your data, structured",
-      body: "Every receipt becomes clean, queryable data — chart it, export it, or just glance at it.",
-      viz: <FeatData />,
-    },
-  ];
   return (
-    <section className="border-t border-border px-lg py-4xl">
-      <div className="mx-auto max-w-content">
-        <h2 className="max-w-lg text-title font-extrabold tracking-tight">
-          More than a pile of photos
-        </h2>
-        <div className="mt-2xl grid gap-lg sm:grid-cols-3">
-          {feats.map(({ icon: Icon, accent, title, body, viz }) => (
-            <div
-              key={title}
-              className="group flex flex-col rounded-2xl border border-border bg-surface p-lg transition-colors hover:border-border-strong"
-            >
-              <span
-                className="grid h-11 w-11 place-items-center rounded-xl text-white shadow-e1"
-                style={{
-                  backgroundImage: `linear-gradient(135deg, var(--c-accent), ${categoryColor(accent)})`,
-                }}
-              >
-                <Icon size={19} />
-              </span>
-              <h3 className="mt-md text-headline">{title}</h3>
-              <p className="mt-xs flex-1 text-callout text-text-secondary">{body}</p>
-              <div className="mt-lg rounded-lg border border-border bg-bg p-md">
-                {viz}
-              </div>
-            </div>
-          ))}
+    <section className="px-6 py-28 lg:py-36">
+      <div className="mx-auto grid max-w-[1180px] items-center gap-16 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
+        <div>
+          <p className="l-eyebrow">Your month, explained</p>
+          <h2 className="l-display mt-5 text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+            Spending that tells you something.
+          </h2>
+          <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.65] text-[color:var(--cream-2)]">
+            Monthly totals, category breakdowns, budgets and recurring charges
+            &mdash; with plain-English notes when something starts to creep up.
+          </p>
+          <div className="mt-10 rounded-2xl bg-[color:var(--ink-2)] p-5 ring-1 ring-[color:var(--rule)]">
+            <p className="l-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--gold)]">
+              Insight
+            </p>
+            <p className="mt-2 text-[16px] leading-[1.55]">
+              Restaurants are up 18% for the third month running &mdash; mostly
+              weekday lunches.
+            </p>
+          </div>
         </div>
+
+        <MonthPreview />
       </div>
     </section>
   );
 }
 
-function FeatNoType() {
+function MonthPreview() {
+  // Apr → Sep monthly totals. Chart is drawn to scale on a 1,200–1,600 axis.
+  const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep"];
+  const totals = [1420, 1550, 1376, 1490, 1376, 1284.5];
+  const X0 = 44;
+  const X1 = 588;
+  const Y_TOP = 16;
+  const Y_BOT = 166;
+  const V_MIN = 1200;
+  const V_MAX = 1600;
+  const x = (i: number) => X0 + (i * (X1 - X0)) / (totals.length - 1);
+  const y = (v: number) => Y_TOP + ((V_MAX - v) / (V_MAX - V_MIN)) * (Y_BOT - Y_TOP);
+  const line = totals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(totals.length - 1)} ${Y_BOT} L${X0} ${Y_BOT} Z`;
+  const grid = [1300, 1400, 1500];
+
+  const cats = [
+    { name: "Groceries", amt: 412, c: CAT.groceries },
+    { name: "Shopping", amt: 311, c: CAT.shopping },
+    { name: "Restaurants", amt: 268, c: CAT.restaurants },
+    { name: "Other", amt: 150.5, c: CAT.other },
+    { name: "Transport", amt: 143, c: CAT.transport },
+  ];
+  const max = Math.max(...cats.map((c) => c.amt));
+  const fmt = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: n % 1 ? 2 : 0 });
+
   return (
-    <div className="flex items-center justify-between">
-      <span className="relative inline-block">
-        <span className="block space-y-1.5 opacity-40">
-          {[64, 40, 52].map((w) => (
-            <span key={w} className="block h-2 rounded-pill bg-surface-2" style={{ width: w }} />
-          ))}
+    <div className="overflow-hidden rounded-[28px] bg-[color:var(--ink-3)] ring-1 ring-[color:var(--rule-2)] shadow-[0_40px_80px_rgba(0,0,0,0.45)]">
+      <div className="flex flex-wrap items-end justify-between gap-4 px-7 pt-7">
+        <div>
+          <p className="l-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--cream-3)]">
+            September spending
+          </p>
+          <p className="l-display mt-1 text-[48px] font-extrabold leading-none tracking-[-0.035em] tabular-nums">
+            $1,284<span className="text-[color:var(--cream-3)]">.50</span>
+          </p>
+        </div>
+        <span className="rounded-full bg-[color:var(--teal-soft)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--teal)]">
+          &darr; $92 vs August
         </span>
-        <span
-          aria-hidden
-          className="absolute left-[-4px] top-1/2 h-px w-[72px] -rotate-12 bg-danger"
-        />
-      </span>
-      <span className="grid h-9 w-9 place-items-center rounded-pill bg-accent text-accent-fg">
-        <Camera size={16} />
-      </span>
+      </div>
+
+      <svg viewBox="0 0 620 196" className="mt-4 block w-full" role="img" aria-label="Monthly spending, April to September: $1,420, $1,550, $1,376, $1,490, $1,376, $1,284.50">
+        <defs>
+          <linearGradient id="l-area" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#D9AE5C" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="#D9AE5C" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {grid.map((g) => (
+          <g key={g}>
+            <line x1={X0} x2={X1} y1={y(g)} y2={y(g)} stroke="rgba(241,236,225,0.08)" strokeDasharray="3 5" />
+            <text x={X0 - 10} y={y(g) + 4} textAnchor="end" fontSize="11" fill="rgba(241,236,225,0.4)" fontFamily="var(--font-mono)">
+              {`${(g / 1000).toFixed(1)}k`}
+            </text>
+          </g>
+        ))}
+        <path d={area} fill="url(#l-area)" />
+        <path d={line} fill="none" stroke="#D9AE5C" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        {totals.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r={i === totals.length - 1 ? 5.5 : 3} fill={i === totals.length - 1 ? "#D9AE5C" : "#182723"} stroke="#D9AE5C" strokeWidth="2" />
+        ))}
+        {months.map((m, i) => (
+          <text key={m} x={x(i)} y={188} textAnchor="middle" fontSize="11" fill={i === months.length - 1 ? "#F1ECE1" : "rgba(241,236,225,0.4)"} fontFamily="var(--font-mono)">
+            {m}
+          </text>
+        ))}
+      </svg>
+
+      <div className="mt-2 border-t border-[color:var(--rule)] px-7 py-6">
+        <ul className="space-y-3.5">
+          {cats.map((c) => (
+            <li key={c.name} className="grid grid-cols-[110px_1fr_auto] items-center gap-4 text-[14px]">
+              <span className="flex items-center gap-2 text-[color:var(--cream-2)]">
+                <i className="h-2 w-2 rounded-full" style={{ background: c.c }} />
+                {c.name}
+              </span>
+              <span className="h-1.5 rounded-full bg-[color:var(--rule)]">
+                <span className="block h-full rounded-full" style={{ width: `${(c.amt / max) * 100}%`, background: c.c }} />
+              </span>
+              <span className="l-mono w-[76px] text-right tabular-nums">{fmt(c.amt)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
 
-function FeatTrend() {
-  const bars = [30, 44, 38, 56, 50, 72];
-  return (
-    <div className="flex h-12 items-end gap-1.5">
-      {bars.map((h, i) => (
-        <span
-          key={i}
-          className="flex-1 rounded-t-sm"
-          style={{
-            height: `${h}%`,
-            background:
-              i === bars.length - 1
-                ? "var(--c-accent)"
-                : "var(--c-surface-2)",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+/* ─────────────────────────── privacy ─────────────────────────── */
 
-function FeatData() {
+export function Privacy() {
+  const facts = [
+    ["No ads, no ad trackers", "Nothing in Tally exists to watch you or sell to you."],
+    ["Your data isn't for sale", "We never sell personal data. Service providers only process it to run Tally."],
+    ["No account needed on iPhone", "Scan and track on your phone first; sign in only when you want sync and the web app."],
+    ["Delete it all, anytime", "Deleting your account removes every receipt and image with it."],
+  ];
   return (
-    <div className="space-y-1.5 font-mono text-[10px] text-text-secondary">
-      <div className="flex justify-between">
-        <span>merchant</span>
-        <span className="text-text">Bluebird Cafe</span>
+    <section className="border-t border-[color:var(--rule)] px-6 py-28 lg:py-32">
+      <div className="mx-auto grid max-w-[1180px] gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+        <div>
+          <p className="l-eyebrow">Privacy</p>
+          <h2 className="l-display mt-5 text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+            Your receipts stay yours.
+          </h2>
+          <a
+            href="/privacy"
+            className="mt-6 inline-flex items-center gap-2 text-[15px] text-[color:var(--gold)] hover:text-[color:var(--gold-2)]"
+          >
+            Read the privacy policy <ArrowRight size={15} />
+          </a>
+        </div>
+        <dl className="grid gap-px overflow-hidden rounded-[24px] bg-[color:var(--rule)] ring-1 ring-[color:var(--rule)] sm:grid-cols-2">
+          {facts.map(([t, d]) => (
+            <div key={t} className="bg-[color:var(--ink)] p-7">
+              <dt className="l-display text-[20px] font-bold tracking-[-0.015em]">{t}</dt>
+              <dd className="mt-2 text-[15px] leading-[1.6] text-[color:var(--cream-2)]">{d}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-      <div className="flex justify-between">
-        <span>total</span>
-        <span className="text-text">8.43</span>
-      </div>
-      <div className="flex justify-between">
-        <span>category</span>
-        <span style={{ color: categoryColor("restaurants") }}>restaurants</span>
-      </div>
-    </div>
+    </section>
   );
 }
 
 /* ─────────────────────────── closing CTA ─────────────────────────── */
 
 export function BottomCTA() {
+  const strokes = [40, 88, 136, 184];
   return (
-    <section className="px-lg py-4xl">
-      <div className="relative mx-auto max-w-content overflow-hidden rounded-2xl bg-hero px-lg py-3xl text-center shadow-e2 sm:px-2xl">
-        {/* glyph watermark */}
-        <TallyMark
-          size={280}
-          className="pointer-events-none absolute -right-12 -top-16 text-white/[0.06]"
-        />
-        <div className="relative mx-auto flex max-w-lg flex-col items-center gap-md">
-          <SparklesIconInline />
-          <h2 className="text-[1.9rem] font-extrabold leading-tight tracking-tight text-hero-text sm:text-title">
-            Your <span className="text-gold">last</span> manual expense entry
+    <section className="px-6 pb-28">
+      <div className="relative mx-auto max-w-[1180px] overflow-hidden rounded-[32px] bg-[color:var(--ink-2)] px-8 py-20 ring-1 ring-[color:var(--rule)] sm:px-16 lg:py-24">
+        <svg
+          aria-hidden
+          viewBox="0 0 240 240"
+          className="l-draw pointer-events-none absolute -right-6 top-1/2 hidden h-[300px] w-[300px] -translate-y-1/2 opacity-90 md:block"
+          fill="none"
+          strokeLinecap="round"
+        >
+          {strokes.map((x, i) => (
+            <path key={x} pathLength={1} style={vars({ "--i": i })} stroke="#D9AE5C" strokeWidth="11" d={`M${x} 40 C${x + 3} 100 ${x - 2} 150 ${x + 1} 200`} />
+          ))}
+          <path pathLength={1} style={vars({ "--i": 4 })} stroke="#35C79A" strokeWidth="10" d="M20 176 C80 140 150 96 210 58" />
+        </svg>
+
+        <div className="relative max-w-[36rem]">
+          <h2 className="l-display text-[clamp(2.6rem,5.4vw,4.4rem)] font-extrabold leading-[0.98]">
+            Your <span className="text-[color:var(--gold)]">last</span> manual expense entry.
           </h2>
-          <p className="text-callout text-hero-text opacity-80">
-            Sign in with Google or email and scan your first receipt in the next
-            minute. Free forever tier, no card.
+          <p className="mt-6 text-[18px] leading-[1.6] text-[color:var(--cream-2)]">
+            Sign in with Google, Apple or email and scan your first receipt in
+            the next minute. Free forever tier, no card.
           </p>
-          <a
-            href={SIGNUP}
-            className={cn(
-              buttonVariants({ variant: "secondary" }),
-              "border-transparent bg-hero-text px-xl text-hero-cta hover:bg-hero-cta-hover",
-            )}
-          >
-            Get started free <ArrowRight size={16} />
+          <a href={SIGNUP} className="l-btn mt-9">
+            Start free <ArrowRight size={17} />
           </a>
         </div>
       </div>
     </section>
-  );
-}
-
-function SparklesIconInline() {
-  return (
-    <span className="grid h-11 w-11 place-items-center rounded-xl bg-hero-chip text-hero-text">
-      <Sparkles size={20} />
-    </span>
   );
 }
 
@@ -645,8 +643,9 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
     ],
   },
   {
-    heading: "Legal",
+    heading: "Company",
     links: [
+      { label: "Data Eaver Inc.", href: "https://dataeaver.ca" },
       { label: "Privacy policy", href: "/privacy" },
       { label: "Terms of service", href: "/terms" },
       { label: "Contact", href: "mailto:contact@dataeaver.ca" },
@@ -656,27 +655,27 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border px-lg pb-xl pt-3xl">
-      <div className="mx-auto max-w-content">
-        <div className="grid gap-2xl sm:grid-cols-[1.4fr_1fr_1fr]">
+    <footer className="border-t border-[color:var(--rule)] px-6 pb-10 pt-16">
+      <div className="mx-auto max-w-[1180px]">
+        <div className="grid gap-12 sm:grid-cols-[1.5fr_1fr_1fr]">
           <div>
             <Wordmark />
-            <p className="mt-md max-w-[26ch] text-caption text-text-secondary">
-              Snap a receipt. It tallies itself. Free expense tracking for iOS
-              and the web.
+            <p className="mt-5 max-w-[28ch] text-[15px] leading-[1.6] text-[color:var(--cream-2)]">
+              Snap a receipt. It tallies itself. Expense tracking for the web,
+              with iPhone coming soon.
             </p>
           </div>
           {FOOTER_LINKS.map((col) => (
             <div key={col.heading}>
-              <p className="text-micro uppercase tracking-wide text-text-tertiary">
+              <p className="l-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--cream-3)]">
                 {col.heading}
               </p>
-              <ul className="mt-md space-y-sm">
+              <ul className="mt-5 space-y-3">
                 {col.links.map((l) => (
                   <li key={l.label}>
                     <a
                       href={l.href}
-                      className="text-callout text-text-secondary hover:text-text"
+                      className="text-[15px] text-[color:var(--cream-2)] transition-colors hover:text-[color:var(--cream)]"
                     >
                       {l.label}
                     </a>
@@ -686,9 +685,8 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-
-        <div className="mt-2xl border-t border-border pt-lg text-caption text-text-tertiary">
-          <span>© {new Date().getFullYear()} DATA EAVER INC. All rights reserved.</span>
+        <div className="mt-14 border-t border-[color:var(--rule)] pt-6 text-[13px] text-[color:var(--cream-3)]">
+          &copy; {new Date().getFullYear()} Data Eaver Inc. All rights reserved.
         </div>
       </div>
     </footer>
@@ -699,7 +697,7 @@ export function SiteFooter() {
 
 export function AuthErrorBanner({ message }: { message: string }) {
   return (
-    <div className="border-b border-danger/40 bg-danger-muted px-lg py-sm text-center text-caption text-danger">
+    <div className="border-b border-[#F26A5C]/40 bg-[#F26A5C]/15 px-6 py-3 text-center text-[14px] text-[#F26A5C]">
       Sign-in didn&rsquo;t complete: {message}
     </div>
   );
