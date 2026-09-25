@@ -35,7 +35,11 @@ build, ✅ = already done.**
   `developer.apple.com/contact/request/migrate-individual-account`) keeps the
   existing Team ID / app records — it's not a fresh enrollment — but needs a
   D-U-N-S number + Tax ID for DATA EAVER INC. and Apple's verification
-  turnaround (days). Next concrete steps now that the account exists: register
+  turnaround (days). Apple also requires a public organization website on a
+  domain tied to the company — **https://dataeaver.ca** (`org-site/`, Azure
+  Static Web App) went live 2026-09-24 for this. Remaining: reply to Apple's
+  migration email to start it (Certificates, IDs & Profiles is unavailable
+  while it runs; App Store Connect stays up). Next concrete steps now that the account exists: register
   the Explicit App ID (`com.vipreshpatel.tally`) under Certificates, IDs &
   Profiles, and create the App Store Connect app record.
 - ✅ **Sign in with Apple** — done on both iOS (native `ASAuthorizationController`
