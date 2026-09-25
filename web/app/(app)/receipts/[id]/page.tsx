@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/page-header";
+import { money, shortDate } from "@/lib/format";
 
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -115,6 +117,16 @@ export default function ReceiptDetailPage() {
         <ChevronLeft size={16} />
         Receipts
       </button>
+
+      <PageHeader
+        eyebrow={[shortDate(receipt.purchased_at), categoryMeta(receipt.category_slug).label].filter(Boolean).join(" · ")}
+        title={receipt.merchant || "Receipt"}
+        actions={
+          <span className="font-display text-[28px] font-extrabold tracking-[-0.03em] tabular">
+            {money(receipt.total, receipt.currency)}
+          </span>
+        }
+      />
 
       {receipt.image_blob_url && (
         <Card className="overflow-hidden p-0">

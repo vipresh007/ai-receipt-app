@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/page-header";
 
 export default function AccountPage() {
   const { data, isLoading } = useQuery({
@@ -35,7 +36,7 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-xl">
-      <h1 className="text-title">Account</h1>
+      <PageHeader eyebrow="Settings" title="Account" />
 
       <Card className="space-y-sm">
         {isLoading ? (

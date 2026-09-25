@@ -6,12 +6,13 @@ import { apiDelete, apiGet, apiPut } from "@/lib/api";
 import type { Budget } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { money } from "@/lib/format";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MetricTile } from "@/components/metric-tile";
+import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 import { BudgetRow } from "@/components/budget-row";
 
 type FormMode = { type: "add" } | { type: "edit"; budget: Budget } | null;
@@ -80,33 +81,59 @@ export default function BudgetsPage() {
   }
 
   return (
-    <div className="space-y-xl">
-      <header className="flex items-center justify-between">
-        <h1 className="text-title">Budgets</h1>
-        {availableCategories.length > 0 && (
-          <Button size="sm" onClick={() => (formMode ? closeForm() : openAdd())}>
-            {formMode ? "Cancel" : "Add budget"}
-          </Button>
-        )}
-      </header>
+    <div className="space-y-2xl">
+      <PageHeader
+        eyebrow="This month"
+        title="Budgets"
+        description="Monthly limits per category. Spending counts toward a budget as soon as a receipt is saved."
+        actions={
+          availableCategories.length > 0 && (
+            <Button
+              size="sm"
+              variant={formMode ? "secondary" : "primary"}
+              onClick={() => (formMode ? closeForm() : openAdd())}
+            >
+              {formMode ? "Cancel" : "Add budget"}
+            </Button>
+          )
+        }
+      />
 
       {!isLoading && (budgets ?? []).length > 0 && (
-        <div className="grid gap-lg sm:grid-cols-2">
-          <MetricTile label="Budgeted this month" value={money(totalBudgeted)} />
-          <MetricTile
-            label="Spent so far"
-            value={money(totalSpent)}
-            muted
-            delta={
-              overBudgetCount > 0
-                ? {
-                    text: `${overBudgetCount} categor${overBudgetCount === 1 ? "y" : "ies"} over budget`,
-                    dir: "up",
-                  }
-                : undefined
-            }
-          />
-        </div>
+        <Card>
+          <div className="flex flex-wrap items-end justify-between gap-lg">
+            <div>
+              <CardTitle>Spent of budgeted</CardTitle>
+              <p className="mt-sm font-display text-[40px] font-extrabold leading-none tracking-[-0.04em] tabular">
+                {money(totalSpent)}
+                <span className="text-[22px] text-text-tertiary"> / {money(totalBudgeted)}</span>
+              </p>
+            </div>
+            {overBudgetCount > 0 ? (
+              <span className="rounded-pill bg-danger-muted px-md py-xs text-caption font-medium text-danger">
+                {overBudgetCount} categor{overBudgetCount === 1 ? "y" : "ies"} over budget
+              </span>
+            ) : (
+              <span className="rounded-pill bg-success-muted px-md py-xs text-caption font-medium text-success">
+                All within budget
+              </span>
+            )}
+          </div>
+          <div className="mt-xl h-2 overflow-hidden rounded-pill bg-surface-2">
+            <div
+              className={cn(
+                "h-full rounded-pill",
+                totalSpent > totalBudgeted ? "bg-danger" : totalSpent / Math.max(totalBudgeted, 1) >= 0.7 ? "bg-warning" : "bg-success",
+              )}
+              style={{ width: `${Math.min(100, (totalSpent / Math.max(totalBudgeted, 1)) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-sm font-mono text-[12px] text-text-tertiary tabular">
+            {totalSpent <= totalBudgeted
+              ? `${money(totalBudgeted - totalSpent)} left across ${(budgets ?? []).length} budget${(budgets ?? []).length === 1 ? "" : "s"}`
+              : `${money(totalSpent - totalBudgeted)} over across ${(budgets ?? []).length} budget${(budgets ?? []).length === 1 ? "" : "s"}`}
+          </p>
+        </Card>
       )}
 
       {formMode && (
@@ -176,6 +203,7 @@ export default function BudgetsPage() {
 
       {(budgets ?? []).length > 0 && (
         <Card>
+          <CardTitle className="mb-md">By category</CardTitle>
           <div className="divide-y divide-border">
             {(budgets ?? []).map((b) => (
               <BudgetRow

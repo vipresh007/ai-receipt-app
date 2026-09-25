@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -53,10 +54,11 @@ export default function NewExpensePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-xl">
-      <h1 className="text-title">Add expense</h1>
-      <p className="text-callout text-text-secondary">
-        For spending without a receipt — cash, a bill, a reimbursement.
-      </p>
+      <PageHeader
+        eyebrow="Manual entry"
+        title="Add expense"
+        description="For spending without a receipt — cash, a bill, a reimbursement."
+      />
 
       <Card>
         <form onSubmit={submit} className="space-y-lg">

@@ -11,6 +11,7 @@ import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 
 type Stage =
   | { name: "idle" }
@@ -57,7 +58,7 @@ export default function ScanPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-xl">
-      <h1 className="text-title">Scan a receipt</h1>
+      <PageHeader eyebrow="New receipt" title="Scan a receipt" description="A photo is enough — Tally reads the merchant, date, items and total." />
 
       {(stage.name === "idle" || stage.name === "error") && (
         <>

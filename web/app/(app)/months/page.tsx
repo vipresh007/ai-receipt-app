@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpendingTrend } from "@/components/spending-trend";
+import { PageHeader } from "@/components/page-header";
 
 function monthName(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
@@ -39,12 +40,15 @@ export default function MonthsPage() {
 
   return (
     <div className="space-y-xl">
-      <header className="flex items-center justify-between">
-        <h1 className="text-title">Months</h1>
-        <Link href="/dashboard" className="text-callout text-text-secondary hover:text-text">
-          Back to dashboard
-        </Link>
-      </header>
+      <PageHeader
+        eyebrow="History"
+        title="Months"
+        actions={
+          <Link href="/dashboard" className="text-callout text-text-secondary hover:text-text">
+            Back to dashboard
+          </Link>
+        }
+      />
 
       <Card>
         <CardTitle>Last 12 months</CardTitle>

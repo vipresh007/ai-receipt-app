@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api";
 import type { ReceiptOut, RecurringGroup } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { money, shortDate } from "@/lib/format";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReceiptRow, SelectableReceiptRow } from "@/components/receipt-row";
@@ -131,30 +132,35 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <div className="space-y-xl">
-      <header className="flex items-center justify-between">
-        <h1 className="text-title">Receipts</h1>
-        <div className="flex items-center gap-lg">
-          {!editMode && (
-            <Link href="/expenses/new" className="text-callout text-accent hover:underline">
-              Add expense
-            </Link>
-          )}
-          {(data?.length ?? 0) > 0 && (
-            <button
-              onClick={() => (editMode ? exitEditMode() : setEditMode(true))}
-              className="text-callout text-text-secondary hover:text-text"
-            >
-              {editMode ? "Done" : "Edit"}
-            </button>
-          )}
-        </div>
-      </header>
+    <div className="space-y-2xl">
+      <PageHeader
+        eyebrow={data && !filtersActive ? `${data.length} receipt${data.length === 1 ? "" : "s"}` : "All receipts"}
+        title="Receipts"
+        actions={
+          <>
+            {!editMode && (
+              <Link href="/expenses/new" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Plus size={15} /> Add expense
+              </Link>
+            )}
+            {(data?.length ?? 0) > 0 && (
+              <Button
+                variant={editMode ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => (editMode ? exitEditMode() : setEditMode(true))}
+              >
+                {editMode ? "Done" : "Select"}
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {editMode && (
-        <div className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-lg py-md">
-          <span className="text-callout text-text-secondary">
-            {selected.size} selected
+        <div className="sticky top-lg z-10 flex items-center justify-between gap-md rounded-xl bg-surface px-xl py-md shadow-e2 ring-1 ring-border">
+          <span className="text-callout">
+            <span className="font-mono tabular">{selected.size}</span>{" "}
+            <span className="text-text-secondary">selected</span>
           </span>
           <Button variant="danger" size="sm" onClick={deleteSelected} disabled={selected.size === 0 || deleting}>
             {deleting ? "Deleting…" : "Delete"}
@@ -191,28 +197,35 @@ export default function ReceiptsPage() {
 
       {!filtersActive && (recurring ?? []).length > 0 && (
         <Card>
-          <div className="flex items-center gap-md">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent-muted text-accent">
-              <RefreshCw size={18} />
+          <div className="flex flex-wrap items-center justify-between gap-md">
+            <div className="flex items-center gap-md">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent-muted text-accent">
+                <RefreshCw size={17} />
+              </span>
+              <div>
+                <CardTitle>Recurring</CardTitle>
+                <p className="mt-hair text-caption text-text-secondary">
+                  {recurring!.length} likely subscription{recurring!.length === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-callout font-medium text-text">Recurring</p>
-              <p className="text-caption text-text-secondary">
-                {recurring!.length} likely subscription{recurring!.length === 1 ? "" : "s"} ·{" "}
-                {money(monthlyRecurringTotal)}/mo
-              </p>
-            </div>
+            <p className="text-right">
+              <span className="font-display text-[26px] font-extrabold tracking-[-0.03em] tabular">
+                {money(monthlyRecurringTotal)}
+              </span>
+              <span className="font-mono text-caption text-text-tertiary"> /mo</span>
+            </p>
           </div>
           <ul className="mt-lg divide-y divide-border">
             {recurring!.map((g) => (
-              <li key={g.merchant} className="flex items-center justify-between py-sm text-callout">
-                <div>
-                  <p className="text-text">{g.merchant}</p>
-                  <p className="text-caption text-text-secondary">
+              <li key={g.merchant} className="flex items-center justify-between gap-md py-md">
+                <div className="min-w-0">
+                  <p className="truncate text-callout font-medium">{g.merchant}</p>
+                  <p className="text-caption text-text-tertiary">
                     {g.occurrences} charges · last {shortDate(g.last_purchased_at)}
                   </p>
                 </div>
-                <span className="tabular font-medium text-text">{money(g.average_amount)}</span>
+                <span className="font-mono text-callout tabular">{money(g.average_amount)}</span>
               </li>
             ))}
           </ul>
@@ -238,14 +251,15 @@ export default function ReceiptsPage() {
       )}
 
       {groups.map((g) => (
-        <section key={g.key} className="space-y-sm">
-          <div className="flex items-baseline justify-between px-hair">
-            <h2 className="text-caption font-medium uppercase tracking-wide text-text-tertiary">
-              {monthLabel(g.key)}
-            </h2>
-            <span className="tabular text-caption text-text-secondary">{money(g.total)}</span>
+        <section key={g.key} className="space-y-md">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-md px-hair">
+            <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">{monthLabel(g.key)}</h2>
+            <p className="font-mono text-caption text-text-tertiary tabular">
+              {g.items.length} receipt{g.items.length === 1 ? "" : "s"} ·{" "}
+              <span className="text-callout text-text">{money(g.total)}</span>
+            </p>
           </div>
-          <Card>
+          <Card className="py-md">
             <div className="divide-y divide-border">
               {g.items.map((r) =>
                 editMode ? (
