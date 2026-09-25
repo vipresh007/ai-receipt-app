@@ -79,7 +79,23 @@ No ads, no tracking, no bank linking. You can delete your account and all your d
 **What's New** (first version): `First release.`
 
 **Version number**: `ios/project.yml` has `MARKETING_VERSION "1.0.0"`, matching
-the App Store Connect version. Bump `CURRENT_PROJECT_VERSION` for every upload.
+the App Store Connect version. `CURRENT_PROJECT_VERSION` is the build number
+and must go up for every upload (build 1 uploaded 2026-09-25; next is 2).
+
+**Uploading a build** (Xcode signed in to the team account; automatic
+signing makes the distribution certificate in the cloud):
+
+```bash
+cd ios && xcodegen generate
+xcodebuild archive -scheme AIReceiptApp -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath /tmp/Tally.xcarchive -allowProvisioningUpdates
+xcodebuild -exportArchive -archivePath /tmp/Tally.xcarchive -exportPath /tmp/TallyExport \
+  -exportOptionsPlist ExportOptions.plist -allowProvisioningUpdates
+```
+
+`ios/ExportOptions.plist` sets `method app-store-connect`, `destination
+upload`. The build shows up in App Store Connect and TestFlight after 10–30
+minutes of processing.
 
 **Export compliance**: `ITSAppUsesNonExemptEncryption = false` is in the
 Info.plist (the app uses only HTTPS and Apple's crypto), so no encryption
