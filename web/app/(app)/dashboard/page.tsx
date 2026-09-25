@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronLeft, ChevronRight, Plus, ScanLine } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { Budget, CategoryTotal, Insight, Me, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
+import type { Budget, CategoryTotal, Me, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
+import { spendingInsights } from "@/lib/insights";
 import {
   type Granularity,
   anchorFromPeriodKey,
@@ -114,10 +115,12 @@ export default function DashboardPage() {
     queryKey: ["summary", "earliest-bound"],
     queryFn: () => apiGet<SpendingSummary>(`v1/expenses/summary?month=${thisMonth()}`),
   });
-  const insights = useQuery({
-    queryKey: ["insights"],
-    queryFn: () => apiGet<Insight[]>("v1/insights"),
-    enabled: granularity === "month" && isCurrentPeriod,
+  // Two months back, only for the "up three months in a row" insight.
+  const twoBeforeMonth = shiftPeriod(previousAnchor, "month", -1);
+  const twoBeforeSummary = useQuery({
+    queryKey: ["summary-period", twoBeforeMonth],
+    queryFn: () => Promise.all([apiGet<SpendingSummary>(`v1/expenses/summary?month=${twoBeforeMonth}`)]),
+    enabled: granularity === "month",
   });
   const receipts = useQuery({
     queryKey: ["receipts", "month", month],
@@ -149,7 +152,21 @@ export default function DashboardPage() {
 
   const chartData = bucketTrend(trend.data ?? [], granularity, TREND_TAKE[granularity]);
 
-  const showInsights = granularity === "month" && isCurrentPeriod;
+  const insights =
+    periodSummary.data && previousSummary.data
+      ? spendingInsights({
+          current: byCategory,
+          previous: mergeCategoryTotals(previousSummary.data),
+          twoBefore:
+            granularity === "month" && twoBeforeSummary.data
+              ? mergeCategoryTotals(twoBeforeSummary.data)
+              : undefined,
+          against: AGAINST_WORD[granularity],
+          when: isCurrentPeriod ? CURRENT_WORD[granularity].toLowerCase() : `in ${periodLabel(month, granularity)}`,
+          unit: granularity,
+        })
+      : [];
+  const showInsights = insights.length > 0;
   const hasBudgets = granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0;
   const hasSide = showInsights || hasBudgets;
 
@@ -262,7 +279,7 @@ export default function DashboardPage() {
               <Card>
                 <CardTitle>Insights</CardTitle>
                 <div className="mt-lg">
-                  {insights.isLoading ? <Skeleton className="h-20 w-full" /> : <InsightList items={insights.data ?? []} />}
+                  <InsightList items={insights} />
                 </div>
               </Card>
             )}

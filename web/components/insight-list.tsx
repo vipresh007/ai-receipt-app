@@ -1,13 +1,14 @@
-import { ArrowDownRight, ArrowUpRight, Flame, Minus } from "lucide-react";
-import type { Insight, InsightKind } from "@/lib/types";
+import { ArrowDownRight, ArrowUpRight, Flame, Info, Minus, PieChart } from "lucide-react";
+import type { InsightKind } from "@/lib/types";
+import type { SpendingInsight } from "@/lib/insights";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<InsightKind, typeof Minus> = {
   up: ArrowUpRight,
   down: ArrowDownRight,
   streak: Flame,
-  neutral: Minus,
-  summary: Minus,
+  neutral: Info,
+  summary: PieChart,
 };
 
 const TONE: Record<InsightKind, string> = {
@@ -15,10 +16,10 @@ const TONE: Record<InsightKind, string> = {
   down: "bg-success-muted text-success",
   streak: "bg-warning-muted text-warning",
   neutral: "bg-surface-2 text-text-tertiary",
-  summary: "bg-surface-2 text-text-tertiary",
+  summary: "bg-accent-muted text-accent",
 };
 
-export function InsightList({ items }: { items: Insight[] }) {
+export function InsightList({ items }: { items: SpendingInsight[] }) {
   if (items.length === 0) {
     return (
       <p className="text-callout text-text-secondary">
