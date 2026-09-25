@@ -14,13 +14,13 @@
        PostgreSQL     Azure OpenAI     Azure Blob Storage
    users, receipts,  receipt → struct   original receipt
    expenses, cats,   categorization     images
-   insights          insights
+   budgets
                             │
                             ▼
                    Structured expense
                             │
                             ▼
-                     AI insights
+           Insights (computed on the clients)
 ```
 
 ## Components
@@ -30,7 +30,7 @@
 | **Client** | Swift / SwiftUI (`ios/`) | Capture or pick a receipt image, on-device OCR for hint text, confirm/edit screen, expense dashboard, insights. Talks only to the backend. |
 | **API** | Python 3.12 + FastAPI (`backend/`) | REST API, JWT auth, receipt-processing orchestration, expense/category/insight logic, freemium scan limits. |
 | **AI** | Azure OpenAI (vision + structured outputs) | Receipt image → `ExtractedReceipt` JSON. Later: richer NL insights, financial agents. |
-| **Database** | PostgreSQL | `users`, `receipts`, `expenses`, `categories`, `insights`. |
+| **Database** | PostgreSQL | `users`, `receipts`, `expenses`, `categories`, `budgets`. |
 | **Object storage** | Azure Blob Storage | Original receipt images (`<user_id>/<request_id>.jpg`). |
 | **Monitoring** | Azure Application Insights | API errors, AI call latency/cost, usage metrics (OpenTelemetry). |
 
@@ -55,8 +55,9 @@
 - **Expense** — normalized spend row; `receipt_id` nullable (manual entries
   allowed); merchant, amount, category_slug, spent_at.
 - **Category** — slug + name; `user_id` NULL = system default.
-- **Insight** — kind (`up`/`down`/`streak`/`summary`), message, period,
-  `generated_by` (`rules` | `azure_openai`).
+- **Insights** are not stored: the web dashboard (`web/lib/insights.ts`) and
+  iOS (`SpendingSummary`) derive them from category totals for whatever
+  period is on screen. (An `insights` table existed until migration 0006.)
 
 ## Environments
 

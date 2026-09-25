@@ -1,6 +1,7 @@
 # AI Receipt — backend
 
-FastAPI service: Auth0 token verification, receipt extraction (Azure OpenAI), expenses, insights.
+FastAPI service: Auth0 token verification, receipt extraction (Azure OpenAI), receipts, expenses, budgets.
+Spending insights are computed by the clients (web `lib/insights.ts`, iOS `SpendingSummary`), not stored here.
 
 ## Requirements
 
@@ -54,17 +55,16 @@ app/
   db.py               async engine / session / create_all
   telemetry.py        Azure Application Insights (best-effort, never fatal)
   core/security.py    Auth0 access-token verification (PyJWT + JWKS)
-  models/             SQLAlchemy 2.0 ORM (users, receipts, expenses, categories, insights)
+  models/             SQLAlchemy 2.0 ORM (users, receipts, expenses, categories, budgets)
   schemas/            Pydantic v2 request/response + the LLM contract (extraction.py)
   api/
     deps.py           get_current_user, get_extractor
-    routes/           health, auth, receipts (+ /extract), expenses, insights
+    routes/           health, auth, receipts (+ /extract), expenses, budgets
   services/
     azure_openai.py   AzureOpenAIExtractor — chat.completions.parse, strict schema
     blob_storage.py   receipt image upload
     extraction.py     orchestration: blob → OpenAI → persist Receipt + Expense
-    insights.py       rule-based month-over-month insights
-alembic/              migrations (0001_initial covers all tables)
+alembic/              migrations (0001_initial … 0006_drop_insights)
 tests/
 ```
 
@@ -78,12 +78,10 @@ tests/
 | GET  | `/v1/receipts` | ✅ | recent receipts |
 | GET  | `/v1/expenses` | ✅ | recent expenses |
 | GET  | `/v1/expenses/summary` | ✅ | month total + by-category + prev month |
-| GET  | `/v1/insights` | ✅ | stored insights |
-| POST | `/v1/insights/generate` | ✅ | run rule-based generation now |
 
 ## Not done yet
 
 - Free-tier scan-limit enforcement on `/v1/extract` (`# TODO` in the route)
 - `POST /v1/receipts` to persist a user-confirmed receipt as source of truth
-- Azure OpenAI NL insights (`generated_by="azure_openai"`)
+- Azure OpenAI natural-language insights (would need a stored-insights model again)
 - Rate limiting, refresh tokens, structured request logging

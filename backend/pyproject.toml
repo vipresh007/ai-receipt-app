@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ai-receipt-backend"
 version = "0.1.0"
-description = "FastAPI backend for AI Receipt — receipt extraction, expenses, insights."
+description = "FastAPI backend for AI Receipt — receipt extraction, receipts, expenses, budgets."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

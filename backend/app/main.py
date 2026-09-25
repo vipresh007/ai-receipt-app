@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, budgets, expenses, health, insights, receipts
+from app.api.routes import auth, budgets, expenses, health, receipts
 from app.config import get_settings
 from app.telemetry import configure_telemetry
 
@@ -39,7 +39,6 @@ app.include_router(health.router)
 app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 app.include_router(receipts.router, prefix="/v1", tags=["receipts"])
 app.include_router(expenses.router, prefix="/v1/expenses", tags=["expenses"])
-app.include_router(insights.router, prefix="/v1/insights", tags=["insights"])
 app.include_router(budgets.router, prefix="/v1/budgets", tags=["budgets"])
 
 

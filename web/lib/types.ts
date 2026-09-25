@@ -58,15 +58,6 @@ export interface SpendingSummary {
 
 export type InsightKind = "up" | "down" | "neutral" | "streak" | "summary";
 
-export interface Insight {
-  id: string;
-  kind: InsightKind;
-  message: string;
-  period_start: string;
-  period_end: string;
-  generated_by: string;
-}
-
 export interface Me {
   id: string;
   email: string;

@@ -4,7 +4,7 @@ A lightweight, no-bank-linking stand-in for the "find my subscriptions"
 feature every finance app has — instead of scanning a linked bank feed, it
 looks for the same merchant showing up in your own scanned/entered receipts
 across separate months at roughly the same amount. Deterministic and
-rule-based, same spirit as `app/services/insights.py`.
+rule-based and deterministic.
 """
 
 from collections import defaultdict

@@ -4,7 +4,6 @@ from app.models.base import Base
 from app.models.budget import Budget
 from app.models.category import DEFAULT_CATEGORY_SLUGS, Category
 from app.models.expense import Expense
-from app.models.insight import Insight
 from app.models.receipt import Receipt
 from app.models.user import User
 
@@ -16,7 +15,6 @@ __all__ = [
     "Category",
     "DEFAULT_CATEGORY_SLUGS",
     "Expense",
-    "Insight",
     "Receipt",
     "User",
 ]
