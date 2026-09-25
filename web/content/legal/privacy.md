@@ -78,7 +78,12 @@ or the public.
   account.
 - **Receipt images** are additionally removed automatically after **24 months**.
 - **Diagnostics** are retained by Application Insights for **90 days**.
-- **Anti-abuse counters** age out within hours to days.
+- **Backups** — deleted data can remain in encrypted database backups for up
+  to **35 days**, and deleted images in storage for up to **7 days**, before
+  they are overwritten. Backups are only used to recover from an outage.
+- **Anti-abuse counters** — per-IP counts are deleted within hours. The
+  per-device free-scan count (a random ID and a number, never linked to an
+  account) is kept so the free allowance can't reset.
 
 ## Your choices and rights
 

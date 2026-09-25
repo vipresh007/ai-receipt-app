@@ -38,8 +38,8 @@ build, ✅ = already done.**
   D-U-N-S number + Tax ID for DATA EAVER INC. and Apple's verification
   turnaround (days). Apple also requires a public organization website on a
   domain tied to the company — **https://dataeaver.ca** (repo `vipresh007/dataeaver-site`, Azure
-  Static Web App) went live 2026-09-24 for this. Remaining: reply to Apple's
-  migration email to start it (Certificates, IDs & Profiles is unavailable
+  Static Web App) went live 2026-09-24 for this. Replied to Apple's
+  migration email 2026-09-24; waiting on Apple (Certificates, IDs & Profiles is unavailable
   while it runs; App Store Connect stays up). Next concrete steps now that the account exists: register
   the Explicit App ID (`com.vipreshpatel.tally`) under Certificates, IDs &
   Profiles, and create the App Store Connect app record.
@@ -135,21 +135,21 @@ build, ✅ = already done.**
 - 🟢 Structured request logging, a `/version` endpoint, DB connection pool
   tuning.
 
-### Keep-as-prod essentials (checked 2026-09-25)
+### Keep-as-prod essentials (applied 2026-09-25)
 
-What the current resources actually have, and the cheap fixes:
+What the resources had, and what was done:
 
 | Item | Today | Fix | Cost |
 |---|---|---|---|
-| Blob lifecycle | **No rule.** The privacy policy promises images are deleted after 24 months | Management policy: delete blobs older than 730 days | Free |
-| Blob soft delete | Off | 7-day soft delete (undo an accidental delete) | ~Free |
-| Postgres backups | 7 days, locally redundant | 35 days | Backup storage beyond 32 GB only |
-| Postgres storage auto-grow | Off (32 GB) | On, so a full disk can't take the API down | Free until used |
+| Blob lifecycle | No rule, though the privacy policy promises deletion after 24 months | ✅ `delete-receipt-images-after-24-months`: blobs under `receipts/` deleted 730 days after last change | Free |
+| Blob soft delete | Off | ✅ 7 days (privacy policy notes it) | ~Free |
+| Postgres backups | 7 days, locally redundant | ✅ 35 days (privacy policy notes it) | Backup storage beyond 32 GB only |
+| Postgres storage auto-grow | Off (32 GB) | ✅ On | Free until used |
 | Postgres firewall | "Allow all Azure services" | Keep. A Consumption environment has hundreds of shared outbound IPs, so scoping is impractical. The real fix (VNet + private endpoint) needs a new Container Apps environment, so it's part of a future prod stack. Mitigate with a fresh DB password | — |
-| Secrets | Dev values, some seen in terminal output | Rotate the Postgres password, `AUTH0_SECRET`, Auth0 web client secret, Azure OpenAI key, and storage key | Free |
-| API cold start | `minReplicas 0` (10–20 s first scan) | `minReplicas 1` on the API only (web can stay 0) | ≈$10/mo |
-| Log Analytics | No daily cap | 0.5 GB/day cap | Free |
-| Spend | No budget alert | Resource-group budget ($50/mo) with email alerts at 80%/100% | Free |
+| Secrets | Dev values, some seen in terminal output | ✅ Rotated the Postgres password, both Azure OpenAI keys, both storage keys, and `AUTH0_SECRET` (in Azure, GitHub secrets, `infra/.env.infra`, `backend/.env`, `web/.env.local`). 🟡 Auth0 web client secret still to rotate | Free |
+| API cold start | `minReplicas 0` (10–20 s first scan) | ✅ API `minReplicas 1` (web stays 0). `deploy.sh` only sets replicas when it creates an app, so this sticks | ≈$10/mo |
+| Log Analytics | No daily cap | ✅ 0.5 GB/day | Free |
+| Spend | No budget alert | ✅ Budget `tally-monthly`, $50/mo on the resource group: email at 80% and 100% actual, and 100% forecast | Free |
 
 Geo-redundant backup and zone HA can't be added to this Postgres server
 after creation. Accept that on the single-server plan.
