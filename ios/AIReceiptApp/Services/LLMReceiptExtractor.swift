@@ -1,30 +1,25 @@
 import UIKit
 
-/// Production extractor: OCR the receipt on-device for extra context, then hand
-/// the image + text to our backend (`ReceiptExtractionAPIClient`), which runs
-/// the LLM. Selected by `ReceiptExtractionService` when `EXTRACTION_API_HOST`
-/// is configured.
+/// Production extractor: hands the image + the on-device OCR rows to our
+/// backend (`ReceiptExtractionAPIClient`), which runs the LLM. Selected by
+/// `ReceiptExtractionService` when `EXTRACTION_API_HOST` is configured.
 struct LLMReceiptExtractor: ReceiptExtractor {
     var baseURL: URL
     /// Bearer token when signed in; `nil` for anonymous callers.
     var authToken: String?
     /// Anonymous device identifier, sent when `authToken` is nil.
     var deviceID: String?
-    var recognizer = ReceiptTextRecognizer()
 
     /// Longest side, in pixels, of the image we upload (and keep locally).
     static let maxUploadEdge: CGFloat = 2048
 
-    func extractReceipt(from image: UIImage) async throws -> ReceiptExtractionResult {
+    func extractReceipt(from image: UIImage, ocrLines: [String]) async throws -> ReceiptExtractionResult {
         // A full-resolution camera photo is several MB — seconds of upload on
         // cellular — and the model downsamples past ~2048px anyway.
         let image = image.scaledDown(toLongEdge: Self.maxUploadEdge)
         guard let imageData = image.jpegData(compressionQuality: 0.7) else {
             throw ReceiptExtractionError.couldNotReadImage
         }
-
-        // OCR is best-effort context for the backend — failure here is non-fatal.
-        let ocrLines = (try? await recognizer.recognizeText(in: image)) ?? []
 
         let client = ReceiptExtractionAPIClient(
             baseURL: baseURL,

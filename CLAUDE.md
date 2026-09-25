@@ -44,6 +44,11 @@ Insights** (telemetry).
   config (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
   empty → the Account screen just hides sign-in. See [`docs/AUTH.md`](docs/AUTH.md).
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
+- Scanning is two-stage: on-device OCR (`ReceiptTextRecognizer`, rows grouped
+  along the photo's tilt) → `ReceiptQuickParser` reads merchant/date/total/tax
+  and the confirm screen opens on that at once; the server's full read then
+  fills in whatever the user hasn't touched (`ReceiptDraft.refined`). Save and
+  Discard work mid-read — `ScanFlowView.PendingScan` routes the late result.
 - Debug builds launched with `-seedSampleReceipts` fill an *empty* store with
   five months of sample receipts (`App/SampleData.swift`) — for simulator checks
   and App Store screenshots. Compiled out of Release.

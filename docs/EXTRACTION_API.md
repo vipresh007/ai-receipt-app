@@ -39,7 +39,7 @@ shutter is disabled).
 | Field             | Type       | Notes |
 |-------------------|------------|-------|
 | `imageBase64`     | string     | JPEG bytes, base64 (no data-URI prefix). ~0.7 quality from the app. |
-| `ocrLines`        | string[]   | On-device Vision OCR lines. Noisy/possibly empty — a hint, not ground truth. |
+| `ocrLines`        | string[]   | On-device Vision OCR, one entry per printed row (label and price joined, corrected for photo tilt). Noisy/possibly empty — a hint, not ground truth. |
 | `clientRequestID` | string     | UUID. Idempotency / dedupe / correlation in logs + blob name. |
 
 ```json

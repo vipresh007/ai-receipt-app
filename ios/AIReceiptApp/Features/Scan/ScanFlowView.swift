@@ -1,8 +1,12 @@
 import SwiftUI
 import PhotosUI
 
-/// Capture flow: pick an image (camera or library) → run the extractor →
-/// confirm and save.
+/// Capture flow: pick an image (camera or library) → read it → confirm and save.
+///
+/// The confirm screen opens on the phone's own quick read (`ReceiptQuickParser`
+/// over on-device OCR) while the server's full extraction is still running;
+/// when that lands it fills in what the user hasn't touched. Save and Discard
+/// work at any point — a late result follows the receipt (see `PendingScan`).
 struct ScanFlowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var auth
@@ -20,6 +24,30 @@ struct ScanFlowView: View {
     @State private var pendingServerID: String?
     /// True while the confirm screen is a from-scratch entry (no scan).
     @State private var isManualEntry = false
+    /// Set while the confirm screen shows the quick read and the server's is on its way.
+    @State private var pending: PendingScan?
+    /// Why the server's read never arrived (the quick read stays editable).
+    @State private var refineNote: String?
+
+    /// A scan showing its quick read while the server extraction runs. A class
+    /// so the in-flight task sees what the user did meanwhile.
+    @MainActor
+    private final class PendingScan {
+        enum Outcome {
+            case open
+            case saved(Receipt)
+            case discarded
+        }
+
+        /// The quick read as first shown — fields still equal to it are the
+        /// ones the user hasn't touched.
+        let baseline: ReceiptDraft
+        var outcome: Outcome = .open
+
+        init(baseline: ReceiptDraft) {
+            self.baseline = baseline
+        }
+    }
 
     private enum Stage: Equatable {
         case idle, working, confirming
@@ -77,6 +105,8 @@ struct ScanFlowView: View {
             ConfirmReceiptView(
                 draft: $draft,
                 title: isManualEntry ? "New expense" : "Confirm",
+                isRefining: pending != nil,
+                refineNote: refineNote,
                 onSave: save,
                 onDiscard: discard
             )
@@ -142,6 +172,8 @@ struct ScanFlowView: View {
     private func startManualEntry() {
         draft = ReceiptDraft()
         pendingServerID = nil
+        pending = nil
+        refineNote = nil
         previewImage = nil
         isManualEntry = true
         withAnimation(Theme.Motion.spring) { stage = .confirming }
@@ -203,26 +235,117 @@ struct ScanFlowView: View {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
 
-    private func handle(_ image: UIImage) {
+    private func handle(_ photo: UIImage) {
+        // Everything downstream (OCR, upload, the stored copy) uses the capped size.
+        let image = photo.scaledDown(toLongEdge: LLMReceiptExtractor.maxUploadEdge)
         previewImage = image
         isManualEntry = false
+        pendingServerID = nil
+        refineNote = nil
         withAnimation(Theme.Motion.base) { stage = .working }
         Task {
+            // On-device OCR first: it takes well under a second, its rows go to
+            // the server as context, and if they give a total the confirm
+            // screen opens now instead of after the server round trip.
+            let rows = (try? await ReceiptTextRecognizer().recognizeText(in: image)) ?? []
+            var quick = ReceiptQuickParser.draft(from: rows)
+            quick.imageData = image.jpegData(compressionQuality: 0.7)
+
+            var scan: PendingScan?
+            if ReceiptQuickParser.isUseful(quick) {
+                let shown = PendingScan(baseline: quick)
+                scan = shown
+                pending = shown
+                draft = quick
+                withAnimation(Theme.Motion.spring) { stage = .confirming }
+            }
+
             do {
                 let extractor = await ReceiptExtractionService.makeExtractor(auth: auth)
-                let result = try await extractor.extractReceipt(from: image)
+                let result = try await extractor.extractReceipt(from: image, ocrLines: rows)
                 auth.noteScansRemaining(result.scansRemaining)
-                draft = result.draft
-                pendingServerID = result.serverID
-                withAnimation(Theme.Motion.spring) { stage = .confirming }
-            } catch ReceiptExtractionError.quotaExhausted {
-                auth.noteScansRemaining(0)
-                withAnimation(Theme.Motion.base) { stage = .idle }
-                showQuotaWall = true
+                finish(scan, with: result)
             } catch {
-                errorMessage = error.localizedDescription
-                withAnimation(Theme.Motion.base) { stage = .idle }
+                fail(scan, with: error)
             }
+        }
+    }
+
+    /// The server's read arrived.
+    private func finish(_ scan: PendingScan?, with result: ReceiptExtractionResult) {
+        guard let scan else {
+            // Nothing was shown yet (the quick read found no total).
+            draft = result.draft
+            pendingServerID = result.serverID
+            withAnimation(Theme.Motion.spring) { stage = .confirming }
+            return
+        }
+        switch scan.outcome {
+        case .open:
+            withAnimation(Theme.Motion.base) {
+                draft = draft.refined(with: result.draft, baseline: scan.baseline)
+            }
+            pendingServerID = result.serverID
+            if pending === scan { pending = nil }
+        case .saved(let receipt):
+            // Saved on the quick read: fill in what the user left alone and link
+            // the server's row (signed in), pushing the confirmed values to it.
+            let current = ReceiptDraft(
+                merchant: receipt.merchant, date: receipt.date, total: receipt.total,
+                tax: receipt.tax, category: receipt.category, items: receipt.items
+            )
+            let merged = current.refined(with: result.draft, baseline: scan.baseline)
+            receipt.merchant = merged.merchant
+            receipt.date = merged.date
+            receipt.total = merged.total
+            receipt.tax = merged.tax
+            receipt.category = merged.category
+            receipt.items = merged.items
+            receipt.remoteID = result.serverID
+            try? modelContext.save()
+            if result.serverID != nil {
+                let auth = auth
+                Task { await AccountSync.pushUpdate(receipt, auth: auth) }
+            }
+        case .discarded:
+            // Signed-in extraction already created a row — remove it.
+            if let id = result.serverID { deleteServerReceipt(id) }
+        }
+    }
+
+    /// The server's read failed.
+    private func fail(_ scan: PendingScan?, with error: Error) {
+        var outOfScans = false
+        if let extractionError = error as? ReceiptExtractionError,
+            case .quotaExhausted = extractionError
+        {
+            outOfScans = true
+            auth.noteScansRemaining(0)
+        }
+        guard let scan else {
+            withAnimation(Theme.Motion.base) { stage = .idle }
+            if outOfScans {
+                showQuotaWall = true
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            return
+        }
+        switch scan.outcome {
+        case .open:
+            refineNote = outOfScans
+                ? "You've used your free scans, so the rest wasn't filled in. Check the fields and save, or sign in to keep scanning."
+                : "Couldn't read the rest of the receipt. Check the fields and save."
+            if pending === scan { pending = nil }
+        case .saved(let receipt):
+            // Kept from the quick read alone; signed in, it still needs a server row.
+            if auth.isSignedIn, receipt.remoteID == nil {
+                let auth = auth
+                let context = modelContext
+                Task { await AccountSync.pushCreate(receipt, auth: auth, context: context) }
+            }
+        case .discarded:
+            break
         }
     }
 
@@ -234,11 +357,14 @@ struct ScanFlowView: View {
 
         let auth = auth
         let context = modelContext
-        if pendingServerID != nil {
+        if let scan = pending {
+            // The server's read is still coming; `finish` lands it on this receipt.
+            scan.outcome = .saved(receipt)
+        } else if pendingServerID != nil {
             // The server row holds the raw extraction — push the confirmed edits.
             Task { await AccountSync.pushUpdate(receipt, auth: auth) }
         } else if auth.isSignedIn {
-            // Manual entry — nothing on the server yet.
+            // Manual entry (or the server read failed) — nothing on the server yet.
             Task { await AccountSync.pushCreate(receipt, auth: auth, context: context) }
         }
         pendingServerID = nil
@@ -248,19 +374,24 @@ struct ScanFlowView: View {
     /// User bailed on the confirm screen. If the backend already created a row
     /// for this scan (signed in), remove it so nothing orphaned is left behind.
     private func discard() {
-        if let id = pendingServerID {
-            let auth = auth
-            Task {
-                let client = await ReceiptExtractionService.makeAuthorizedClient(auth: auth)
-                try? await client?.deleteReceipt(id: id)
-            }
-        }
+        pending?.outcome = .discarded
+        if let id = pendingServerID { deleteServerReceipt(id) }
         pendingServerID = nil
         reset()
     }
 
+    private func deleteServerReceipt(_ id: String) {
+        let auth = auth
+        Task {
+            let client = await ReceiptExtractionService.makeAuthorizedClient(auth: auth)
+            try? await client?.deleteReceipt(id: id)
+        }
+    }
+
     private func reset() {
         draft = ReceiptDraft()
+        pending = nil
+        refineNote = nil
         pickedItem = nil
         previewImage = nil
         withAnimation(Theme.Motion.base) { stage = .idle }

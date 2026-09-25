@@ -5,11 +5,22 @@ import SwiftUI
 struct ConfirmReceiptView: View {
     @Binding var draft: ReceiptDraft
     var title = "Confirm"
+    /// The fields show the phone's quick read; the server's full read is on
+    /// its way and will fill in the rest.
+    var isRefining = false
+    /// Why the server's read won't arrive, if it failed.
+    var refineNote: String?
     var onSave: () -> Void
     var onDiscard: () -> Void
 
     var body: some View {
         Form {
+            if isRefining || refineNote != nil {
+                LedgerSection {
+                    refineStatus
+                }
+            }
+
             LedgerSection("Merchant") {
                 TextField("Store name", text: $draft.merchant)
                 DatePicker("Date", selection: $draft.date, displayedComponents: .date)
@@ -17,14 +28,23 @@ struct ConfirmReceiptView: View {
 
             LedgerSection("Amount") {
                 CurrencyRow(label: "Total", value: $draft.total)
-                CurrencyRow(label: "Tax", value: $draft.tax)
+                if isRefining && draft.tax == 0 {
+                    pendingRow("Tax", width: 56)
+                } else {
+                    CurrencyRow(label: "Tax", value: $draft.tax)
+                }
             }
 
             LedgerSection("Category") {
-                Picker("Category", selection: $draft.category) {
-                    ForEach(ExpenseCategory.allCases) { category in
-                        Label(category.displayName, systemImage: category.systemImage)
-                            .tag(category)
+                // The phone doesn't guess categories — the server's read does.
+                if isRefining && draft.category == .other {
+                    pendingRow("Category", width: 96)
+                } else {
+                    Picker("Category", selection: $draft.category) {
+                        ForEach(ExpenseCategory.allCases) { category in
+                            Label(category.displayName, systemImage: category.systemImage)
+                                .tag(category)
+                        }
                     }
                 }
             }
@@ -41,6 +61,17 @@ struct ConfirmReceiptView: View {
                     }
                     .onDelete { draft.items.remove(atOffsets: $0) }
                 }
+            } else if isRefining {
+                LedgerSection("Items") {
+                    ForEach([170.0, 130.0, 150.0], id: \.self) { width in
+                        HStack {
+                            SkeletonBlock(height: 14, width: width)
+                            Spacer()
+                            SkeletonBlock(height: 14, width: 52)
+                        }
+                        .padding(.vertical, Theme.Space.xs)
+                    }
+                }
             }
         }
         .ledgerBackground()
@@ -53,6 +84,40 @@ struct ConfirmReceiptView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save", action: onSave)
                     .disabled(!draft.isValid)
+            }
+        }
+    }
+
+    /// A field the quick read didn't find, while the server's read is coming.
+    private func pendingRow(_ label: String, width: CGFloat) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            SkeletonBlock(height: 14, width: width)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label), reading")
+    }
+
+    @ViewBuilder
+    private var refineStatus: some View {
+        if isRefining {
+            HStack(spacing: Theme.Space.sm) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Reading the rest of the receipt…")
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            .accessibilityElement(children: .combine)
+        } else if let refineNote {
+            Label {
+                Text(refineNote)
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.Palette.warning)
             }
         }
     }

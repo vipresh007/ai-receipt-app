@@ -6,7 +6,9 @@ import UIKit
 /// save flow works without a backend. Swap in `LLMReceiptExtractor` once the
 /// extraction API is wired up (see `ReceiptExtractionService`).
 protocol ReceiptExtractor {
-    func extractReceipt(from image: UIImage) async throws -> ReceiptExtractionResult
+    /// `ocrLines`: on-device OCR rows for this image (`ReceiptTextRecognizer`),
+    /// already computed by the scan flow and passed along as context.
+    func extractReceipt(from image: UIImage, ocrLines: [String]) async throws -> ReceiptExtractionResult
 }
 
 enum ReceiptExtractionError: LocalizedError, Equatable {
