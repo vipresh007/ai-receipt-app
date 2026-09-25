@@ -171,6 +171,13 @@ after creation. Accept that on the single-server plan.
   Individual → Organization conversion (see §2 above and
   `docs/legal/README.md`). Not blocking TestFlight either way — resolve before
   a real App Store listing.
+- ✅ **No EU at launch (2026-09-25).** The EU Digital Services Act "trader"
+  declaration (App Store Connect → Business) was left unset, so Apple keeps
+  the app off EU storefronts. As a company, declaring would publish a business
+  address and phone number on the EU product page, and the privacy policy
+  doesn't cover GDPR yet. To add the EU later: declare trader status, add a
+  GDPR section + sub-processor list, then re-enable the EU countries in
+  Pricing and Availability.
 - 🟡 Data Processing / sub-processor list if you'll have EU/UK users (GDPR).
 - 🟢 "Export my data" (JSON dump) — nice, not required.
 
@@ -198,8 +205,9 @@ in order:
 2. Individual → Organization conversion for the Apple seller name (§2/§5) —
    submit it now if not already; it runs in the background while you do
    everything else.
-3. ~~Screenshots, App Store listing copy, App Privacy answers (§2).~~ Done:
-   enter them from `APP_STORE.md`, plus the review demo account.
+3. ~~Screenshots, App Store listing copy, App Privacy answers (§2).~~ Done
+   and entered in App Store Connect (2026-09-25), with the review demo
+   account. Only the build is missing.
 4. TestFlight build → internal testing → submit for review.
 5. The keep-as-prod essentials (§4). They can trail TestFlight, but must
    land before real users sign up.
