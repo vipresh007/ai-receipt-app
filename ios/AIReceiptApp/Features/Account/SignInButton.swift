@@ -20,7 +20,7 @@ struct SignInButton: View {
         } label: {
             HStack(spacing: Theme.Space.sm) {
                 if auth.isBusy {
-                    ProgressView().tint(.white)
+                    ProgressView().tint(Theme.Palette.accentForeground)
                 } else {
                     Image(systemName: "person.crop.circle.badge.checkmark")
                 }

@@ -24,8 +24,7 @@ struct RecurringListView: View {
                         .foregroundStyle(Theme.Palette.textSecondary)
                     Spacer()
                     Text(monthlyTotal, format: .currency(code: currencyCode))
-                        .font(.appCallout.weight(.semibold))
-                        .monospacedDigit()
+                        .font(.appMoney)
                 }
             }
 
@@ -43,8 +42,7 @@ struct RecurringListView: View {
                         }
                         Spacer()
                         Text(group.averageAmount, format: .currency(code: currencyCode))
-                            .font(.appCallout.weight(.semibold))
-                            .monospacedDigit()
+                            .font(.appMoney)
                             .foregroundStyle(Theme.Palette.text)
                     }
                     .padding(.vertical, 2)

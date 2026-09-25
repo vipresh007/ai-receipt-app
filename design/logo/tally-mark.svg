@@ -1,10 +1,13 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- Tally — the mark alone (white tally-of-five), transparent background. -->
-  <g fill="none" stroke="#ffffff" stroke-width="92" stroke-linecap="round">
-    <line x1="344" y1="300" x2="344" y2="724"/>
-    <line x1="459" y1="300" x2="459" y2="724"/>
-    <line x1="574" y1="300" x2="574" y2="724"/>
-    <line x1="689" y1="300" x2="689" y2="724"/>
-    <line x1="300" y1="708" x2="733" y2="316"/>
+  <!-- Tally — the mark alone (gold tally-of-four + teal slash), transparent
+       background. Used for the iOS launch screen on the ink LaunchBackground. -->
+  <g fill="none" stroke-width="92" stroke-linecap="round">
+    <g stroke="#D9AE5C">
+      <line x1="344" y1="300" x2="344" y2="724"/>
+      <line x1="459" y1="300" x2="459" y2="724"/>
+      <line x1="574" y1="300" x2="574" y2="724"/>
+      <line x1="689" y1="300" x2="689" y2="724"/>
+    </g>
+    <line x1="300" y1="708" x2="733" y2="316" stroke="#35C79A"/>
   </g>
 </svg>

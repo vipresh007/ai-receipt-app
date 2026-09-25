@@ -1,43 +1,80 @@
 import SwiftUI
 
-/// A soft-shadow surface card — the primary container on the dashboard.
-/// No border (Ledger direction): elevation comes from the shadow + the
-/// existing surface/bg contrast, not a hairline.
+/// The primary container: a surface card with a hairline edge and a soft
+/// shadow (matches the web `Card`).
 struct AppCard<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         content()
-            .padding(Theme.Space.lg)
+            .padding(Theme.Space.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 Theme.Palette.surface,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+                    .strokeBorder(Theme.Palette.border, lineWidth: 1)
             )
             .shadow(
-                color: Theme.Palette.cardShadow.opacity(colorScheme == .dark ? 0.5 : 0.08),
-                radius: 16, x: 0, y: 8
+                color: Theme.Palette.cardShadow.opacity(colorScheme == .dark ? 0.45 : 0.07),
+                radius: 14, x: 0, y: 8
             )
     }
 }
 
-/// Small uppercase eyebrow label above a value or a card's content.
+/// The always-ink background of the hero panel, with a gold glow in the
+/// top-trailing corner — the one loud moment per screen.
+struct HeroPanelBackground: View {
+    var cornerRadius: CGFloat = Theme.Radius.xxl
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        shape
+            .fill(
+                LinearGradient(
+                    colors: [Theme.Palette.heroInkTop, Theme.Palette.heroInkBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                RadialGradient(
+                    colors: [Theme.Palette.gold.opacity(0.2), .clear],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 320
+                )
+                .clipShape(shape)
+            )
+            .overlay(shape.strokeBorder(Color.white.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(0.28), radius: 22, x: 0, y: 12)
+    }
+}
+
+/// Small uppercase eyebrow label above a value or a card's content — set in
+/// the mono face, like a printed receipt heading.
 struct SectionLabel: View {
     let text: String
-    init(_ text: String) { self.text = text }
+    var color: Color = Theme.Palette.textTertiary
+    init(_ text: String, color: Color = Theme.Palette.textTertiary) {
+        self.text = text
+        self.color = color
+    }
 
     var body: some View {
         Text(text.uppercased())
             .font(.appMicro)
-            .tracking(0.5)
-            .foregroundStyle(Theme.Palette.textTertiary)
+            .tracking(1.6)
+            .foregroundStyle(color)
     }
 }
 
 /// The rounded, tinted category icon used in every receipt row, budget row,
-/// and the category strip. Radius scales with size so it reads as the same
-/// "icon-chip" shape whether it's a 28pt row glyph or a 46pt strip badge.
+/// and the category list. Radius scales with size so it reads as the same
+/// "icon-chip" shape at any size.
 struct CategoryGlyph: View {
     let category: ExpenseCategory
     var size: CGFloat = 32
@@ -48,8 +85,8 @@ struct CategoryGlyph: View {
             .foregroundStyle(category.tint)
             .frame(width: size, height: size)
             .background(
-                category.tint.opacity(0.16),
-                in: RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                category.tint.opacity(0.15),
+                in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
             )
     }
 }
@@ -79,12 +116,9 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.appCallout.weight(.semibold))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 15)
             .foregroundStyle(Theme.Palette.accentForeground)
-            .background(
-                Theme.Palette.accent,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-            )
+            .background(Theme.Palette.accent, in: Capsule())
             .opacity(configuration.isPressed ? 0.85 : 1)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(Theme.Motion.base, value: configuration.isPressed)
@@ -94,14 +128,12 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.appCallout.weight(.medium))
+            .font(.appCallout.weight(.semibold))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 15)
             .foregroundStyle(Theme.Palette.text)
-            .background(
-                Theme.Palette.surface2,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-            )
+            .background(Theme.Palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.Palette.border, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(Theme.Motion.base, value: configuration.isPressed)
     }

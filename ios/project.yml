@@ -40,6 +40,14 @@ targets:
           UIColorName: LaunchBackground
           UIImageName: LaunchMark
           UIImageRespectsSafeAreaInsets: false
+        # Display + mono faces shared with the web (Resources/Fonts, SIL OFL —
+        # licenses alongside). Bricolage is two static cuts of the variable
+        # font at opsz 48; referenced by PostScript name in Theme.swift.
+        UIAppFonts:
+          - BricolageGrotesque-Bold.ttf
+          - BricolageGrotesque-ExtraBold.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
         NSCameraUsageDescription: "Tally uses the camera so you can snap a receipt and have its details filled in for you."
         NSPhotoLibraryUsageDescription: "Tally reads a receipt photo you pick from your library to fill in the expense."
         ExtractionAPIHost: $(EXTRACTION_API_HOST)

@@ -7,7 +7,7 @@ struct CategoryTotal: Identifiable {
 }
 
 struct Insight: Identifiable {
-    enum Kind { case up, down, neutral, streak }
+    enum Kind { case up, down, neutral, streak, summary }
     let id = UUID()
     let kind: Kind
     let message: String
@@ -30,15 +30,16 @@ struct SpendingSummary {
     let currentMonthByCategory: [CategoryTotal]
     let insights: [Insight]
 
-    /// `granularity` defaults to `.month`, which reproduces the exact
-    /// behavior this type always had — quarter/year are additive. Insights
-    /// are a month-over-month concept, so they're empty outside `.month`
-    /// (same call the web dashboard makes).
+    /// `granularity` defaults to `.month`. Insights compare the period with
+    /// the one before it at any granularity (same rules as the web
+    /// dashboard's `lib/insights.ts`); `today` only decides whether the
+    /// viewed period is described as "this month" or "in June 2026".
     init(
         receipts: [Receipt],
         calendar: Calendar = .current,
         now: Date = .now,
-        granularity: Granularity = .month
+        granularity: Granularity = .month,
+        today: Date = .now
     ) {
         let currentInterval = granularity.interval(containing: now, calendar: calendar)
         let previousAnchor = granularity.shift(now, by: -1, calendar: calendar)
@@ -54,15 +55,18 @@ struct SpendingSummary {
             .map { CategoryTotal(category: $0.key, amount: $0.value) }
             .sorted { $0.amount > $1.amount }
 
-        insights =
-            granularity == .month
-            ? Self.makeInsights(
-                current: current,
-                previous: previous,
-                receipts: receipts,
-                calendar: calendar,
-                now: now
-            ) : []
+        let isCurrent = granularity.key(for: now, calendar: calendar) == granularity.key(for: today, calendar: calendar)
+        insights = Self.makeInsights(
+            current: current,
+            previous: previous,
+            receipts: receipts,
+            calendar: calendar,
+            now: now,
+            granularity: granularity,
+            when: isCurrent
+                ? "this \(granularity.rawValue)"
+                : "in \(granularity.periodLabel(for: now, calendar: calendar))"
+        )
     }
 
     /// Total spend per period (month, quarter, or year) for the last
@@ -160,14 +164,20 @@ struct SpendingSummary {
         previous: [Receipt],
         receipts: [Receipt],
         calendar: Calendar,
-        now: Date
+        now: Date,
+        granularity: Granularity,
+        when: String
     ) -> [Insight] {
-        var insights: [Insight] = []
-
         let currentTotals = totals(current)
         let previousTotals = totals(previous)
+        let total = currentTotals.values.reduce(Decimal(0), +)
+        guard total > 0 else { return [] }
 
-        for (category, currentAmount) in currentTotals.sorted(by: { $0.value > $1.value }) {
+        let unit = granularity.rawValue
+        let ranked = currentTotals.sorted { $0.value > $1.value }
+        var insights: [Insight] = []
+
+        for (category, currentAmount) in ranked {
             guard let previousAmount = previousTotals[category], previousAmount > 0 else { continue }
             let change = (currentAmount - previousAmount) / previousAmount
             let percent = NSDecimalNumber(decimal: change * 100).doubleValue
@@ -177,17 +187,38 @@ struct SpendingSummary {
             insights.append(
                 Insight(
                     kind: percent > 0 ? .up : .down,
-                    message: "You spent \(Int(abs(percent).rounded()))% \(direction) on \(category.displayName.lowercased()) than the month before."
+                    message: "You spent \(Int(abs(percent).rounded()))% \(direction) on \(category.displayName.lowercased()) than the \(unit) before."
                 )
             )
             if insights.count >= 3 { break }
         }
 
-        if let rising = risingCategory(receipts: receipts, calendar: calendar, now: now) {
+        if granularity == .month, let rising = risingCategory(receipts: receipts, calendar: calendar, now: now) {
             insights.append(
                 Insight(
                     kind: .streak,
-                    message: "Your \(rising.displayName.lowercased()) spending has increased three months in a row."
+                    message: "Your \(rising.displayName.lowercased()) spending has gone up three months in a row."
+                )
+            )
+        }
+
+        if let (topCategory, topAmount) = ranked.first {
+            let share = Int((NSDecimalNumber(decimal: topAmount / total).doubleValue * 100).rounded())
+            insights.append(
+                Insight(
+                    kind: .summary,
+                    message: ranked.count == 1
+                        ? "Everything \(when) went to \(topCategory.displayName.lowercased())."
+                        : "\(topCategory.displayName) is your biggest category \(when) — \(share)% of what you spent."
+                )
+            )
+        }
+
+        if previousTotals.values.reduce(Decimal(0), +) <= 0 {
+            insights.append(
+                Insight(
+                    kind: .neutral,
+                    message: "Nothing recorded for the \(unit) before yet, so \(unit)-over-\(unit) comparisons will start once there is."
                 )
             )
         }

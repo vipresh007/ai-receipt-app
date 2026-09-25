@@ -74,8 +74,7 @@ struct MonthlyHistoryView: View {
             }
             Spacer()
             Text(month.total, format: .currency(code: currencyCode))
-                .font(.appCallout.weight(.semibold))
-                .monospacedDigit()
+                .font(.appMoney)
                 .foregroundStyle(Theme.Palette.text)
             Image(systemName: "chevron.right")
                 .font(.appCaption.weight(.semibold))

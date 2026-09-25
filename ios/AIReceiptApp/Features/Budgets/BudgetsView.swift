@@ -163,13 +163,12 @@ struct BudgetRow: View {
                         .font(.appCallout.weight(.medium))
                         .foregroundStyle(Theme.Palette.text)
                     Text(subtitle)
-                        .font(.appCaption)
+                        .font(.mono(12, relativeTo: .caption))
                         .foregroundStyle(Theme.Palette.textSecondary)
                 }
                 Spacer()
                 Text("\(Int(budget.percentUsed.rounded()))%")
-                    .font(.appCallout.weight(.semibold))
-                    .monospacedDigit()
+                    .font(.mono(13, medium: true, relativeTo: .callout))
                     .foregroundStyle(progressColor)
             }
             ProgressView(value: min(budget.percentUsed, 100), total: 100)

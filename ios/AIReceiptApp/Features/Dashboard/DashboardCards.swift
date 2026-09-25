@@ -1,127 +1,129 @@
 import SwiftUI
 import Charts
 
-/// A tiny inline trend line drawn straight from the same points as the trend
-/// chart below it — decorative context for the hero number, not a
-/// replacement for the real (labeled, tappable) `SpendingTrendCard`.
-private struct HeroSparkline: View {
-    let values: [Double]
+// MARK: - Hero
 
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let minV = values.min() ?? 0
-            let maxV = values.max() ?? 1
-            let range = Swift.max(maxV - minV, 0.0001)
-            let step = values.count > 1 ? w / CGFloat(values.count - 1) : 0
-            let points = values.enumerated().map { i, v -> CGPoint in
-                CGPoint(x: CGFloat(i) * step, y: h - CGFloat((v - minV) / range) * h)
-            }
-
-            Path { path in
-                guard let first = points.first else { return }
-                path.move(to: first)
-                for p in points.dropFirst() { path.addLine(to: p) }
-            }
-            .stroke(Theme.Palette.gold, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-
-            if let last = points.last {
-                Circle().fill(Theme.Palette.gold).frame(width: 6, height: 6).position(last)
-            }
-        }
-    }
-}
-
-/// The one gradient "moment" per screen — the current period's total. See
-/// docs/DESIGN.md "The Ledger direction". Always this dark ink-to-teal
-/// gradient regardless of light/dark mode; a secondary number (e.g. a
-/// previous period elsewhere) should use a plain `AppCard`, never this.
-struct HeroMetricCard: View {
-    var label = "This month"
+/// The one loud moment on the dashboard: the period's total, how it compares
+/// with the period before, two supporting figures, and the trend it sits in —
+/// on the always-ink hero panel (matches the web's `PeriodHero`).
+struct PeriodHeroCard: View {
+    let label: String
     let amount: Decimal
     let currencyCode: String
-    /// Prior month's total + its name, for the "vs" line. Nil hides it.
-    var previous: (amount: Decimal, label: String)?
-    /// Recent period totals (oldest → newest) for the mini trend line. Fewer
-    /// than 2 values hides it.
-    var sparklineValues: [Double] = []
-
-    private var delta: Decimal? {
-        guard let previous, previous.amount > 0 else { return nil }
-        return amount - previous.amount
-    }
+    /// Positive = spent more than the comparison period. Nil hides the chip.
+    var delta: Decimal?
+    /// "the month before" / "the quarter before" / "the year before".
+    var against: String = "the month before"
+    let figures: [(label: String, value: String)]
+    let points: [MonthlyPoint]
+    let highlighted: Date
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.lg) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text(label.uppercased())
-                    .font(.appMicro)
-                    .tracking(0.5)
-                    .foregroundStyle(Theme.Palette.gold)
-                Text(amount, format: .currency(code: currencyCode))
-                    .font(.appDisplay)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.Palette.heroText)
-                    .contentTransition(.numericText())
+        VStack(alignment: .leading, spacing: 0) {
+            SectionLabel(label, color: Theme.Palette.gold)
 
-                if let delta, let previous {
-                    let up = delta > 0
-                    HStack(spacing: 3) {
-                        Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
-                        Text(abs(delta), format: .currency(code: currencyCode))
-                            .monospacedDigit()
-                        Text("vs \(previous.label)")
+            amountText
+                .padding(.top, Theme.Space.sm)
+
+            if let delta, delta != 0 {
+                let up = delta > 0
+                HStack(spacing: 5) {
+                    Image(systemName: up ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("\(abs(delta).formatted(.currency(code: currencyCode))) \(up ? "more" : "less") than \(against)")
+                }
+                .font(.appCaption.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(up ? Theme.Palette.amber : Theme.Palette.teal)
+                .padding(.horizontal, Theme.Space.md)
+                .padding(.vertical, 6)
+                .background(Theme.Palette.heroChipBackground, in: Capsule())
+                .padding(.top, Theme.Space.md)
+            }
+
+            HStack(alignment: .top, spacing: Theme.Space.lg) {
+                ForEach(figures, id: \.label) { figure in
+                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                        Text(figure.label.uppercased())
+                            .font(.mono(10, medium: true, relativeTo: .caption2))
+                            .tracking(1.4)
+                            .foregroundStyle(Theme.Palette.heroTextSecondary)
+                        Text(figure.value)
+                            .font(.mono(15, relativeTo: .callout))
+                            .foregroundStyle(Theme.Palette.heroText)
                     }
-                    .font(.appCaption.weight(.semibold))
-                    .foregroundStyle(Theme.Palette.heroText)
-                    .padding(.horizontal, Theme.Space.sm)
-                    .padding(.vertical, 5)
-                    .background(Theme.Palette.heroChipBackground, in: Capsule())
-                    .padding(.top, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            .padding(.top, Theme.Space.lg)
+            .overlay(alignment: .top) {
+                Rectangle().fill(Theme.Palette.heroRule).frame(height: 1)
+            }
+            .padding(.top, Theme.Space.xl)
 
-            // Fills whatever width is left over next to the text column, and
-            // centers on the full label+value+chip height — not just next to
-            // the chip, which is what made it read as small and off-center.
-            if sparklineValues.count > 1 {
-                HeroSparkline(values: sparklineValues)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 64)
+            if points.count > 1 {
+                SpendingBarChart(
+                    points: points,
+                    highlighted: highlighted,
+                    currencyCode: currencyCode,
+                    tone: .hero,
+                    height: 150
+                )
+                .padding(.top, Theme.Space.xl)
             }
         }
-        .padding(Theme.Space.lg)
+        .padding(Theme.Space.xxl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [Theme.Palette.heroGradientStart, Theme.Palette.heroGradientMid, Theme.Palette.heroGradientEnd],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-        )
-        .shadow(color: Theme.Palette.heroGradientEnd.opacity(0.28), radius: 20, x: 0, y: 10)
+        .background(HeroPanelBackground())
+    }
+
+    /// Whole units in the display face, cents dimmed.
+    private var amountText: some View {
+        let formatted = amount.formatted(.currency(code: currencyCode))
+        let separator = Locale.current.decimalSeparator ?? "."
+        let parts: (whole: String, cents: String) = {
+            guard let range = formatted.range(of: separator, options: .backwards) else { return (formatted, "") }
+            return (String(formatted[..<range.lowerBound]), String(formatted[range.lowerBound...]))
+        }()
+        return (Text(parts.whole).foregroundColor(Theme.Palette.heroText)
+            + Text(parts.cents).foregroundColor(Theme.Palette.heroText.opacity(0.4)))
+            .font(.display(52))
+            .tracking(-1.5)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .contentTransition(.numericText())
+            .accessibilityLabel(formatted)
     }
 }
 
-/// Just the bar chart — no card chrome or "go to all months" affordance.
-/// Reused by the dashboard's tappable trend card and by the standalone
-/// history/months view.
+// MARK: - Trend chart
+
+/// The trend chart — used inside the hero panel (`.hero`: gold on ink,
+/// regardless of light/dark) and on the "All months" screen (`.standard`:
+/// follows the theme).
 ///
-/// Scrubbable: dragging a finger across the plot shows that period's value,
-/// via `chartXSelection` (iOS 17+) — no gesture plumbing of our own needed.
-/// While nothing is being touched, it falls back to `highlighted`.
+/// Scrubbable: dragging across the plot shows that period's value, via
+/// `chartXSelection` (iOS 17+). While nothing is being touched, it falls back
+/// to `highlighted`.
 struct SpendingBarChart: View {
+    enum Tone { case standard, hero }
+
     let points: [MonthlyPoint]
-    /// The period (its start date) currently being viewed — drawn solid;
-    /// others faded.
+    /// The period (its start date) currently being viewed.
     let highlighted: Date
     let currencyCode: String
+    var tone: Tone = .standard
+    var height: CGFloat = 150
 
-    /// The x-axis is categorical (`point.label`, not `point.monthStart`), so
-    /// that's the value type `chartXSelection` hands back.
+    /// The x-axis is categorical (`point.label`), so that's the value type
+    /// `chartXSelection` hands back.
     @State private var selectedLabel: String?
+
+    private var line: Color { tone == .hero ? Theme.Palette.gold : Theme.Palette.accent }
+    private var tick: Color { tone == .hero ? Theme.Palette.heroTextSecondary : Theme.Palette.textTertiary }
+    private var grid: Color { tone == .hero ? Theme.Palette.heroRule : Theme.Palette.border }
+    private var calloutFill: Color { tone == .hero ? Theme.Palette.heroText : Theme.Palette.text }
+    private var calloutText: Color { tone == .hero ? Theme.Palette.heroInkTop : Theme.Palette.surface }
 
     private var maxTotal: Double {
         points.map { ($0.total as NSDecimalNumber).doubleValue }.max() ?? 0
@@ -141,7 +143,7 @@ struct SpendingBarChart: View {
             AreaMark(x: .value("Period", point.label), y: .value("Spent", value))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Theme.Palette.accent.opacity(0.32), Theme.Palette.accent.opacity(0)],
+                        colors: [line.opacity(0.34), line.opacity(0)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -149,65 +151,55 @@ struct SpendingBarChart: View {
                 .interpolationMethod(.monotone)
 
             LineMark(x: .value("Period", point.label), y: .value("Spent", value))
-                .foregroundStyle(Theme.Palette.accent)
+                .foregroundStyle(line)
                 .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                 .interpolationMethod(.monotone)
 
             if point.id == activePoint?.id {
                 RuleMark(x: .value("Period", point.label))
-                    .foregroundStyle(Theme.Palette.textTertiary.opacity(0.5))
+                    .foregroundStyle(tick.opacity(0.5))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
 
                 PointMark(x: .value("Period", point.label), y: .value("Spent", value))
-                    .foregroundStyle(Theme.Palette.accent)
-                    .symbolSize(70)
+                    .foregroundStyle(line)
+                    .symbolSize(80)
                     .annotation(position: .top, spacing: 6) {
-                        VStack(spacing: 1) {
-                            Text(point.label)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(Theme.Palette.surface.opacity(0.7))
-                            Text(compactMoney(point.total, code: currencyCode))
-                                .font(.system(size: 11, weight: .bold))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.Palette.surface)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.Palette.text, in: Capsule())
+                        Text(compactMoney(point.total, code: currencyCode))
+                            .font(.mono(11, medium: true, relativeTo: .caption))
+                            .foregroundStyle(calloutText)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4)
+                            .background(calloutFill, in: Capsule())
                     }
             }
         }
-        .chartYAxis(.hidden)
         .chartYScale(domain: 0...(maxTotal * 1.3 + 1))
-        .frame(height: 150)
-        .chartXSelection(value: $selectedLabel)
-    }
-}
-
-struct SpendingTrendCard: View {
-    let points: [MonthlyPoint]
-    /// The period (its start date) currently being viewed — drawn solid.
-    let highlighted: Date
-    let currencyCode: String
-    /// "months" / "quarters" / "years" — matches whatever granularity `points` was built with.
-    var periodNoun = "months"
-
-    var body: some View {
-        AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                HStack {
-                    SectionLabel("Last \(points.count) \(periodNoun)")
-                    Spacer()
-                    Text("All months")
-                        .font(.appCaption.weight(.medium))
-                        .foregroundStyle(Theme.Palette.accent)
-                    Image(systemName: "chevron.right")
-                        .font(.appCaption.weight(.semibold))
-                        .foregroundStyle(Theme.Palette.accent)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 5])).foregroundStyle(grid)
+                AxisValueLabel {
+                    if let v = value.as(Double.self) {
+                        Text(compactMoney(Decimal(v), code: currencyCode))
+                            .font(.mono(10, relativeTo: .caption2))
+                            .foregroundStyle(tick)
+                    }
                 }
-                SpendingBarChart(points: points, highlighted: highlighted, currencyCode: currencyCode)
             }
         }
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        let active = label == activePoint?.label
+                        Text(label)
+                            .font(.mono(10, medium: active, relativeTo: .caption2))
+                            .foregroundStyle(active ? (tone == .hero ? Theme.Palette.heroText : Theme.Palette.text) : tick)
+                    }
+                }
+            }
+        }
+        .frame(height: height)
+        .chartXSelection(value: $selectedLabel)
     }
 }
 
@@ -226,44 +218,105 @@ func compactMoney(_ amount: Decimal, code: String) -> String {
     return formatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
 }
 
-struct CategoryBreakdownCard: View {
+// MARK: - Where it went
+
+/// Where the period's money went: one proportional bar across the top, then a
+/// ranked list of categories with each one's share and total (matches the
+/// web's `CategoryBreakdown`).
+struct CategoryBreakdownCard<Accessory: View>: View {
     let breakdown: [CategoryTotal]
     let currencyCode: String
+    /// Trailing header control, e.g. an "All months" link.
+    @ViewBuilder var accessory: () -> Accessory
+
+    private var rows: [CategoryTotal] { breakdown.filter { $0.amount > 0 } }
+    private var total: Decimal { rows.reduce(0) { $0 + $1.amount } }
+
+    private func share(_ entry: CategoryTotal) -> Double {
+        guard total > 0 else { return 0 }
+        return NSDecimalNumber(decimal: entry.amount / total).doubleValue
+    }
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.md) {
-                SectionLabel("By category")
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                HStack {
+                    SectionLabel("Where it went")
+                    Spacer()
+                    accessory()
+                }
 
-                if breakdown.isEmpty {
-                    Text("No spending this month yet.")
+                if rows.isEmpty {
+                    Text("No spending in this period yet.")
                         .font(.appCallout)
                         .foregroundStyle(Theme.Palette.textSecondary)
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: Theme.Space.md) {
-                            ForEach(breakdown) { entry in
-                                VStack(spacing: Theme.Space.xs) {
-                                    CategoryGlyph(category: entry.category, size: 46)
-                                    Text(entry.amount, format: .currency(code: currencyCode).precision(.fractionLength(0)))
-                                        .font(.appCaption.weight(.semibold))
-                                        .monospacedDigit()
-                                        .foregroundStyle(Theme.Palette.text)
-                                    Text(entry.category.displayName)
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(Theme.Palette.textTertiary)
-                                        .lineLimit(1)
-                                }
-                                .frame(width: 64)
-                            }
+                    proportionBar
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
+                            if index > 0 { Divider().overlay(Theme.Palette.border) }
+                            row(entry)
                         }
-                        .padding(.vertical, Theme.Space.xs)
                     }
                 }
             }
         }
     }
+
+    private var proportionBar: some View {
+        GeometryReader { geo in
+            let gap: CGFloat = 3
+            let usable = geo.size.width - gap * CGFloat(max(rows.count - 1, 0))
+            HStack(spacing: gap) {
+                ForEach(rows) { entry in
+                    Rectangle()
+                        .fill(entry.category.tint)
+                        .frame(width: max(usable * share(entry), 2))
+                }
+            }
+        }
+        .frame(height: 12)
+        .clipShape(Capsule())
+        .accessibilityElement()
+        .accessibilityLabel(
+            rows.map { "\($0.category.displayName) \(Int((share($0) * 100).rounded())) percent" }.joined(separator: ", ")
+        )
+    }
+
+    private func row(_ entry: CategoryTotal) -> some View {
+        let pct = share(entry)
+        return HStack(spacing: Theme.Space.md) {
+            CategoryGlyph(category: entry.category, size: 36)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(entry.category.displayName)
+                        .font(.appCallout.weight(.medium))
+                        .foregroundStyle(Theme.Palette.text)
+                    Spacer()
+                    Text(entry.amount, format: .currency(code: currencyCode))
+                        .font(.appMoney)
+                        .foregroundStyle(Theme.Palette.text)
+                }
+                HStack(spacing: Theme.Space.sm) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Theme.Palette.surface2)
+                            Capsule().fill(entry.category.tint).frame(width: geo.size.width * pct)
+                        }
+                    }
+                    .frame(height: 4)
+                    Text(pct < 0.01 ? "<1%" : "\(Int((pct * 100).rounded()))%")
+                        .font(.mono(11, relativeTo: .caption2))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .frame(width: 36, alignment: .trailing)
+                }
+            }
+        }
+        .padding(.vertical, Theme.Space.md)
+    }
 }
+
+// MARK: - Budgets
 
 /// Top few budgets by usage, for the dashboard — full management lives on
 /// the Budgets tab. `BudgetRow` is the same one that tab uses.
@@ -274,23 +327,17 @@ struct BudgetsSummaryCard: View {
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.md) {
+            VStack(alignment: .leading, spacing: Theme.Space.lg) {
                 HStack {
                     SectionLabel("Budgets")
                     Spacer()
                     Button(action: onManage) {
-                        HStack(spacing: 3) {
-                            Text("Manage")
-                            Image(systemName: "chevron.right")
-                                .font(.appCaption.weight(.semibold))
-                        }
-                        .font(.appCaption.weight(.medium))
-                        .foregroundStyle(Theme.Palette.accent)
+                        CardLinkLabel(title: "Manage")
                     }
                 }
                 VStack(spacing: Theme.Space.sm) {
                     ForEach(Array(budgets.prefix(3).enumerated()), id: \.element.id) { index, budget in
-                        if index > 0 { Divider() }
+                        if index > 0 { Divider().overlay(Theme.Palette.border) }
                         BudgetRow(budget: budget)
                     }
                 }
@@ -299,33 +346,48 @@ struct BudgetsSummaryCard: View {
     }
 }
 
+/// "Manage →" / "All months →" — the small trailing link in a card header.
+struct CardLinkLabel: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(title)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .font(.appCaption.weight(.medium))
+        .foregroundStyle(Theme.Palette.textSecondary)
+    }
+}
+
+// MARK: - Insights
+
 struct InsightsCard: View {
     let insights: [Insight]
 
     var body: some View {
         AppCard {
-            VStack(alignment: .leading, spacing: Theme.Space.md) {
-                HStack(spacing: Theme.Space.xs) {
-                    Image(systemName: "sparkles")
-                    SectionLabel("Insights")
-                }
-                .foregroundStyle(Theme.Palette.textTertiary)
+            VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                SectionLabel("Insights")
 
-                if insights.isEmpty {
-                    Text("Keep scanning receipts — insights appear once there's a month of history to compare.")
-                        .font(.appCallout)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                } else {
-                    ForEach(insights) { insight in
-                        HStack(alignment: .top, spacing: Theme.Space.sm) {
+                VStack(spacing: 0) {
+                    ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
+                        if index > 0 { Divider().overlay(Theme.Palette.border) }
+                        HStack(alignment: .top, spacing: Theme.Space.md) {
                             Image(systemName: icon(for: insight.kind))
-                                .font(.appCaption)
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(color(for: insight.kind))
-                                .padding(.top, 2)
+                                .frame(width: 28, height: 28)
+                                .background(color(for: insight.kind).opacity(0.14), in: Circle())
                             Text(insight.message)
                                 .font(.appCallout)
                                 .foregroundStyle(Theme.Palette.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 4)
                         }
+                        .padding(.vertical, Theme.Space.md)
                     }
                 }
             }
@@ -336,8 +398,9 @@ struct InsightsCard: View {
         switch kind {
         case .up: "arrow.up.right"
         case .down: "arrow.down.right"
-        case .neutral: "equal"
+        case .neutral: "info"
         case .streak: "flame.fill"
+        case .summary: "chart.pie.fill"
         }
     }
 
@@ -347,12 +410,15 @@ struct InsightsCard: View {
         case .down: Theme.Palette.success
         case .neutral: Theme.Palette.textTertiary
         case .streak: Theme.Palette.warning
+        case .summary: Theme.Palette.accent
         }
     }
 }
 
+// MARK: - Receipts
+
 struct RecentReceiptsCard: View {
-    var title = "Recent"
+    var title = "Recent receipts"
     let receipts: [Receipt]
     let currencyCode: String
 
@@ -361,17 +427,20 @@ struct RecentReceiptsCard: View {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 SectionLabel(title)
                 if receipts.isEmpty {
-                    Text("No receipts this month.")
+                    Text("No receipts in this period.")
                         .font(.appCallout)
                         .foregroundStyle(Theme.Palette.textSecondary)
                 } else {
-                    ForEach(receipts) { receipt in
-                        NavigationLink {
-                            ReceiptDetailView(receipt: receipt)
-                        } label: {
-                            row(receipt)
+                    VStack(spacing: 0) {
+                        ForEach(Array(receipts.enumerated()), id: \.element.id) { index, receipt in
+                            if index > 0 { Divider().overlay(Theme.Palette.border) }
+                            NavigationLink {
+                                ReceiptDetailView(receipt: receipt)
+                            } label: {
+                                row(receipt)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -380,24 +449,22 @@ struct RecentReceiptsCard: View {
 
     private func row(_ receipt: Receipt) -> some View {
         HStack(spacing: Theme.Space.md) {
-            CategoryGlyph(category: receipt.category, size: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            CategoryGlyph(category: receipt.category, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(receipt.merchant.isEmpty ? "Unknown merchant" : receipt.merchant)
-                    .font(.appCallout)
+                    .font(.appCallout.weight(.medium))
                     .foregroundStyle(Theme.Palette.text)
-                Text(receipt.date, format: .dateTime.month().day())
+                    .lineLimit(1)
+                Text("\(receipt.date.formatted(.dateTime.month(.abbreviated).day())) · \(receipt.category.displayName)")
                     .font(.appCaption)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .foregroundStyle(Theme.Palette.textTertiary)
             }
             Spacer()
             Text(receipt.total, format: .currency(code: currencyCode))
-                .font(.appCallout.weight(.medium))
-                .monospacedDigit()
+                .font(.appMoney)
                 .foregroundStyle(Theme.Palette.text)
-            Image(systemName: "chevron.right")
-                .font(.appCaption.weight(.semibold))
-                .foregroundStyle(Theme.Palette.textTertiary)
         }
+        .padding(.vertical, Theme.Space.md)
         .contentShape(Rectangle())
     }
 }

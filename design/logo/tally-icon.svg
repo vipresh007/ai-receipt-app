@@ -1,14 +1,26 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- Tally app icon — full-bleed square (for iOS the system applies the mask).
-       Flat "Ledger" teal (the app's accent color, see docs/DESIGN.md) with a
-       white tally-of-five. Flat, not the hero card's gradient — reads better
-       at icon sizes and as a launch-screen background. -->
-  <rect width="1024" height="1024" fill="#0E6E58"/>
-  <g fill="none" stroke="#ffffff" stroke-width="92" stroke-linecap="round">
-    <line x1="344" y1="300" x2="344" y2="724"/>
-    <line x1="459" y1="300" x2="459" y2="724"/>
-    <line x1="574" y1="300" x2="574" y2="724"/>
-    <line x1="689" y1="300" x2="689" y2="724"/>
-    <line x1="300" y1="708" x2="733" y2="316"/>
+  <!-- Tally app icon — full-bleed square (iOS applies the mask). The ledger
+       look (docs/DESIGN.md v0.3): ink ground with a soft gold glow top-right,
+       gold tally strokes, teal slash — same mark as the landing page. -->
+  <defs>
+    <radialGradient id="glow" cx="1" cy="0" r="0.95">
+      <stop offset="0" stop-color="#D9AE5C" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#D9AE5C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0C1412"/>
+      <stop offset="1" stop-color="#14231F"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#ink)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g fill="none" stroke-width="92" stroke-linecap="round">
+    <g stroke="#D9AE5C">
+      <line x1="344" y1="300" x2="344" y2="724"/>
+      <line x1="459" y1="300" x2="459" y2="724"/>
+      <line x1="574" y1="300" x2="574" y2="724"/>
+      <line x1="689" y1="300" x2="689" y2="724"/>
+    </g>
+    <line x1="300" y1="708" x2="733" y2="316" stroke="#35C79A"/>
   </g>
 </svg>

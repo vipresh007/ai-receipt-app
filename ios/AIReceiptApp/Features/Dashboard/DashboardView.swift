@@ -56,15 +56,6 @@ struct DashboardView: View {
         }
     }
 
-    private var previousPeriodLabel: String {
-        let previousAnchor = granularity.shift(anchor, by: -1, calendar: calendar)
-        switch granularity {
-        case .month: return previousAnchor.formatted(.dateTime.month(.abbreviated))
-        case .quarter: return granularity.periodLabel(for: previousAnchor, calendar: calendar)
-        case .year: return String(calendar.component(.year, from: previousAnchor))
-        }
-    }
-
     private var trendPeriods: Int {
         switch granularity {
         case .month: return 6
@@ -93,8 +84,18 @@ struct DashboardView: View {
         granularity.key(for: anchor, calendar: calendar) == granularity.key(for: .now, calendar: calendar)
     }
 
-    private var periodLabel: String {
-        isCurrentPeriod ? "This \(granularity.rawValue)" : granularity.periodLabel(for: anchor, calendar: calendar)
+    private var heroLabel: String {
+        let name = granularity.periodLabel(for: anchor, calendar: calendar)
+        return isCurrentPeriod ? "This \(granularity.rawValue) · \(name)" : name
+    }
+
+    /// Average spend per day over the period — up to today if it's the
+    /// current one (matches the web dashboard's "Per day" figure).
+    private var perDay: Decimal {
+        guard let interval = granularity.interval(containing: anchor, calendar: calendar) else { return 0 }
+        let end = isCurrentPeriod ? Date.now : interval.end.addingTimeInterval(-1)
+        let days = (calendar.dateComponents([.day], from: interval.start, to: end).day ?? 0) + 1
+        return summary.currentMonthTotal / Decimal(max(days, 1))
     }
 
     private var canGoForward: Bool { !isCurrentPeriod }
@@ -121,47 +122,57 @@ struct DashboardView: View {
                             greetingHeader
                             granularityPicker
                             periodSwitcher
-                            HeroMetricCard(
-                                label: periodLabel,
+                            PeriodHeroCard(
+                                label: heroLabel,
                                 amount: summary.currentMonthTotal,
                                 currencyCode: currencyCode,
-                                previous: (summary.previousMonthTotal, previousPeriodLabel),
-                                sparklineValues: trendPoints.map { ($0.total as NSDecimalNumber).doubleValue }
-                            )
-                            if granularity == .month, !budgets.isEmpty {
-                                BudgetsSummaryCard(budgets: budgets, onManage: { router.selection = .budgets })
-                            }
-                            NavigationLink {
-                                MonthlyHistoryView(
-                                    months: SpendingSummary.allMonths(
-                                        receipts: receipts, calendar: calendar
+                                delta: summary.previousMonthTotal > 0
+                                    ? summary.currentMonthTotal - summary.previousMonthTotal
+                                    : nil,
+                                against: "the \(granularity.rawValue) before",
+                                figures: [
+                                    (
+                                        "Previous \(granularity.rawValue)",
+                                        summary.previousMonthTotal.formatted(.currency(code: currencyCode))
                                     ),
-                                    currencyCode: currencyCode,
-                                    onSelect: { jump(to: $0, granularity: .month) },
-                                    chartPoints: SpendingSummary.periodTrend(
-                                        receipts: receipts, calendar: calendar, now: .now,
-                                        granularity: .month, periods: 12
-                                    )
-                                )
-                            } label: {
-                                SpendingTrendCard(
-                                    points: trendPoints,
-                                    highlighted: periodStart,
-                                    currencyCode: currencyCode,
-                                    periodNoun: granularity == .month ? "months" : "\(granularity.rawValue)s"
-                                )
-                            }
-                            .buttonStyle(.plain)
+                                    (
+                                        isCurrentPeriod ? "Per day so far" : "Per day",
+                                        perDay.formatted(.currency(code: currencyCode))
+                                    ),
+                                ],
+                                points: trendPoints,
+                                highlighted: periodStart
+                            )
 
                             CategoryBreakdownCard(
                                 breakdown: summary.currentMonthByCategory,
                                 currencyCode: currencyCode
-                            )
-                            if granularity == .month {
+                            ) {
+                                NavigationLink {
+                                    MonthlyHistoryView(
+                                        months: SpendingSummary.allMonths(
+                                            receipts: receipts, calendar: calendar
+                                        ),
+                                        currencyCode: currencyCode,
+                                        onSelect: { jump(to: $0, granularity: .month) },
+                                        chartPoints: SpendingSummary.periodTrend(
+                                            receipts: receipts, calendar: calendar, now: .now,
+                                            granularity: .month, periods: 12
+                                        )
+                                    )
+                                } label: {
+                                    CardLinkLabel(title: "All months")
+                                }
+                            }
+
+                            if !summary.insights.isEmpty {
                                 InsightsCard(insights: summary.insights)
                             }
+                            if granularity == .month, !budgets.isEmpty {
+                                BudgetsSummaryCard(budgets: budgets, onManage: { router.selection = .budgets })
+                            }
                             RecentReceiptsCard(
-                                title: isCurrentPeriod ? "Recent" : "Receipts",
+                                title: isCurrentPeriod ? "Recent receipts" : "Receipts",
                                 receipts: Array(periodReceipts.prefix(8)),
                                 currencyCode: currencyCode
                             )
@@ -174,6 +185,9 @@ struct DashboardView: View {
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
+            // The greeting header is the page title; pushed screens (All
+            // months, receipt detail) still show their own bar.
+            .toolbar(receipts.isEmpty ? .visible : .hidden, for: .navigationBar)
             .task(id: "\(granularity.rawValue)-\(periodMonthString)-\(auth.isSignedIn)") {
                 await loadBudgets()
             }
@@ -205,34 +219,26 @@ struct DashboardView: View {
     }
 
     private var greetingHeader: some View {
-        HStack(spacing: Theme.Space.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let firstName {
-                    Text(greeting.uppercased())
-                        .font(.appMicro)
-                        .tracking(0.5)
-                        .foregroundStyle(Theme.Palette.textTertiary)
-                    Text(firstName)
-                        .font(.appTitle)
-                        .foregroundStyle(Theme.Palette.text)
-                } else {
-                    Text(greeting)
-                        .font(.appTitle)
-                        .foregroundStyle(Theme.Palette.text)
-                }
+        HStack(alignment: .bottom, spacing: Theme.Space.md) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                SectionLabel(firstName == nil ? "Overview" : greeting)
+                Text(firstName ?? greeting)
+                    .font(.display(38, relativeTo: .largeTitle))
+                    .tracking(-1)
+                    .foregroundStyle(Theme.Palette.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             Spacer(minLength: 0)
             if let firstName {
                 Button {
                     router.selection = .account
                 } label: {
-                    ZStack {
-                        Circle().fill(Theme.Palette.accent.opacity(0.14))
-                        Text(firstName.prefix(1).uppercased())
-                            .font(.appCallout.weight(.semibold))
-                            .foregroundStyle(Theme.Palette.accent)
-                    }
-                    .frame(width: 44, height: 44)
+                    Text(firstName.prefix(1).uppercased())
+                        .font(.display(18, bold: true, relativeTo: .headline))
+                        .foregroundStyle(Theme.Palette.gold)
+                        .frame(width: 44, height: 44)
+                        .background(HeroPanelBackground(cornerRadius: 22))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Account")
@@ -251,30 +257,38 @@ struct DashboardView: View {
 
     private var periodSwitcher: some View {
         HStack {
-            Button {
-                withAnimation(Theme.Motion.base) { anchor = granularity.shift(anchor, by: -1, calendar: calendar) }
-            } label: {
-                Image(systemName: "chevron.left")
+            periodButton(systemImage: "chevron.left", label: "Previous period", enabled: canGoBack) {
+                anchor = granularity.shift(anchor, by: -1, calendar: calendar)
             }
-            .disabled(!canGoBack)
-
             Spacer()
             Text(granularity.periodLabel(for: anchor, calendar: calendar))
                 .font(.appHeadline)
                 .foregroundStyle(Theme.Palette.text)
                 .contentTransition(.numericText())
             Spacer()
-
-            Button {
-                withAnimation(Theme.Motion.base) { anchor = granularity.shift(anchor, by: 1, calendar: calendar) }
-            } label: {
-                Image(systemName: "chevron.right")
+            periodButton(systemImage: "chevron.right", label: "Next period", enabled: canGoForward) {
+                anchor = granularity.shift(anchor, by: 1, calendar: calendar)
             }
-            .disabled(!canGoForward)
         }
-        .font(.appCallout.weight(.semibold))
-        .foregroundStyle(Theme.Palette.accent)
-        .padding(.horizontal, Theme.Space.xs)
+    }
+
+    private func periodButton(
+        systemImage: String, label: String, enabled: Bool, action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            withAnimation(Theme.Motion.base) { action() }
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.Palette.textSecondary)
+                .frame(width: 40, height: 40)
+                .background(Theme.Palette.surface, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.Palette.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.35)
+        .accessibilityLabel(label)
     }
 }
 

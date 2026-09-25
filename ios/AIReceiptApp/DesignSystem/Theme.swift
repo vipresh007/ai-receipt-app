@@ -35,47 +35,46 @@ extension Color {
 
 // MARK: - Theme
 
-/// Mirrors `design/tokens.json` — keep values in sync with that file.
-/// (Web consumes the same tokens via `design/tokens.css`.)
+/// Mirrors `design/tokens.json` v0.3 ("ledger" palette) — keep values in sync
+/// with that file. (Web consumes the same tokens via `design/tokens.css`.)
 enum Theme {
     enum Palette {
-        static let bg = Color(light: "#FAFAF9", dark: "#0F0F10")
-        static let surface = Color(light: "#FFFFFF", dark: "#17171A")
-        static let surface2 = Color(light: "#F4F4F2", dark: "#202024")
-        static let surfaceSunken = Color(light: "#F0EFEC", dark: "#0B0B0C")
-        static let border = Color(light: "#E7E5E1", dark: "#2B2B30")
-        static let borderStrong = Color(light: "#D6D3CD", dark: "#3B3B42")
-        static let text = Color(light: "#1A1A19", dark: "#F5F5F4")
-        static let textSecondary = Color(light: "#6B6B66", dark: "#A2A2A0")
-        static let textTertiary = Color(light: "#9A9A93", dark: "#6E6E6D")
+        /// Warm paper in light mode, ink in dark.
+        static let bg = Color(light: "#F3EEE3", dark: "#0C1412")
+        static let surface = Color(light: "#FBF8F2", dark: "#121D1A")
+        static let surface2 = Color(light: "#EDE7DA", dark: "#182723")
+        static let surfaceSunken = Color(light: "#E8E1D2", dark: "#08100E")
+        static let border = Color(light: "#E2DACA", dark: "#21302B")
+        static let borderStrong = Color(light: "#CFC5B1", dark: "#2F413B")
+        static let text = Color(light: "#1E2321", dark: "#F1ECE1")
+        static let textSecondary = Color(light: "#5B5F59", dark: "#A7ADA5")
+        static let textTertiary = Color(light: "#8B8D85", dark: "#6E766F")
 
-        /// "Ledger" direction — a deep teal, not blue. `accentForeground` is the
-        /// text/icon color for anything filled with `accent` (white in light
-        /// mode, but dark mode's accent is bright enough that it needs dark
-        /// text — same convention as `accent-fg` in tokens.json).
-        static let accent = Color(light: "#0E6E58", dark: "#35C79A")
-        static let accentForeground = Color(light: "#FFFFFF", dark: "#0F0F10")
+        /// Gold is the action color. Light mode uses a deep gold so it holds
+        /// 4.5:1 as text on paper and under white; dark mode uses the bright
+        /// gold with ink text on it (same as `accent-fg` in tokens.json).
+        static let accent = Color(light: "#8A5E0F", dark: "#D9AE5C")
+        static let accentForeground = Color(light: "#FFFFFF", dark: "#0C1412")
 
-        /// The hero card's spotlight color only — eyebrow label, delta chip,
-        /// sparkline. Never used for a button, link, or anything else.
-        static let gold = Color(light: "#D9AE5C", dark: "#EAC471")
+        /// The bright gold used on the always-ink hero panel.
+        static let gold = Color(hex: "#D9AE5C")
+        static let teal = Color(hex: "#35C79A")
+        static let amber = Color(hex: "#F2A25C")
 
-        /// The hero card's own gradient — always this dark ink-to-teal
-        /// diagonal regardless of light/dark mode (a fixed card sitting on
-        /// the page, not a themed surface). `heroText`/`heroChipBackground`
-        /// are its on-gradient text/chip colors.
-        static let heroGradientStart = Color(light: "#0F1E19", dark: "#090E0C")
-        static let heroGradientMid = Color(light: "#123A32", dark: "#0F2B25")
-        static let heroGradientEnd = Color(light: "#0E6E58", dark: "#167A62")
-        static let heroText = Color(hex: "#F2EEE1")
-        static let heroChipBackground = Color.white.opacity(0.12)
+        /// The hero panel — always ink regardless of light/dark mode, with a
+        /// gold glow in the top-trailing corner (see `HeroPanelBackground`).
+        static let heroInkTop = Color(light: "#0C1412", dark: "#0A110F")
+        static let heroInkBottom = Color(light: "#14231F", dark: "#172824")
+        static let heroText = Color(hex: "#F1ECE1")
+        static let heroTextSecondary = Color(hex: "#F1ECE1").opacity(0.55)
+        static let heroRule = Color.white.opacity(0.1)
+        static let heroChipBackground = Color.white.opacity(0.08)
 
-        static let success = Color(light: "#1F9D57", dark: "#37C77E")
-        static let warning = Color(light: "#C1841A", dark: "#E4A63E")
-        static let danger = Color(light: "#D5473B", dark: "#F26A5C")
+        static let success = Color(light: "#1F8A57", dark: "#37C77E")
+        static let warning = Color(light: "#B7791A", dark: "#E4A63E")
+        static let danger = Color(light: "#C8453A", dark: "#F26A5C")
 
-        /// Default card shadow (Ledger direction) — replaces the old border.
-        static let cardShadow = Color(light: "#141812", dark: "#000000")
+        static let cardShadow = Color(light: "#302612", dark: "#000000")
     }
 
     enum Space {
@@ -106,16 +105,36 @@ enum Theme {
 
 // MARK: - Typography
 
+/// Bundled faces (Resources/Fonts, registered via `UIAppFonts`), by
+/// PostScript name. Body text stays San Francisco.
+enum AppFontName {
+    static let displayHeavy = "BricolageGrotesque-48ptExtraBold"
+    static let displayBold = "BricolageGrotesque-48ptBold"
+    static let mono = "IBMPlexMono-Regular"
+    static let monoMedium = "IBMPlexMono-Medium"
+}
+
 extension Font {
-    // Plain system (SF Pro), not `.rounded` — matches the web's plain Inter
-    // for the big figures (the Ledger direction dropped the rounded/display
-    // treatment in favor of the same workhorse sans everywhere).
-    static let appDisplay = Font.system(size: 34, weight: .heavy)
-    static let appTitle = Font.system(size: 28, weight: .bold)
-    static let appHeadline = Font.system(size: 20, weight: .semibold)
+    /// Big figures and screen headings — Bricolage Grotesque, scaling with
+    /// Dynamic Type relative to the given text style.
+    static func display(_ size: CGFloat, bold: Bool = false, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        .custom(bold ? AppFontName.displayBold : AppFontName.displayHeavy, size: size, relativeTo: style)
+    }
+
+    /// Money, dates, and printed-looking labels — IBM Plex Mono.
+    static func mono(_ size: CGFloat, medium: Bool = false, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom(medium ? AppFontName.monoMedium : AppFontName.mono, size: size, relativeTo: style)
+    }
+
+    static let appDisplay = Font.display(34)
+    static let appTitle = Font.display(28, relativeTo: .title)
+    static let appHeadline = Font.display(20, bold: true, relativeTo: .title3)
     static let appBody = Font.system(size: 16)
     static let appCallout = Font.system(size: 15)
     static let appSubhead = Font.system(size: 13, weight: .medium)
     static let appCaption = Font.system(size: 12)
-    static let appMicro = Font.system(size: 11, weight: .semibold)
+    /// Uppercase eyebrow labels (with tracking — see `SectionLabel`).
+    static let appMicro = Font.mono(11, medium: true, relativeTo: .caption2)
+    /// Money amounts in rows and lists.
+    static let appMoney = Font.mono(15, relativeTo: .callout)
 }

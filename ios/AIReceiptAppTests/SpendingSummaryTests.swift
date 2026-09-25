@@ -116,6 +116,33 @@ final class SpendingSummaryTests: XCTestCase {
         XCTAssertTrue(compactMoney(25000, code: "USD").hasSuffix("k"))
     }
 
+    func testBiggestCategoryAndNoHistoryInsightsWithoutAPreviousMonth() {
+        let receipts = [
+            receipt(60, .restaurants, on: date(year: 2026, month: 6, day: 3)),
+            receipt(40, .groceries, on: date(year: 2026, month: 6, day: 4)),
+        ]
+
+        let summary = SpendingSummary(receipts: receipts, calendar: calendar, now: now, today: now)
+
+        XCTAssertTrue(
+            summary.insights.contains { $0.kind == .summary && $0.message == "Restaurants is your biggest category this month — 60% of what you spent." },
+            "Got: \(summary.insights.map(\.message))"
+        )
+        XCTAssertTrue(summary.insights.contains { $0.kind == .neutral && $0.message.contains("Nothing recorded for the month before") })
+    }
+
+    func testPastPeriodIsDescribedByName() {
+        let receipts = [receipt(25, .transport, on: date(year: 2026, month: 6, day: 3))]
+        let later = date(year: 2026, month: 9, day: 1)
+
+        let summary = SpendingSummary(receipts: receipts, calendar: calendar, now: now, today: later)
+
+        XCTAssertTrue(
+            summary.insights.contains { $0.kind == .summary && $0.message.contains("Everything in June 2026 went to transport") },
+            "Got: \(summary.insights.map(\.message))"
+        )
+    }
+
     func testRisingStreakInsightAcrossThreeMonths() {
         let receipts = [
             receipt(50, .groceries, on: date(year: 2026, month: 4, day: 10)),

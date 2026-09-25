@@ -42,6 +42,13 @@ Insights** (telemetry).
   config (`AUTH0_*`, public native client) lives in `Config/AIReceiptApp.xcconfig`;
   empty → the Account screen just hides sign-in. See [`docs/AUTH.md`](docs/AUTH.md).
 - Build/test locally needs full Xcode (App Store). CI verifies every push.
+- Debug builds launched with `-seedSampleReceipts` fill an *empty* store with
+  five months of sample receipts (`App/SampleData.swift`) — for simulator checks
+  and App Store screenshots. Compiled out of Release.
+- Fonts: Bricolage Grotesque (display) + IBM Plex Mono (figures/labels) are
+  bundled in `Resources/Fonts` (SIL OFL) and registered via `UIAppFonts`; body
+  text stays San Francisco. App icon/launch mark come from `design/logo/*.svg`
+  via `node web/scripts/regen-brand-icons.mjs`.
 - Test: `xcodebuild test -scheme AIReceiptApp -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest'`
   (adjust the simulator name to whatever's installed locally — Xcode drops
   older models from `xcodebuild -destination` support on each major update).

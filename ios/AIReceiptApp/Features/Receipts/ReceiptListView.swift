@@ -19,7 +19,7 @@ private struct MonthSectionHeader: View {
             Text(group.label)
             Spacer()
             Text(group.total, format: .currency(code: currencyCode))
-                .monospacedDigit()
+                .font(.mono(12, medium: true, relativeTo: .caption))
         }
         .font(.appCaption.weight(.medium))
         .foregroundStyle(Theme.Palette.textSecondary)
@@ -257,8 +257,7 @@ private struct ReceiptRow: View {
             }
             Spacer()
             Text(receipt.total, format: .currency(code: currencyCode))
-                .font(.appCallout.weight(.semibold))
-                .monospacedDigit()
+                .font(.appMoney)
                 .foregroundStyle(Theme.Palette.text)
         }
         .padding(.vertical, 2)

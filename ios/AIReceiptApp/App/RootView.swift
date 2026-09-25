@@ -31,7 +31,12 @@ struct RootView: View {
         }
         .tint(Theme.Palette.accent)
         .environment(router)
-        .task { await AccountSync.pull(auth: auth, context: modelContext) }
+        .task {
+            #if DEBUG
+            SampleData.seedIfRequested(modelContext)
+            #endif
+            await AccountSync.pull(auth: auth, context: modelContext)
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             Task { await AccountSync.pull(auth: auth, context: modelContext) }

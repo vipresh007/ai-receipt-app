@@ -89,9 +89,21 @@ final class GranularityTests: XCTestCase {
 
     // MARK: - SpendingSummary with a non-month granularity
 
-    func testSpendingSummaryQuarterGranularityHasNoInsights() {
+    func testSpendingSummaryWithNoReceiptsHasNoInsights() {
         let summary = SpendingSummary(receipts: [], calendar: calendar, now: date(2026, 9, 15), granularity: .quarter)
         XCTAssertTrue(summary.insights.isEmpty)
+    }
+
+    func testSpendingSummaryQuarterComparesWithThePreviousQuarter() {
+        let receipts = [
+            Receipt(merchant: "A", date: date(2026, 5, 10), total: 100, category: .groceries), // Q2
+            Receipt(merchant: "B", date: date(2026, 8, 10), total: 150, category: .groceries), // Q3
+        ]
+        let summary = SpendingSummary(receipts: receipts, calendar: calendar, now: date(2026, 9, 15), granularity: .quarter)
+        XCTAssertTrue(
+            summary.insights.contains { $0.kind == .up && $0.message.contains("50% more on groceries than the quarter before") },
+            "Got: \(summary.insights.map(\.message))"
+        )
     }
 
     func testSpendingSummaryDefaultGranularityStillMatchesMonthBehavior() {
