@@ -183,6 +183,15 @@ Uses a vision-capable Azure OpenAI **deployment** named by
 > `gpt-4o` / `gpt-4o-mini` are **deprecated** on Azure OpenAI — the current small
 > multimodal tier is the `gpt-5-mini` family.
 
+**Latency.** `gpt-5-mini` is a reasoning model, and at its default effort
+("medium") it spends 700–960 reasoning tokens on a receipt, which takes about
+10 s. `AZURE_OPENAI_REASONING_EFFORT` (default `minimal`) turns that off: about
+3.7 s, with the same fields read correctly on the benchmark receipt
+(2026-09-25, 3 runs each: medium 10.3 s, low 5.4 s, minimal 3.7 s). If hard
+receipts (crumpled, faded, long) start coming back wrong, try `low` before
+`medium`. The iOS app also caps uploads at 2048 px on the long edge, since the
+model downsamples past that anyway.
+
 **Cost vs. accuracy is a deployment choice**, not a code change: `gpt-5-nano` is
 cheapest and often enough for clean receipts; `gpt-5-mini` is the balanced
 default; `gpt-5` is most robust on faded/creased/handwritten ones. Test on real

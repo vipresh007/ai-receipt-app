@@ -1,10 +1,12 @@
 """Orchestration: image → (blob) → Azure OpenAI → persisted Receipt + Expense."""
 
+import asyncio
 import logging
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.config import Settings, get_settings
 from app.models import Expense, Receipt, User
@@ -49,17 +51,27 @@ async def process_receipt(
 ) -> Receipt:
     settings = settings or get_settings()
 
-    blob_url: str | None = None
-    if settings.blob_configured:
+    async def upload() -> str | None:
+        if not settings.blob_configured:
+            return None
         try:
-            blob = blob or BlobStorage(settings)
-            blob_url = await blob.upload_receipt_image(
+            store = blob or BlobStorage(settings)
+            return await store.upload_receipt_image(
                 user_id=user.id, request_id=request_id, data=image_bytes
             )
         except Exception:  # noqa: BLE001 - image storage is best-effort
             logger.warning("Receipt image upload failed", exc_info=True)
+            return None
 
-    extracted: ExtractedReceipt = extractor.extract(image_bytes=image_bytes, ocr_lines=ocr_lines)
+    # The image upload and the model call don't depend on each other, so run
+    # them together; the SDK call is blocking, so it goes to a worker thread.
+    upload_task = asyncio.create_task(upload())
+    try:
+        extracted: ExtractedReceipt = await run_in_threadpool(
+            extractor.extract, image_bytes=image_bytes, ocr_lines=ocr_lines
+        )
+    finally:
+        blob_url = await upload_task
 
     receipt = Receipt(
         user_id=user.id,

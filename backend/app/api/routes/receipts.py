@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import Text, cast, or_, select
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_user, get_current_user_optional, get_extractor
 from app.config import get_settings
@@ -131,7 +132,11 @@ async def extract(
         await _enforce_anon_ip_limit(session, _client_ip(request))
         remaining = await _consume_anon_quota(session, device_id)
         try:
-            extracted = extractor.extract(image_bytes=image_bytes, ocr_lines=payload.ocr_lines)
+            # The OpenAI SDK call is blocking; off the event loop so a scan
+            # doesn't stall every other request on this worker.
+            extracted = await run_in_threadpool(
+                extractor.extract, image_bytes=image_bytes, ocr_lines=payload.ocr_lines
+            )
         except ExtractionError as exc:
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
         out = _extracted_to_out(extracted)

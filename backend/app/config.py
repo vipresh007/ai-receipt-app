@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     azure_openai_api_key: str = ""
     azure_openai_api_version: str = "2025-04-01-preview"
     azure_openai_deployment: str = "gpt-5-mini"
+    # gpt-5-family reasoning effort. Receipt transcription needs no deliberation:
+    # "minimal" read the benchmark receipt correctly in ~3.7s vs ~10s at the
+    # model's default ("medium"). Raise to "low" if hard receipts start failing;
+    # empty sends nothing (model default, and the only option for non-reasoning
+    # deployments).
+    azure_openai_reasoning_effort: str = "minimal"
 
     # Azure Blob Storage
     azure_storage_connection_string: str = ""

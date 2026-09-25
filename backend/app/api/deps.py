@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -18,8 +20,11 @@ _CREDS_ERROR = HTTPException(
 )
 
 
+@lru_cache
 def get_extractor() -> AzureOpenAIExtractor:
-    """Overridable in tests."""
+    """One shared extractor, so its HTTP client keeps connections to Azure
+    OpenAI warm instead of paying a TLS handshake per scan. Overridable in
+    tests."""
     return AzureOpenAIExtractor()
 
 

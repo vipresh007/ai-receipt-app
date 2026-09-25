@@ -56,6 +56,8 @@ class AzureOpenAIExtractor:
         image_b64 = base64.b64encode(image_bytes).decode()
         ocr_block = "\n".join(ocr_lines[:200]).strip() or "(none)"
 
+        effort = self.settings.azure_openai_reasoning_effort
+        extra = {"reasoning_effort": effort} if effort else {}
         try:
             # gpt-5-family (reasoning) models reject `temperature` != 1 and use
             # `max_completion_tokens` instead of `max_tokens`. This keeps room
@@ -83,6 +85,7 @@ class AzureOpenAIExtractor:
                     },
                 ],
                 response_format=ExtractedReceipt,
+                **extra,
             )
         except Exception as exc:  # noqa: BLE001 - surface a clean error upstream
             logger.warning("Azure OpenAI extraction failed", exc_info=True)
