@@ -117,6 +117,7 @@ struct DashboardView: View {
                         Text("Scan your first receipt to start tracking spending.")
                     }
                 } else {
+                    GeometryReader { proxy in
                     ScrollView {
                         VStack(spacing: Theme.Space.xl) {
                             greetingHeader
@@ -178,6 +179,16 @@ struct DashboardView: View {
                             )
                         }
                         .padding(Theme.Space.lg)
+                    }
+                    // With the nav bar hidden nothing covers the status bar,
+                    // so scrolled content would run under the clock. Paint the
+                    // page background over exactly the top safe-area band.
+                    .overlay(alignment: .top) {
+                        Theme.Palette.bg
+                            .frame(height: proxy.safeAreaInsets.top)
+                            .offset(y: -proxy.safeAreaInsets.top)
+                            .allowsHitTesting(false)
+                    }
                     }
                 }
             }
