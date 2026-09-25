@@ -208,6 +208,11 @@ in order:
 3. ~~Screenshots, App Store listing copy, App Privacy answers (§2).~~ Done
    and entered in App Store Connect (2026-09-25), with the review demo
    account. Only the build is missing.
-4. TestFlight build → internal testing → submit for review.
+4. ~~TestFlight build → internal testing → submit for review.~~ Build
+   1.0.0 (1) uploaded, installed via TestFlight (internal group "Me"), and
+   **submitted to App Review 2026-09-25** with manual release, so an
+   approval waits until the Organization migration lands and then
+   "Release This Version". Till then: keep the review demo account and the
+   backend API contract stable (review tests against production).
 5. The keep-as-prod essentials (§4). They can trail TestFlight, but must
    land before real users sign up.
