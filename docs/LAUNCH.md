@@ -38,11 +38,14 @@ build, ✅ = already done.**
   turnaround (days). Next concrete steps now that the account exists: register
   the Explicit App ID (`com.vipreshpatel.tally`) under Certificates, IDs &
   Profiles, and create the App Store Connect app record.
-- ⛔ **Sign in with Apple.** App Review guideline 4.8: if you offer a
-  third-party sign-in (we offer Google) you must also offer Sign in with Apple.
-  Add it: Auth0 Apple connection (needs a Services ID, a Sign-in-with-Apple key
-  `.p8`, Team ID) + a native `ASAuthorizationController` button, or route it
-  through Auth0 Universal Login. See `docs/AUTH.md`.
+- ✅ **Sign in with Apple** — done on both iOS (native `ASAuthorizationController`
+  + `AppleSignInButton`, Auth0 `apple` connection keyed by the bundle id) and
+  web (Auth0 `apple-web` connection keyed by the `com.vipreshpatel.tally.web`
+  Services ID, routed through Universal Login — no web code changes needed).
+  Satisfies App Review guideline 4.8. Google and Apple sign-in with the same
+  email resolve to the same account (backend links by email on first sight —
+  see `backend/app/api/deps.py`); an Apple "Hide My Email" address won't match
+  and gets a separate account, which is expected.
 - ✅ **In-app account deletion.** `DELETE /v1/auth/me` wipes expenses,
   receipts, insights, the `users` row, and (best-effort) the Blob images.
   UI: iOS Account → "Delete account" (confirmation dialog); web `/account` →
@@ -76,6 +79,8 @@ build, ✅ = already done.**
   Auth0-dashboard change only you can make; see `docs/AUTH.md`. The API itself
   (`EXTRACTION_API_HOST` for iOS) still uses its raw `*.azurecontainerapps.io`
   hostname — a custom domain there is optional, not needed for the web fix.
+  Done: `https://tally.dataeaver.ca/auth/callback` + logout URL + web origin
+  are in the Auth0 Web application's allowed URLs.
 - ✅ **Account deletion** on web — `/account` danger zone.
 - ✅ **CORS** — `cors_origins` no longer defaults to `*`; `deploy.sh` sets
   `CORS_ORIGINS` to the web FQDN. Update it when the custom domain lands.
@@ -155,14 +160,16 @@ build, ✅ = already done.**
 ## Suggested order
 
 Done: real bundle id, Apple Developer Program enrollment, account deletion,
-Privacy Policy + Terms, `PrivacyInfo.xcprivacy`, launch screen. Remaining, in
-order:
+Privacy Policy + Terms, `PrivacyInfo.xcprivacy`, launch screen, **Sign in with
+Apple** (both platforms), custom domain + Auth0 web callback URLs. Remaining,
+in order:
 
-1. Register the Explicit App ID + create the App Store Connect app record
-   (§2) — unblocked now that the Developer account exists.
+1. Confirm the Explicit App ID is registered + create the App Store Connect
+   app record (§2) if not already done.
 2. Individual → Organization conversion for the Apple seller name (§2/§5) —
-   submit it now; it runs in the background while you do everything else.
-3. **Sign in with Apple** (§2) — the other hard blocker (App Review 4.8).
-4. Production env + fresh secrets + custom domains (§3/§4).
-5. Screenshots, App Store listing copy, App Privacy answers (§2).
-6. TestFlight → external testers → submit.
+   submit it now if not already; it runs in the background while you do
+   everything else.
+3. Screenshots, App Store listing copy, App Privacy answers (§2).
+4. TestFlight build → internal testing → submit for review.
+5. Production env + fresh secrets (§3/§4) — can trail TestFlight, but must
+   land before real users sign up for real.

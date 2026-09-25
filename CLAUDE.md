@@ -16,6 +16,7 @@ insights. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Architecture:
 | `ios/` | iOS app | Swift, SwiftUI, SwiftData, Swift Charts. XcodeGen (`project.yml`). |
 | `backend/` | REST API | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2. |
 | `web/` | Web app | Next.js 15 (App Router) + TS + Tailwind 3.4 + shadcn-style `components/ui` + Recharts + TanStack Query. Full parity with iOS. |
+| `org-site/` | dataeaver.ca — DATA EAVER INC. company page | One static `index.html`, no build. Azure Static Web App `dataeaver-site` (`rg-dataeaver-site`), deployed by `deploy-org-site.yml`. |
 | `design/` | Shared design tokens | `tokens.json` (canonical) → `tokens.css` + `tailwind-preset.js`; language in `docs/DESIGN.md`. |
 | `infra/` | Azure provisioning | `az` CLI scripts. |
 | `docs/` | Specs & contracts | Markdown. |

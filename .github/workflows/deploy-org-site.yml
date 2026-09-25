@@ -1,0 +1,30 @@
+name: Deploy org site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "org-site/**"
+      - ".github/workflows/deploy-org-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-org-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Upload to Azure Static Web Apps (dataeaver-site)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ORG_SITE }}
+          action: upload
+          app_location: org-site
+          skip_app_build: true
