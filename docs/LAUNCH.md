@@ -36,7 +36,7 @@ build, ✅ = already done.**
   existing Team ID / app records — it's not a fresh enrollment — but needs a
   D-U-N-S number + Tax ID for DATA EAVER INC. and Apple's verification
   turnaround (days). Apple also requires a public organization website on a
-  domain tied to the company — **https://dataeaver.ca** (`org-site/`, Azure
+  domain tied to the company — **https://dataeaver.ca** (repo `vipresh007/dataeaver-site`, Azure
   Static Web App) went live 2026-09-24 for this. Remaining: reply to Apple's
   migration email to start it (Certificates, IDs & Profiles is unavailable
   while it runs; App Store Connect stays up). Next concrete steps now that the account exists: register
@@ -66,8 +66,8 @@ build, ✅ = already done.**
 - 🟡 Age rating (4+), primary category **Finance**, support URL, marketing URL.
 - ✅ `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — reworded
   to be user-facing.
-- ✅ Launch screen — brand-blue background + centred Tally mark
-  (`LaunchBackground` / `LaunchMark` assets).
+- ✅ Launch screen — ink background + centred gold/teal Tally mark
+  (`LaunchBackground` / `LaunchMark` assets, regenerated from `design/logo/`).
 - 🟢 Later: crash reporting, `CFBundleShortVersionString` / build-number bump
   process, an App Store Connect API key for CI upload (`xcrun altool` /
   `fastlane`).
