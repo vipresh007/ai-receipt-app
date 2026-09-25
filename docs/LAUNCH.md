@@ -65,7 +65,7 @@ build, ✅ = already done.**
   `APP_STORE.md`.
 - 🟡 Create an App Review demo account (email/password) and add a budget to
   it — see `APP_STORE.md` → App Review information.
-- 🟡 Bump `MARKETING_VERSION` to `1.0.0` for the submission build.
+- ✅ `MARKETING_VERSION` 1.0.0; `ITSAppUsesNonExemptEncryption = false`.
 - ✅ `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — reworded
   to be user-facing.
 - ✅ Launch screen — ink background + centred gold/teal Tally mark

@@ -78,9 +78,16 @@ No ads, no tracking, no bank linking. You can delete your account and all your d
 
 **What's New** (first version): `First release.`
 
-**Version number**: `ios/project.yml` has `MARKETING_VERSION "0.1.0"`. Bump it
-to `1.0.0` before archiving the submission build (and `CURRENT_PROJECT_VERSION`
-for every upload).
+**Version number**: `ios/project.yml` has `MARKETING_VERSION "1.0.0"`, matching
+the App Store Connect version. Bump `CURRENT_PROJECT_VERSION` for every upload.
+
+**Export compliance**: `ITSAppUsesNonExemptEncryption = false` is in the
+Info.plist (the app uses only HTTPS and Apple's crypto), so no encryption
+documentation is needed and uploads don't ask.
+
+**Release**: choose **Manually release this version**, so an approval that
+lands before the Organization migration finishes doesn't go live under the
+individual seller name.
 
 ## Screenshots
 
