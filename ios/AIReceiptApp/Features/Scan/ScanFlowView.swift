@@ -163,7 +163,7 @@ struct ScanFlowView: View {
             .foregroundStyle(remaining <= 3 ? Theme.Palette.accent : Theme.Palette.textSecondary)
             .padding(.vertical, Theme.Space.xs)
             .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial)
+            .background(Theme.Palette.bg)
         }
     }
 

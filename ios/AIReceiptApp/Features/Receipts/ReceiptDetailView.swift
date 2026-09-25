@@ -14,7 +14,7 @@ struct ReceiptDetailView: View {
     var body: some View {
         Form {
             if let data = receipt.imageData, let image = UIImage(data: data) {
-                Section {
+                LedgerSection {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
@@ -22,7 +22,7 @@ struct ReceiptDetailView: View {
                         .frame(maxHeight: 260)
                 }
             } else if loadingImage {
-                Section {
+                LedgerSection {
                     HStack {
                         Spacer()
                         ProgressView()
@@ -32,12 +32,12 @@ struct ReceiptDetailView: View {
                 }
             }
 
-            Section("Merchant") {
+            LedgerSection("Merchant") {
                 TextField("Store name", text: $receipt.merchant)
                 DatePicker("Date", selection: $receipt.date, displayedComponents: .date)
             }
 
-            Section("Amount") {
+            LedgerSection("Amount") {
                 LabeledContent("Total") {
                     TextField("Total", value: $receipt.total, format: .currency(code: currencyCode))
                         .multilineTextAlignment(.trailing)
@@ -50,7 +50,7 @@ struct ReceiptDetailView: View {
                 }
             }
 
-            Section("Category") {
+            LedgerSection("Category") {
                 Picker("Category", selection: $receipt.category) {
                     ForEach(ExpenseCategory.allCases) { category in
                         Label(category.displayName, systemImage: category.systemImage)
@@ -60,7 +60,7 @@ struct ReceiptDetailView: View {
             }
 
             if !receipt.items.isEmpty {
-                Section("Items") {
+                LedgerSection("Items") {
                     ForEach($receipt.items) { $item in
                         HStack {
                             TextField("Item", text: $item.name)
@@ -75,6 +75,7 @@ struct ReceiptDetailView: View {
                 }
             }
         }
+        .ledgerBackground()
         .navigationTitle(receipt.merchant)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadImageIfNeeded() }

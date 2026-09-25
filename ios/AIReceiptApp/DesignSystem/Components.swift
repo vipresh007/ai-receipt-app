@@ -25,6 +25,44 @@ struct AppCard<Content: View>: View {
     }
 }
 
+/// A grouped-form section in the app's palette: surface rows on the page
+/// ground, with a mono eyebrow for a header (like the dashboard card labels).
+/// Use inside a `Form` styled with `.ledgerBackground()`.
+struct LedgerSection<Content: View>: View {
+    var title: String?
+    @ViewBuilder var content: () -> Content
+
+    init(_ title: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    var body: some View {
+        Section {
+            content()
+                .listRowBackground(Theme.Palette.surface)
+        } header: {
+            if let title {
+                Text(title.uppercased())
+                    .font(.appMicro)
+                    .tracking(1.4)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Swaps a `Form`'s or `List`'s stock background (system grey, or pure
+    /// black in dark mode) for the page ground, so these screens sit in the
+    /// same palette as the rest of the app. Grouped rows still need
+    /// `.listRowBackground(Theme.Palette.surface)` — `LedgerSection` does it.
+    func ledgerBackground() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Theme.Palette.bg.ignoresSafeArea())
+    }
+}
+
 /// The always-ink background of the hero panel, with a gold glow in the
 /// top-trailing corner — the one loud moment per screen.
 struct HeroPanelBackground: View {

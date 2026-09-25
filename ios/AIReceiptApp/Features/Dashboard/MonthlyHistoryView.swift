@@ -41,8 +41,10 @@ struct MonthlyHistoryView: View {
                         row(month, previous: months[safe: index + 1])
                     }
                 }
+                .listRowBackground(Theme.Palette.surface)
             }
         }
+        .ledgerBackground()
         .navigationTitle("Months")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
@@ -63,10 +65,11 @@ struct MonthlyHistoryView: View {
                     .font(.appCallout.weight(.medium))
                     .foregroundStyle(Theme.Palette.text)
                 if let delta = delta(month, previous) {
-                    Label {
-                        Text(delta.text)
-                    } icon: {
+                    // Not a Label: inside a List, Label's icon gets its own
+                    // column and the text lands indented under the title.
+                    HStack(spacing: Theme.Space.xs) {
                         Image(systemName: delta.up ? "arrow.up.right" : "arrow.down.right")
+                        Text(delta.text)
                     }
                     .font(.appCaption)
                     .foregroundStyle(delta.up ? Theme.Palette.danger : Theme.Palette.success)
@@ -90,9 +93,13 @@ struct MonthlyHistoryView: View {
         let change = month.total - previous.total
         guard change != 0 else { return nil }
         let up = change > 0
-        let pct = NSDecimalNumber(decimal: abs(change) / previous.total * 100).intValue
+        // Via Double: NSDecimalNumber.intValue returns garbage (usually 0) for
+        // a long-mantissa Decimal, which any non-terminating ratio produces.
+        let pct = Int((NSDecimalNumber(decimal: abs(change) / previous.total * 100).doubleValue).rounded())
         let amount = abs(change).formatted(.currency(code: currencyCode))
-        return ("\(up ? "+" : "−")\(amount) · \(pct)% \(up ? "more" : "less")", up)
+        let sign = up ? "+" : "−"
+        guard pct > 0 else { return ("\(sign)\(amount)", up) }
+        return ("\(sign)\(amount) · \(pct)% \(up ? "more" : "less")", up)
     }
 }
 

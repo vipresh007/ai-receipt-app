@@ -10,17 +10,17 @@ struct ConfirmReceiptView: View {
 
     var body: some View {
         Form {
-            Section("Merchant") {
+            LedgerSection("Merchant") {
                 TextField("Store name", text: $draft.merchant)
                 DatePicker("Date", selection: $draft.date, displayedComponents: .date)
             }
 
-            Section("Amount") {
+            LedgerSection("Amount") {
                 CurrencyRow(label: "Total", value: $draft.total)
                 CurrencyRow(label: "Tax", value: $draft.tax)
             }
 
-            Section("Category") {
+            LedgerSection("Category") {
                 Picker("Category", selection: $draft.category) {
                     ForEach(ExpenseCategory.allCases) { category in
                         Label(category.displayName, systemImage: category.systemImage)
@@ -30,7 +30,7 @@ struct ConfirmReceiptView: View {
             }
 
             if !draft.items.isEmpty {
-                Section("Items") {
+                LedgerSection("Items") {
                     ForEach($draft.items) { $item in
                         HStack {
                             TextField("Item", text: $item.name)
@@ -43,6 +43,7 @@ struct ConfirmReceiptView: View {
                 }
             }
         }
+        .ledgerBackground()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

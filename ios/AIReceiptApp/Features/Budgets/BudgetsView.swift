@@ -82,7 +82,9 @@ struct BudgetsView: View {
                     .buttonStyle(.plain)
                 }
                 .onDelete(perform: delete)
+                .listRowBackground(Theme.Palette.surface)
             }
+            .ledgerBackground()
             .refreshable { await load() }
         }
     }
@@ -222,7 +224,7 @@ private struct AddBudgetSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Category") {
+                LedgerSection("Category") {
                     if let editing {
                         let fixedCategory = ExpenseCategory(rawValue: editing.categorySlug) ?? .other
                         Label(fixedCategory.displayName, systemImage: fixedCategory.systemImage)
@@ -236,11 +238,12 @@ private struct AddBudgetSheet: View {
                         }
                     }
                 }
-                Section("Monthly limit") {
+                LedgerSection("Monthly limit") {
                     TextField("Amount", text: $limitText)
                         .keyboardType(.decimalPad)
                 }
             }
+            .ledgerBackground()
             .navigationTitle(editing == nil ? "Add Budget" : "Edit Budget")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -15,14 +15,16 @@ private struct MonthSectionHeader: View {
     let currencyCode: String
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline) {
             Text(group.label)
+                .font(.appHeadline)
+                .foregroundStyle(Theme.Palette.text)
             Spacer()
             Text(group.total, format: .currency(code: currencyCode))
-                .font(.mono(12, medium: true, relativeTo: .caption))
+                .font(.mono(13, medium: true, relativeTo: .caption))
+                .foregroundStyle(Theme.Palette.textSecondary)
         }
-        .font(.appCaption.weight(.medium))
-        .foregroundStyle(Theme.Palette.textSecondary)
+        .padding(.top, Theme.Space.sm)
         .textCase(nil)
     }
 }
@@ -86,6 +88,7 @@ struct ReceiptListView: View {
                 monthSections
             }
             .listStyle(.plain)
+            .ledgerBackground()
             .overlay { emptyOverlay }
             .navigationTitle("Receipts")
             // Inline — a safeAreaInset chip row fought with the large title
@@ -132,6 +135,7 @@ struct ReceiptListView: View {
                     RecurringSummaryRow(groups: recurringGroups, currencyCode: currencyCode)
                 }
             }
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -147,6 +151,7 @@ struct ReceiptListView: View {
                     }
                 }
                 .onDelete { delete(group.items, at: $0) }
+                .listRowBackground(Color.clear)
             } header: {
                 MonthSectionHeader(group: group, currencyCode: currencyCode)
             }

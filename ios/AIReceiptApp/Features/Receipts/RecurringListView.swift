@@ -26,6 +26,7 @@ struct RecurringListView: View {
                     Text(monthlyTotal, format: .currency(code: currencyCode))
                         .font(.appMoney)
                 }
+                .listRowBackground(Theme.Palette.surface)
             }
 
             Section {
@@ -47,12 +48,14 @@ struct RecurringListView: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .listRowBackground(Theme.Palette.surface)
             } header: {
                 Text("Recurring merchants")
             } footer: {
                 Text("Based on merchants that show up at a similar amount across two or more months in your own receipts.")
             }
         }
+        .ledgerBackground()
         .navigationTitle("Recurring")
     }
 }

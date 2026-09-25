@@ -22,10 +22,12 @@ enum SampleData {
             return calendar.date(byAdding: .day, value: clamped - 1, to: month) ?? month
         }
 
-        // (monthsAgo, day, merchant, total, category) — five months of history
+        // (monthsAgo, day, merchant, total, category) — six months of history
         // with a rising groceries line and a restaurants dip, so every
         // insight type has something to say.
         let rows: [(Int, Int, String, Decimal, ExpenseCategory)] = [
+            (5, 4, "Loblaws", 131.40, .groceries), (5, 10, "Presto", 40, .transport),
+            (5, 18, "Bluebird Cafe", 31.20, .restaurants), (5, 24, "Enbridge Gas", 94.10, .utilities),
             (4, 3, "Farm Boy", 142.10, .groceries), (4, 9, "Presto", 40, .transport),
             (4, 14, "Bluebird Cafe", 38.45, .restaurants), (4, 22, "Enbridge Gas", 88.20, .utilities),
             (3, 2, "Loblaws", 168.30, .groceries), (3, 11, "The Keg", 96.75, .restaurants),

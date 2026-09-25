@@ -227,7 +227,10 @@ struct ReceiptExtractionAPIClient {
         return body.detail ?? body.error
     }
 
-    /// yyyy-MM-dd (UTC) — the wire format for receipt dates.
+    /// yyyy-MM-dd — the wire format for receipt dates. A calendar day, not an
+    /// instant, so it's read and written in the device's time zone: "09-22"
+    /// becomes local midnight on the 22nd (in UTC it showed as the 21st west of
+    /// Greenwich, and an evening save wrote tomorrow's date).
     static func isoDay(_ string: String?) -> Date? {
         guard let string, !string.isEmpty else { return nil }
         return isoDayFormatter.date(from: string)
@@ -238,7 +241,7 @@ struct ReceiptExtractionAPIClient {
     private static let isoDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
