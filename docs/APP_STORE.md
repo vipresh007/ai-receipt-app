@@ -84,17 +84,20 @@ for every upload).
 
 ## Screenshots
 
-6.9" iPhone (1320 × 2868). Apple scales these down for the smaller iPhone
-sizes, so no other set is required. The app is iPhone-only
+Two identical sets, because each App Store Connect iPhone slot takes exact
+pixels and the page may offer either one: **6.5"** (1284 × 2778) in
+`brand/app-store/out/6.5/` and **6.9"** (1320 × 2868) in
+`brand/app-store/out/6.9/`. Upload whichever slot the page asks for; one set
+is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-only
 (`TARGETED_DEVICE_FAMILY = "1"`), so no iPad set is needed either.
 
 | # | File | Shows |
 |---|---|---|
-| 1 | `brand/app-store/out/01-scan.png` | A receipt read into its fields (the core loop) |
-| 2 | `brand/app-store/out/02-dashboard.png` | This month's total + trend |
-| 3 | `brand/app-store/out/03-insights.png` | Where it went + insights |
-| 4 | `brand/app-store/out/04-receipts.png` | Receipts list, light mode |
-| 5 | `brand/app-store/out/05-history.png` | Month history, light mode |
+| 1 | `out/<size>/01-scan.png` | A receipt read into its fields (the core loop) |
+| 2 | `out/<size>/02-dashboard.png` | This month's total + trend |
+| 3 | `out/<size>/03-insights.png` | Where it went + insights |
+| 4 | `out/<size>/04-receipts.png` | Receipts list, light mode |
+| 5 | `out/<size>/05-history.png` | Month history, light mode |
 
 The raw captures are in `brand/app-store/raw/`: iPhone 17 Pro Max simulator,
 status bar overridden to 9:41, and sample data from the debug-only

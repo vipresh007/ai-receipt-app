@@ -1,11 +1,14 @@
-"""Compose the App Store screenshots (6.9", 1320x2868) from raw simulator
-captures in raw/: a mono eyebrow and a display headline over the capture in a
+"""Compose the App Store screenshots from raw simulator captures in raw/: a mono eyebrow and a display headline over the capture in a
 phone frame, on the ledger ink (dark) or paper (light) ground.
 
 Raw captures: iPhone 17 Pro Max simulator, status bar overridden to 9:41,
 app launched with -seedSampleReceipts (see ios/AIReceiptApp/App/SampleData.swift).
 
-    python3 brand/app-store/build.py   # needs Google Chrome; writes out/
+    python3 brand/app-store/build.py   # needs Google Chrome; writes out/<size>/
+
+Two sizes, because App Store Connect's iPhone slots each take exact pixels:
+6.9" (1320x2868) and 6.5" (1284x2778). Either set satisfies the required
+iPhone screenshots. The layout is designed at 1320 wide and zoomed to fit.
 """
 
 import pathlib
@@ -24,6 +27,10 @@ SLIDES = [
     ("05-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
 ]
 
+# App Store Connect slot → (width, height) in pixels.
+SIZES = {"6.9": (1320, 2868), "6.5": (1284, 2778)}
+DESIGN_WIDTH = 1320
+
 THEMES = {
     "dark": dict(
         bg="#0C1412", glow="rgba(217,174,92,.22)", ink="#F1ECE1", accent="#D9AE5C",
@@ -38,7 +45,8 @@ THEMES = {
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=IBM+Plex+Mono:wght@500&display=block" rel="stylesheet">
 <style>
-html,body{{margin:0;width:1320px;height:2868px;overflow:hidden}}
+html{{margin:0;overflow:hidden}}
+body{{margin:0;width:1320px;height:{design_height}px;overflow:hidden;zoom:{zoom}}}
 body{{background:radial-gradient(1100px 800px at 95% -5%,{glow},transparent 60%),{bg};
   font-family:'Bricolage Grotesque',sans-serif;position:relative}}
 .cap{{position:absolute;left:110px;right:110px;top:180px}}
@@ -56,21 +64,28 @@ h1{{margin:34px 0 0;font-weight:800;font-size:112px;line-height:1.02;letter-spac
 
 
 def main() -> None:
-    out = HERE / "out"
-    out.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        for name, raw, theme, eyebrow, headline in SLIDES:
-            page = pathlib.Path(tmp) / f"{name}.html"
-            img = (HERE / "raw" / raw).as_uri()
-            page.write_text(PAGE.format(eyebrow=eyebrow, headline=headline, img=img, **THEMES[theme]))
-            subprocess.run(
-                [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
-                 "--allow-file-access-from-files", "--force-device-scale-factor=1",
-                 "--window-size=1320,2868", "--virtual-time-budget=4000",
-                 f"--screenshot={out / (name + '.png')}", page.as_uri()],
-                check=True, capture_output=True,
-            )
-            print(out / f"{name}.png")
+        for size, (width, height) in SIZES.items():
+            out = HERE / "out" / size
+            out.mkdir(parents=True, exist_ok=True)
+            zoom = width / DESIGN_WIDTH
+            for name, raw, theme, eyebrow, headline in SLIDES:
+                page = pathlib.Path(tmp) / f"{size}-{name}.html"
+                img = (HERE / "raw" / raw).as_uri()
+                page.write_text(
+                    PAGE.format(
+                        eyebrow=eyebrow, headline=headline, img=img, zoom=zoom,
+                        design_height=round(height / zoom), **THEMES[theme],
+                    )
+                )
+                subprocess.run(
+                    [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
+                     "--allow-file-access-from-files", "--force-device-scale-factor=1",
+                     f"--window-size={width},{height}", "--virtual-time-budget=4000",
+                     f"--screenshot={out / (name + '.png')}", page.as_uri()],
+                    check=True, capture_output=True,
+                )
+                print(out / f"{name}.png")
 
 
 if __name__ == "__main__":

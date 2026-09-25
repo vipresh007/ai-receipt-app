@@ -23,7 +23,7 @@ build, ✅ = already done.**
   Explicit App ID and create the App Store Connect record with it.
 - ✅ App Store name, subtitle, description, keywords, URLs, review notes —
   ready to paste from [`APP_STORE.md`](APP_STORE.md).
-- ✅ Screenshots (6.9") — `brand/app-store/out/`, rebuilt by
+- ✅ Screenshots (6.5" + 6.9") — `brand/app-store/out/<size>/`, rebuilt by
   `brand/app-store/build.py`.
 
 ## 2. Apple / iOS
