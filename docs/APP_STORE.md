@@ -157,17 +157,49 @@ Information fields. Don't commit them here.
 
 **Contact**: Vipresh Patel, contact@dataeaver.ca, and a phone number.
 
-**Notes** (paste as is):
+**Notes** (paste as is). This is the full answer to App Review's Guideline
+2.1 "Information Needed" request (2026-09-26, new developer account); Apple
+asked for it both as a reply and in this field for future submissions:
 
 ```
-Tally works without an account. To try the core flow: open the Scan tab, choose "Take photo" or "Choose from library" and pick any receipt. The store, date, total, tax, category and line items are read by our server and shown for confirmation. Tap Save and the receipt appears on the Dashboard and in Receipts.
+1. SCREEN RECORDING
+Attached: recorded on an iPhone running the latest iOS, starting from launching the app. It shows scanning a receipt, the dashboard, receipts and editing, account registration (email and password), sign-in, and account deletion (Account > Delete account). Tally has no content shared between users and no paid content: every receipt is private to its owner, so there is nothing to report or block.
 
-Without an account, a device gets 15 free scans. Signing in (Sign in with Apple, Google or email via Auth0) removes that limit and syncs receipts to our web app (tally.dataeaver.ca). The Budgets tab needs an account; the demo account above has one set up.
+2. PURPOSE AND AUDIENCE
+Tally is a personal expense tracker for individuals who want to know where their money goes without linking a bank account. You take a photo of a paper receipt and Tally reads the store, date, total, tax, category and line items. You confirm or correct them, and the receipt is saved. The dashboard then shows spending for the month, quarter or year, a breakdown by category, a month-by-month history and plain-language insights (for example, a category that rose sharply). It replaces manual expense logging and spreadsheets, and it keeps receipts searchable by store or item.
 
-Account deletion: Account tab > Delete account. It removes the account, all receipts and their images from our servers.
+3. HOW TO USE IT
+- No account is needed to start. Open the Scan tab, tap "Take photo" or "Choose from library", and pick any receipt. The confirm screen opens with the fields filled in. Tap Save, and the receipt appears on the Dashboard and in Receipts.
+- Without an account, a device gets 15 free scans. Signing in removes that limit, syncs receipts to our web app (tally.dataeaver.ca), and enables Budgets (per-category monthly limits).
+- Demo account (in Sign-In Information): it is signed up with email and password and already has a budget and receipts. On the Account tab, tap "Sign in", then use the email/password fields.
+- Account deletion: Account tab > Delete account > confirm. It removes the account, all receipts and their images from our servers.
+- No sample files are needed. Any photo of a receipt works.
 
-The first scan after a quiet period can take 10 to 20 seconds while our server starts up.
+4. EXTERNAL SERVICES
+- Auth0 (Okta): sign-in and sign-up (email/password, Sign in with Apple, Google).
+- Microsoft Azure OpenAI (gpt-5-mini): reads the receipt photo into structured fields. The image goes to our own backend, which calls Azure OpenAI; it is not used to train models.
+- Microsoft Azure: hosting for our API and web app (Container Apps), database (PostgreSQL), receipt image storage (Blob Storage) and error/performance monitoring (Application Insights).
+- Apple Vision (on device): text recognition that pre-fills the confirm screen.
+No payment processors, advertising or tracking SDKs, or bank or financial-data providers.
+
+5. REGIONAL DIFFERENCES
+The app works the same in every region where it is available. Amounts are shown in the device's local currency format, and receipts in any currency can be scanned. It is English only. It is not offered in the European Union at launch.
+
+6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Not applicable. Tally records a user's own spending from their own receipts. It does not move money, connect to banks, offer credit or give financial advice, and it contains no licensed third-party content.
 ```
+
+**Screen recording** (their item 1), on a physical iPhone, one take, about
+3 minutes. Attach it to the reply in App Review:
+
+1. Start from the Home Screen and launch Tally.
+2. Scan: Scan tab → Take photo of a real receipt → the confirm screen fills
+   in → Save → Dashboard → Receipts → open it and edit a field.
+3. Registration: Account → Sign in → sign up with a new email/password
+   (a throwaway such as a `+review` Gmail alias) → back in the app, signed in.
+4. Budgets tab → add a budget.
+5. Sign out, then sign back in with the same account (the login flow).
+6. Account → Delete account → confirm → signed out.
 
 Before submitting: sign in to the demo account and add a budget, so the
 Budgets tab has something to show.
