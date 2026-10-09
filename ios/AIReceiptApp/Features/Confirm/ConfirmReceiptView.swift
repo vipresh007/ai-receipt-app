@@ -55,11 +55,21 @@ struct ConfirmReceiptView: View {
                         HStack {
                             TextField("Item", text: $item.name)
                             Spacer()
-                            Text(item.price, format: .currency(code: currencyCode))
-                                .foregroundStyle(.secondary)
+                            TextField(
+                                "Price",
+                                value: $item.priceMovingTotal($draft.total),
+                                format: .currency(code: currencyCode)
+                            )
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 90)
+                            .foregroundStyle(.secondary)
                         }
                     }
-                    .onDelete { draft.items.remove(atOffsets: $0) }
+                    .onDelete { offsets in
+                        draft.total = max(0, draft.total - draft.items.priceSum(at: offsets))
+                        draft.items.remove(atOffsets: offsets)
+                    }
                 }
             } else if isRefining {
                 LedgerSection("Items") {

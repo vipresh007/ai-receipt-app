@@ -14,3 +14,15 @@ export function shortDate(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return "";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(d);
 }
+
+/** A decimal-string amount as whole cents. Unparseable or partial input
+ * ("", ".") counts as 0, so a value typed one keystroke at a time adds up. */
+export function toCents(value: string): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+/** Whole cents back to the 2-decimal string the API takes. */
+export function fromCents(cents: number): string {
+  return (cents / 100).toFixed(2);
+}

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
-import { money, shortDate } from "@/lib/format";
+import { fromCents, money, shortDate, toCents } from "@/lib/format";
 
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +47,12 @@ export default function ReceiptDetailPage() {
   }, [receipt]);
 
   function updateItem(index: number, patch: Partial<ExtractionItem>) {
+    // A price change moves the total by the same amount, so tax and anything
+    // not itemized stay in it (items rarely add up to the total on their own).
+    if (patch.price !== undefined) {
+      const delta = toCents(patch.price) - toCents(items[index].price);
+      if (delta !== 0) setTotal((t) => fromCents(Math.max(0, toCents(t) + delta)));
+    }
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 

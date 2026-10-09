@@ -65,12 +65,20 @@ struct ReceiptDetailView: View {
                         HStack {
                             TextField("Item", text: $item.name)
                             Spacer()
-                            TextField("Price", value: $item.price, format: .currency(code: currencyCode))
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.decimalPad)
-                                .frame(width: 90)
-                                .foregroundStyle(.secondary)
+                            TextField(
+                                "Price",
+                                value: $item.priceMovingTotal($receipt.total),
+                                format: .currency(code: currencyCode)
+                            )
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.decimalPad)
+                            .frame(width: 90)
+                            .foregroundStyle(.secondary)
                         }
+                    }
+                    .onDelete { offsets in
+                        receipt.total = max(0, receipt.total - receipt.items.priceSum(at: offsets))
+                        receipt.items.remove(atOffsets: offsets)
                     }
                 }
             }

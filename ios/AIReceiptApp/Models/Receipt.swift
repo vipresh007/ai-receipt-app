@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import SwiftData
 
 /// A saved expense, created from a scanned receipt.
@@ -64,5 +65,27 @@ struct ReceiptLineItem: Codable, Identifiable, Hashable {
         self.name = name
         self.price = price
         self.quantity = quantity
+    }
+}
+
+extension Binding where Value == ReceiptLineItem {
+    /// The item's price, where every change also moves `total` by the same
+    /// amount — so tax and anything not itemized stay in the total (a
+    /// receipt's items rarely add up to it on their own).
+    func priceMovingTotal(_ total: Binding<Decimal>) -> Binding<Decimal> {
+        Binding<Decimal>(
+            get: { wrappedValue.price },
+            set: { newPrice in
+                total.wrappedValue = Swift.max(0, total.wrappedValue + newPrice - wrappedValue.price)
+                wrappedValue.price = newPrice
+            }
+        )
+    }
+}
+
+extension Array where Element == ReceiptLineItem {
+    /// Combined price of the items at `offsets` (e.g. ones about to be deleted).
+    func priceSum(at offsets: IndexSet) -> Decimal {
+        offsets.reduce(Decimal(0)) { $0 + self[$1].price }
     }
 }
