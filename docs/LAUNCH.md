@@ -130,8 +130,7 @@ build, ✅ = already done.**
   returns 502 cleanly).
 - 🟡 **Monitoring**: App Insights is wired — add alerts (5xx rate, p95 latency,
   DB connection failures, OpenAI error rate) and a dashboard.
-- 🟡 **Scale**: API `minReplicas` is 0 (cold starts ~3–8s after idle). Bump to
-  1 for prod (`az containerapp update --min-replicas 1`) — ~$15–30/mo.
+- ✅ **Scale**: API and web both keep one warm replica (see the table below).
 - 🟢 Structured request logging, a `/version` endpoint, DB connection pool
   tuning.
 
@@ -147,7 +146,8 @@ What the resources had, and what was done:
 | Postgres storage auto-grow | Off (32 GB) | ✅ On | Free until used |
 | Postgres firewall | "Allow all Azure services" | Keep. A Consumption environment has hundreds of shared outbound IPs, so scoping is impractical. The real fix (VNet + private endpoint) needs a new Container Apps environment, so it's part of a future prod stack. Mitigate with a fresh DB password | — |
 | Secrets | Dev values, some seen in terminal output | ✅ Rotated the Postgres password, both Azure OpenAI keys, both storage keys, and `AUTH0_SECRET` (in Azure, GitHub secrets, `infra/.env.infra`, `backend/.env`, `web/.env.local`). 🟡 Auth0 web client secret still to rotate | Free |
-| API cold start | `minReplicas 0` (10–20 s first scan) | ✅ API `minReplicas 1` (web stays 0). `deploy.sh` only sets replicas when it creates an app, so this sticks | ≈$10/mo |
+| API cold start | `minReplicas 0` (10–20 s first scan) | ✅ API `minReplicas 1`. `deploy.sh` only sets replicas and size when it creates an app, so this sticks | ≈$10/mo |
+| Web cold start | `minReplicas 0` (tally.dataeaver.ca took 5–15 s after ~5 idle minutes) | ✅ (2026-10-09) web `minReplicas 1`, resized to 0.25 vCPU / 0.5 GiB (it uses ~40 MB) | ≈$6/mo |
 | Log Analytics | No daily cap | ✅ 0.5 GB/day | Free |
 | Spend | No budget alert | ✅ Budget `tally-monthly`, $50/mo on the resource group: email at 80% and 100% actual, and 100% forecast | Free |
 
