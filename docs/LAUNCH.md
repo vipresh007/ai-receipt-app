@@ -214,5 +214,10 @@ in order:
    approval waits until the Organization migration lands and then
    "Release This Version". Till then: keep the review demo account and the
    backend API contract stable (review tests against production).
+6. **1.0.1, right after 1.0.0 is released:** ships the iOS side of "editing
+   an item's price moves the total" (`1eb4de0`; web already has it). Kept out
+   of review so build 1 isn't swapped mid-review. Steps: `MARKETING_VERSION`
+   → 1.0.1 (build number is already 2), archive + upload (commands in
+   `APP_STORE.md`), new version in App Store Connect, submit.
 5. The keep-as-prod essentials (§4). They can trail TestFlight, but must
    land before real users sign up.
