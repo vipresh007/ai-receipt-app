@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, budgets, expenses, health, receipts
@@ -34,6 +34,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline hardening on every response. No CSP: this is a JSON API, and
+    /docs loads Swagger UI from a CDN."""
+    response = await call_next(request)
+    response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    # Receipts are personal data: keep them out of shared/proxy caches.
+    if request.url.path.startswith("/v1/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
 
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])

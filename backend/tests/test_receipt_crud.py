@@ -1,4 +1,5 @@
 import base64
+from datetime import UTC, datetime
 from uuid import uuid4
 
 _IMG = base64.b64encode(b"pretend-jpeg").decode()
@@ -7,7 +8,8 @@ _IMG = base64.b64encode(b"pretend-jpeg").decode()
 def _new(**over):
     body = {
         "merchant": "Corner Store",
-        "date": "2026-09-03",
+        # Current month: the expense summary reports on "this month" by default.
+        "date": datetime.now(UTC).date().replace(day=1).isoformat(),
         "total": "9.99",
         "tax": "0.80",
         "category": "groceries",

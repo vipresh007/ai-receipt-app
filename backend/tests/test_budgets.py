@@ -1,4 +1,12 @@
-async def _spend(client, category: str, total: str, date: str = "2026-09-05"):
+from datetime import UTC, datetime
+
+# Receipts default to the current month: budgets and the summary report on
+# "this month" unless asked for another, so a fixed date rots once the
+# calendar moves past it.
+THIS_MONTH = datetime.now(UTC).date().replace(day=1).isoformat()
+
+
+async def _spend(client, category: str, total: str, date: str = THIS_MONTH):
     resp = await client.post(
         "/v1/receipts",
         json={

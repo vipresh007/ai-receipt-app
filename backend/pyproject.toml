@@ -21,7 +21,8 @@ dependencies = [
     "azure-storage-blob>=12.20",
     "azure-monitor-opentelemetry>=1.6",
     "opentelemetry-instrumentation-fastapi>=0.48b0",
-    "pyjwt[crypto]>=2.9",
+    # 2.15+: earlier releases carry token-verification advisories (PYSEC-2026-41xx).
+    "pyjwt[crypto]>=2.15",
 ]
 
 [project.optional-dependencies]
