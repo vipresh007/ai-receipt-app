@@ -172,9 +172,15 @@ after creation. Accept that on the single-server plan.
 - 🟡 Next.js 16 upgrade (closes the remaining postcss alerts; Dependabot
   PRs #3/#9), Tailwind 4 and Recharts 3 majors (#5/#6): deliberate
   migrations, not merges.
-- 🟡 Owner actions: verify both domains in Google Search Console and Bing
-  Webmaster Tools (DNS TXT at Hostinger) and submit the sitemaps; Bing
-  also feeds ChatGPT search and Copilot.
+- ✅ Dependabot PRs merged 2026-10-27: Actions group (incl. azure/login v3,
+  verified by a backend deploy), web minor/patch group, brace-expansion,
+  postcss-selector-parser.
+- ✅ App Store: rating prompt in the app (3rd/10th/25th save, once per
+  version) and an English (U.S.) listing, both in 1.0.2.
+- 🟡 Owner actions, deferred: verify both domains in Google Search Console
+  and Bing Webmaster Tools (DNS TXT at Hostinger) and submit the sitemaps
+  (Bing feeds ChatGPT search and Copilot); outreach (Product Hunt,
+  AlternativeTo, Reddit).
 
 ## 5. Legal & data
 
@@ -238,7 +244,11 @@ in order:
    backend API contract stable (review tests against production).
    **Approved, and released 2026-10-27** ("Release This Version").
    App Store: https://apps.apple.com/app/id6813650117
-6. **The fix update is 1.0.2 (build 3), uploaded 2026-10-27.** In App Store
+6. **1.0.2 (build 4) submitted 2026-10-27, auto-release on approval:** the
+   item-total fix, the App Store rating prompt, and a new English (U.S.)
+   listing (see `APP_STORE.md`). Build 3 (fix only) had been submitted
+   first; it was pulled from the queue and replaced by build 4.
+   Earlier: the fix update was 1.0.2 (build 3), uploaded 2026-10-27. In App Store
    Connect the released version record ended up labelled **1.0.1** (it holds
    build 1, which is 1.0.0 inside), so build 1.0.1 (2) could no longer be
    attached to anything and the update had to be 1.0.2. Submit it as a new

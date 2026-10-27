@@ -23,6 +23,22 @@ limits are Apple's; counts are noted where they're tight. Screenshots are in
 If "Tally: Receipts & Spending" is taken, fall back to
 **Tally — Receipt Scanner** (23).
 
+### English (U.S.) listing (added with 1.0.2, 2026-10-27)
+
+Each storefront indexes only its own languages: the US store reads English
+(U.S.) and Spanish (Mexico), **not** English (Canada); Canada reads English
+(Canada) and French (Canada). So the US listing replaces the Canadian text
+in the US rather than adding to it, and is tuned for US searches:
+
+| Field | English (U.S.) |
+|---|---|
+| Name | Tally: Receipts & Spending |
+| Subtitle | **Expense tracker & budget** (24) |
+| Keywords (96) | `receipt,scanner,money,bills,grocery,tax,finance,subscription,OCR,wallet,shopping,planner,manager` |
+| Description, promo text, What's New, URLs | same as Canada |
+| Privacy Policy URL | https://tally.dataeaver.ca/privacy (set per language on App Privacy) |
+| Screenshots | inherited from the Canada set |
+
 ## URLs
 
 | Field | URL |
