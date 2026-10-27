@@ -154,6 +154,28 @@ What the resources had, and what was done:
 Geo-redundant backup and zone HA can't be added to this Postgres server
 after creation. Accept that on the single-server plan.
 
+### Security & discoverability pass (2026-10-27)
+
+- ✅ Dependencies: PyJWT ≥ 2.15 (8 advisories in 2.13), Next.js 15.5.28
+  (critical), unused zod removed; pip-audit / npm audit clean apart from the
+  postcss build tool inside Next 15 (fixed by the Next 16 major).
+- ✅ Security headers: web CSP + HSTS + frame/nosniff/referrer/permissions
+  policies; API HSTS/nosniff/frame/no-store; dataeaver.ca strict CSP (no
+  scripts) via `staticwebapp.config.json`.
+- ✅ GitHub: vulnerability alerts, Dependabot security PRs, secret scanning +
+  push protection on (history scan: 0 secrets); `.github/dependabot.yml`
+  opens grouped weekly update PRs.
+- ✅ SEO: `robots.txt` had blocked every crawler; now public pages are
+  indexable, with a sitemap, real titles/descriptions, Open Graph previews,
+  schema.org data (app, company, FAQ), a visible FAQ, the iPhone App Store
+  banner tag, and `llms.txt` on both sites. App Store badges on both sites.
+- 🟡 Next.js 16 upgrade (closes the remaining postcss alerts; Dependabot
+  PRs #3/#9), Tailwind 4 and Recharts 3 majors (#5/#6): deliberate
+  migrations, not merges.
+- 🟡 Owner actions: verify both domains in Google Search Console and Bing
+  Webmaster Tools (DNS TXT at Hostinger) and submit the sitemaps; Bing
+  also feeds ChatGPT search and Copilot.
+
 ## 5. Legal & data
 
 - ✅ **Privacy Policy** — `/privacy` (`web/content/legal/privacy.md`), filled in
