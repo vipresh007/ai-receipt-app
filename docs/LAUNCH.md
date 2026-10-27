@@ -214,6 +214,8 @@ in order:
    approval waits until the Organization migration lands and then
    "Release This Version". Till then: keep the review demo account and the
    backend API contract stable (review tests against production).
+   **Approved, and released 2026-10-27** ("Release This Version").
+   App Store: https://apps.apple.com/app/id6813650117
 6. **1.0.1 (build 2) uploaded 2026-10-27,** after 1.0.0 was approved; submit
    it once 1.0.0 is released. ships the iOS side of "editing
    an item's price moves the total" (`1eb4de0`; web already has it). Kept out
