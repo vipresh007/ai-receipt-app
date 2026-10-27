@@ -3,12 +3,27 @@ import { Auth0Provider } from "@auth0/nextjs-auth0";
 import "./tokens.css";
 import "./globals.css";
 import { display, inter, mono } from "@/lib/fonts";
+import { APP_STORE_ID, SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: { default: "Tally", template: "%s · Tally" },
-  description: "Snap a receipt. It tallies itself.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · Tally" },
+  description: SITE_DESCRIPTION,
   applicationName: "Tally",
+  publisher: "Data Eaver Inc.",
+  alternates: { canonical: "/" },
+  // Safari on iPhone shows an "Open in the App Store" banner.
+  itunes: { appId: APP_STORE_ID },
+  openGraph: {
+    type: "website",
+    siteName: "Tally",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_CA",
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
 };
 
 export const viewport: Viewport = {

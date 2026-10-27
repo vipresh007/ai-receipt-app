@@ -1,0 +1,1 @@
+Tally: snap a receipt, it tallies itself. Receipt scanner and spending tracker for iPhone and web.

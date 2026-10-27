@@ -1,0 +1,29 @@
+# Tally
+
+> Tally is a free receipt scanner and personal expense tracker for iPhone and the web, made by Data Eaver Inc. You photograph a paper receipt and Tally reads the store, date, total, tax, category and every line item, then shows where your money goes each month. It works without linking a bank account.
+
+## What it does
+
+- Scan a receipt with the iPhone camera or upload a photo; the fields fill in for you to check and save. The phone reads the total and date in about a second; an AI model fills in the store, category and line items a few seconds later.
+- Dashboard for the month, quarter or year, with a breakdown by category, a 12-month history and plain-language insights (for example, a category that rose sharply).
+- Search receipts by store or by item, filter by category, edit any field.
+- Spots recurring charges (likely subscriptions) from your own receipts.
+- Per-category monthly budgets (with a free account).
+- Works without an account on iPhone (15 free scans); a free account removes the limit and syncs to the web app.
+
+## Facts
+
+- Price: free. No in-app purchases, no ads.
+- Platforms: iPhone (iOS 17 or later) and web (any modern browser).
+- No bank or card connection; receipts are added from photos.
+- Privacy: receipts are private to the account, not sold, and not used to train AI models. Accounts and all data can be deleted in the app.
+- Sign-in: Sign in with Apple, Google, or email and password.
+- Not available in the European Union at launch.
+
+## Links
+
+- [Website](https://tally.dataeaver.ca/)
+- [App Store: Tally: Receipts & Spending](https://apps.apple.com/app/id6813650117)
+- [Privacy policy](https://tally.dataeaver.ca/privacy)
+- [Terms of service](https://tally.dataeaver.ca/terms)
+- [Data Eaver Inc.](https://dataeaver.ca/)

@@ -27,5 +27,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  // Static and crawler files skip the auth middleware entirely.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|sitemap.xml|llms.txt|opengraph-image|twitter-image|app-store-badge.svg).*)",
+  ],
 };

@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Plus } from "lucide-react";
+import { APP_STORE_URL } from "@/lib/site";
 import { TallyMark } from "@/components/tally-mark";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,16 @@ const CAT = {
 } as const;
 
 const vars = (v: Record<string, string | number>) => v as CSSProperties;
+
+/** Apple's own badge artwork (public/app-store-badge.svg, from
+ *  developer.apple.com) — Apple requires it unaltered. */
+function AppStoreBadge({ className }: { className?: string }) {
+  return (
+    <a href={APP_STORE_URL} className={cn("inline-flex shrink-0", className)} aria-label="Download Tally on the App Store">
+      <Image src="/app-store-badge.svg" alt="Download on the App Store" width={150} height={50} unoptimized />
+    </a>
+  );
+}
 
 /* ─────────────────────────── header ─────────────────────────── */
 
@@ -113,15 +125,13 @@ export function Hero() {
             <a href={SIGNUP} className="l-btn">
               Start free <ArrowRight size={17} />
             </a>
-            <Link href="/#how" className="l-btn l-btn-ghost">
-              See how it works
-            </Link>
+            <AppStoreBadge />
           </div>
           <p
             className="l-mono l-rise mt-8 text-[12.5px] tracking-wide text-[color:var(--cream-3)]"
             style={vars({ "--d": "320ms" })}
           >
-            Free forever tier &middot; No card &middot; Web now, iPhone soon
+            Free &middot; No card &middot; No bank linking &middot; iPhone and web
           </p>
         </div>
 
@@ -594,6 +604,67 @@ export function Privacy() {
   );
 }
 
+/* ─────────────────────────── FAQ ─────────────────────────── */
+
+/** Also rendered as FAQPage structured data (app/page.tsx), so the visible
+ *  answers and what search engines and AI assistants read stay identical. */
+export const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "Is Tally free?",
+    a: "Yes. On iPhone you can scan your first 15 receipts without an account. A free account removes that limit and adds the web app and budgets. No card needed, no ads.",
+  },
+  {
+    q: "Do I need to connect my bank?",
+    a: "No. Tally works from photos of your receipts, so there's no bank login or card number to hand over.",
+  },
+  {
+    q: "How does Tally read a receipt?",
+    a: "Your phone reads the text first, so the total and date appear in about a second. An AI model then fills in the store, category and every line item. You can correct anything before saving.",
+  },
+  {
+    q: "Where does Tally work?",
+    a: "On iPhone (iOS 17 or later) and on the web at tally.dataeaver.ca. Sign in on both and your receipts stay in sync.",
+  },
+  {
+    q: "What happens to my receipts?",
+    a: "They're private to your account. They aren't sold or used to train AI models, and you can delete your account and every receipt from the app at any time.",
+  },
+  {
+    q: "Can it find my subscriptions?",
+    a: "Yes. Tally spots stores that charge you a similar amount month after month and lists them as likely subscriptions, with an estimated monthly total.",
+  },
+];
+
+export function FAQ() {
+  return (
+    <section id="faq" className="scroll-mt-20 border-t border-[color:var(--rule)] px-6 py-28 lg:py-32">
+      <div className="mx-auto grid max-w-[1180px] gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+        <div>
+          <p className="l-eyebrow">Questions</p>
+          <h2 className="l-display mt-5 text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+            The short answers.
+          </h2>
+        </div>
+        <div className="divide-y divide-[color:var(--rule)] border-y border-[color:var(--rule)]">
+          {FAQ_ITEMS.map(({ q, a }) => (
+            <details key={q} className="group py-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-left [&::-webkit-details-marker]:hidden">
+                <h3 className="l-display text-[20px] font-bold tracking-[-0.015em]">{q}</h3>
+                <Plus
+                  size={18}
+                  aria-hidden
+                  className="shrink-0 text-[color:var(--gold)] transition-transform duration-200 group-open:rotate-45"
+                />
+              </summary>
+              <p className="mt-3 max-w-[60ch] text-[15px] leading-[1.6] text-[color:var(--cream-2)]">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────────────────── closing CTA ─────────────────────────── */
 
 export function BottomCTA() {
@@ -622,9 +693,12 @@ export function BottomCTA() {
             Sign in with Google, Apple or email and scan your first receipt in
             the next minute. Free forever tier, no card.
           </p>
-          <a href={SIGNUP} className="l-btn mt-9">
-            Start free <ArrowRight size={17} />
-          </a>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a href={SIGNUP} className="l-btn">
+              Start free <ArrowRight size={17} />
+            </a>
+            <AppStoreBadge />
+          </div>
         </div>
       </div>
     </section>
@@ -638,6 +712,7 @@ const FOOTER_LINKS: { heading: string; links: { label: string; href: string }[] 
     heading: "Product",
     links: [
       { label: "How it works", href: "/#how" },
+      { label: "iPhone app", href: APP_STORE_URL },
       { label: "Get started", href: SIGNUP },
       { label: "Log in", href: LOGIN },
     ],
@@ -661,8 +736,8 @@ export function SiteFooter() {
           <div>
             <Wordmark />
             <p className="mt-5 max-w-[28ch] text-[15px] leading-[1.6] text-[color:var(--cream-2)]">
-              Snap a receipt. It tallies itself. Expense tracking for the web,
-              with iPhone coming soon.
+              Snap a receipt. It tallies itself. Expense tracking on iPhone
+              and the web.
             </p>
           </div>
           {FOOTER_LINKS.map((col) => (

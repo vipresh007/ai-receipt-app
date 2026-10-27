@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { AppNav } from "@/components/app-nav";
+
+// Signed-in pages: never in search results (robots.ts disallows them too).
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth0.getSession();
