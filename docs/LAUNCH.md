@@ -216,10 +216,12 @@ in order:
    backend API contract stable (review tests against production).
    **Approved, and released 2026-10-27** ("Release This Version").
    App Store: https://apps.apple.com/app/id6813650117
-6. **1.0.1 (build 2) uploaded 2026-10-27,** after 1.0.0 was approved; submit
-   it once 1.0.0 is released. ships the iOS side of "editing
+6. **The fix update is 1.0.2 (build 3), uploaded 2026-10-27.** In App Store
+   Connect the released version record ended up labelled **1.0.1** (it holds
+   build 1, which is 1.0.0 inside), so build 1.0.1 (2) could no longer be
+   attached to anything and the update had to be 1.0.2. Submit it as a new
+   version 1.0.2 with build 3. ships the iOS side of "editing
    an item's price moves the total" (`1eb4de0`; web already has it). Kept out
-   of review so build 1 isn't swapped mid-review. Remaining: in App Store
-   Connect, add version 1.0.1, attach build 2, submit. Next build number: 3.
+   of review so build 1 isn't swapped mid-review. Next build number: 4.
 5. The keep-as-prod essentials (§4). They can trail TestFlight, but must
    land before real users sign up.
