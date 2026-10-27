@@ -182,9 +182,10 @@ after creation. Accept that on the single-server plan.
   submitted and read (tally 3 pages, dataeaver 1). Tally's home page had
   been crawled as "Blocked by robots.txt" (the old file); re-indexing
   requested.
-- 🟡 Bing Webmaster Tools: owner signs in at bing.com/webmasters and uses
-  *Import from Google Search Console* (brings the sites and sitemaps; no
-  DNS step). Bing feeds ChatGPT search and Copilot.
+- ✅ Bing Webmaster Tools (2026-10-27): imported from Search Console as
+  `https://dataeaver.ca/`; the import didn't carry the sitemaps, so both
+  were submitted by hand (dataeaver read straight away; tally processing).
+  Bing feeds ChatGPT search and Copilot.
 - 🟡 Outreach: ready-to-post copy for Product Hunt, Reddit, AlternativeTo,
   There's An AI For That, Indie Hackers and Show HN in
   [`OUTREACH.md`](OUTREACH.md).
