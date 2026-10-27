@@ -21,7 +21,10 @@ TAG="${TAG:-$(date +%Y%m%d%H%M%S)}"
 # REUSE_LATEST=1 skips `az acr build` and redeploys the existing :latest images.
 [ "${REUSE_LATEST:-}" = "1" ] && TAG="latest"
 
-ACR_NAME="${ACR_NAME:-$(printf '%s' "${NAME_PREFIX}acr" | tr -cd 'a-z0-9')}"
+# Shared registry, owned by the Turnout project (rg-turnout). Apps pull with their
+# system-assigned identity (AcrPull), so no registry passwords are stored.
+ACR_NAME="${ACR_NAME:-acrturnoutn5evc2pkoaknq}"
+ACR_RESOURCE_GROUP="${ACR_RESOURCE_GROUP:-rg-turnout}"
 CAE_NAME="${CAE_NAME:-${NAME_PREFIX}-cae}"
 API_APP="${API_APP:-${NAME_PREFIX}-api}"
 WEB_APP="${WEB_APP:-${NAME_PREFIX}-web}"
@@ -67,13 +70,9 @@ for p in Microsoft.App Microsoft.ContainerRegistry Microsoft.OperationalInsights
 done
 az extension show -n containerapp -o none 2>/dev/null || az extension add -n containerapp -y -o none
 
-say "Container registry: $ACR_NAME"
-az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null || \
-  az acr create -n "$ACR_NAME" -g "$RESOURCE_GROUP" -l "$LOCATION" --sku Basic -o none
-az acr update -n "$ACR_NAME" --admin-enabled true -o none
-ACR_SERVER="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)"
-ACR_USER="$(az acr credential show -n "$ACR_NAME" --query username -o tsv)"
-ACR_PASS="$(az acr credential show -n "$ACR_NAME" --query 'passwords[0].value' -o tsv)"
+say "Container registry: $ACR_NAME (shared, in $ACR_RESOURCE_GROUP)"
+ACR_SERVER="$(az acr show -n "$ACR_NAME" -g "$ACR_RESOURCE_GROUP" --query loginServer -o tsv)"
+ACR_ID="$(az acr show -n "$ACR_NAME" -g "$ACR_RESOURCE_GROUP" --query id -o tsv)"
 
 say "Container Apps environment: $CAE_NAME"
 if ! az containerapp env show -n "$CAE_NAME" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
@@ -90,8 +89,11 @@ fi
 deploy_app() {
   local name="$1" image="$2" port="$3" secrets_kv="$4" env_kv="$5"
   if az containerapp show -n "$name" -g "$RESOURCE_GROUP" -o none 2>/dev/null; then
-    az containerapp registry set -n "$name" -g "$RESOURCE_GROUP" \
-      --server "$ACR_SERVER" --username "$ACR_USER" --password "$ACR_PASS" -o none
+    # Pull from the shared registry with the app's system identity (AcrPull was granted once).
+    if [ "$(az containerapp show -n "$name" -g "$RESOURCE_GROUP" \
+          --query "properties.configuration.registries[?server=='$ACR_SERVER'].identity | [0]" -o tsv)" != "system" ]; then
+      az containerapp registry set -n "$name" -g "$RESOURCE_GROUP" --server "$ACR_SERVER" --identity system -o none
+    fi
     if [ -n "$secrets_kv" ]; then
       # shellcheck disable=SC2086
       az containerapp secret set -n "$name" -g "$RESOURCE_GROUP" --secrets $secrets_kv -o none
@@ -100,12 +102,21 @@ deploy_app() {
     az containerapp update -n "$name" -g "$RESOURCE_GROUP" --image "$image" \
       ${env_kv:+--set-env-vars $env_kv} -o none
   else
+    # Start from a public placeholder: the app needs its identity before it can pull our image.
     # shellcheck disable=SC2086
     az containerapp create -n "$name" -g "$RESOURCE_GROUP" --environment "$CAE_NAME" \
-      --image "$image" --target-port "$port" --ingress external \
-      --registry-server "$ACR_SERVER" --registry-username "$ACR_USER" --registry-password "$ACR_PASS" \
+      --image mcr.microsoft.com/k8se/quickstart:latest --target-port "$port" --ingress external \
+      --system-assigned \
       --min-replicas 0 --max-replicas 2 --cpu 0.5 --memory 1.0Gi \
       ${secrets_kv:+--secrets $secrets_kv} ${env_kv:+--env-vars $env_kv} -o none
+    # Let the new app pull from the shared registry, then point it there.
+    local principal
+    principal="$(az containerapp show -n "$name" -g "$RESOURCE_GROUP" --query identity.principalId -o tsv)"
+    az role assignment create --assignee-object-id "$principal" --assignee-principal-type ServicePrincipal \
+      --role AcrPull --scope "$ACR_ID" -o none
+    sleep 30  # role assignments take a moment to propagate
+    az containerapp registry set -n "$name" -g "$RESOURCE_GROUP" --server "$ACR_SERVER" --identity system -o none
+    az containerapp update -n "$name" -g "$RESOURCE_GROUP" --image "$image" -o none
   fi
   az containerapp show -n "$name" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv
 }
