@@ -190,6 +190,27 @@ after creation. Accept that on the single-server plan.
   There's An AI For That, Indie Hackers and Show HN in
   [`OUTREACH.md`](OUTREACH.md).
 
+### Attack / abuse posture (checked 2026-10-27)
+
+- ✅ Network-layer (L3/L4) floods: Azure's built-in infrastructure DDoS
+  protection covers every public endpoint, free.
+- ✅ Bounded blast radius: API and web each max 2 replicas (a flood slows
+  things down rather than scaling up a bill); Azure OpenAI capped at 20K
+  tokens/min (worst case roughly $15–20/day of scans); $50/mo budget alert.
+- ✅ Fixed: the anonymous per-IP scan limit trusted the caller-controlled
+  left-most X-Forwarded-For entry (spoofable → unlimited free scans); it
+  now uses the entry the ingress appends. Bodies > 15 MB get 413 before
+  being read (300 MB for the import endpoint); schemas cap field sizes.
+- ✅ Login: Auth0's brute-force / bot protection.
+- 🟡 No application-layer (L7) shield: a sustained HTTP flood would make the
+  site slow or unavailable (not expensive). The fix is an edge proxy:
+  **Cloudflare free plan** (move DNS from Hostinger; free DDoS + WAF +
+  rate-limit rule) or **Azure Front Door + WAF** (~$35+/mo). Either needs
+  the API on a custom domain (e.g. `api.tally.dataeaver.ca`) with the iOS
+  app pointed at it, and the origin locked to the proxy. Deferred until
+  there are real users.
+- 🟡 Signed-in scans are uncapped (see the deferred scan-cap note).
+
 ## 5. Legal & data
 
 - ✅ **Privacy Policy** — `/privacy` (`web/content/legal/privacy.md`), filled in
