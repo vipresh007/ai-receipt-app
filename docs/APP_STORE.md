@@ -80,7 +80,7 @@ No ads, no tracking, no bank linking. You can delete your account and all your d
 
 **Version number**: `ios/project.yml` has `MARKETING_VERSION "1.0.0"`, matching
 the App Store Connect version. `CURRENT_PROJECT_VERSION` is the build number
-and must go up for every upload (1.0.0 build 1 uploaded 2026-09-25; 1.0.1 build 2 and 1.0.2 build 3 on 2026-10-27; next is 4). The live store version is labelled 1.0.1, so the next App Store version must be 1.0.2 or higher.
+and must go up for every upload (1.0.0 build 1 uploaded 2026-09-25; 1.0.1 build 2, 1.0.2 builds 3 and 4 on 2026-10-27; next is 5). The live store version is labelled 1.0.1, so the next App Store version must be 1.0.2 or higher.
 
 **Uploading a build** (Xcode signed in to the team account; automatic
 signing makes the distribution certificate in the cloud):

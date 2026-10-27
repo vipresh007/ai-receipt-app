@@ -1,5 +1,6 @@
-import SwiftUI
 import PhotosUI
+import StoreKit
+import SwiftUI
 
 /// Capture flow: pick an image (camera or library) → read it → confirm and save.
 ///
@@ -18,6 +19,9 @@ struct ScanFlowView: View {
     @State private var previewImage: UIImage?
     @State private var errorMessage: String?
     @State private var savedTick = 0
+    @Environment(\.requestReview) private var requestReview
+    @AppStorage(ReviewPrompt.savedCountKey) private var savedCount = 0
+    @AppStorage(ReviewPrompt.lastVersionKey) private var lastReviewVersion = ""
     @State private var showQuotaWall = false
     /// Server receipt id when signed in — `/v1/extract` already persisted it, so
     /// "Save" only needs to push edits and "Discard" needs to delete it.
@@ -369,6 +373,20 @@ struct ScanFlowView: View {
         }
         pendingServerID = nil
         reset()
+        askForReviewIfDue()
+    }
+
+    private func askForReviewIfDue() {
+        savedCount += 1
+        let version = ReviewPrompt.currentVersion
+        guard ReviewPrompt.shouldAsk(savedCount: savedCount, lastAskedVersion: lastReviewVersion, currentVersion: version)
+        else { return }
+        lastReviewVersion = version
+        // Let the save haptic and the screen change finish first.
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            requestReview()
+        }
     }
 
     /// User bailed on the confirm screen. If the backend already created a row
