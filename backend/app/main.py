@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.routes import auth, budgets, expenses, health, receipts
 from app.config import get_settings
@@ -34,6 +35,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """Refuse oversized bodies from Content-Length, before reading them, so a
+    huge upload can't tie up memory. Schemas cap individual fields as well."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit():
+        is_import = request.url.path == "/v1/receipts/import"
+        cap = settings.max_import_body_bytes if is_import else settings.max_body_bytes
+        if int(declared) > cap:
+            return JSONResponse(status_code=413, content={"detail": "Request is too large."})
+    return await call_next(request)
 
 
 @app.middleware("http")

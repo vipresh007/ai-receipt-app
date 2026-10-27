@@ -1,7 +1,11 @@
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# One OCR row; generous for long store names, short enough to bound the prompt.
+OcrLine = Annotated[str, Field(max_length=500)]
 
 
 class ExtractionIn(BaseModel):
@@ -10,9 +14,10 @@ class ExtractionIn(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    image_base64: str = Field(alias="imageBase64")
-    ocr_lines: list[str] = Field(default_factory=list, alias="ocrLines")
-    client_request_id: str = Field(alias="clientRequestID")
+    # ~10 MB decoded. The app sends ~0.5 MB (2048 px JPEG).
+    image_base64: str = Field(alias="imageBase64", max_length=14_000_000)
+    ocr_lines: list[OcrLine] = Field(default_factory=list, alias="ocrLines", max_length=500)
+    client_request_id: str = Field(alias="clientRequestID", max_length=100)
 
 
 class ExtractionItemOut(BaseModel):
@@ -58,20 +63,20 @@ class ReceiptCreate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    merchant: str = ""
+    merchant: str = Field(default="", max_length=300)
     date: str | None = None  # YYYY-MM-DD
     total: str = "0"
     tax: str = "0"
     category: str = "other"
     currency: str = "USD"
-    items: list[ExtractionItemOut] = Field(default_factory=list)
-    image_base64: str | None = Field(default=None, alias="imageBase64")
+    items: list[ExtractionItemOut] = Field(default_factory=list, max_length=500)
+    image_base64: str | None = Field(default=None, alias="imageBase64", max_length=14_000_000)
     confidence: float | None = None
-    note: str = ""
+    note: str = Field(default="", max_length=2000)
 
 
 class ImportIn(BaseModel):
-    receipts: list[ReceiptCreate]
+    receipts: list[ReceiptCreate] = Field(max_length=5000)
 
 
 class ReceiptOut(BaseModel):

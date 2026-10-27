@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     # Anonymous extraction: max calls per client IP per rolling hour (abuse guard
     # on top of the per-device cap — stops someone cycling fake device ids).
     anon_ip_hourly_limit: int = 60
+    # Proxies in front of the API that append to X-Forwarded-For (Container
+    # Apps' ingress: 1). The client IP is that many entries from the right;
+    # anything further left is whatever the caller claimed.
+    trusted_proxy_hops: int = 1
+
+    # Request body caps (bytes), checked from Content-Length before the body is
+    # read. Scans are ~0.5 MB; the one-time import of a device's receipts can
+    # carry dozens of older full-size photos, so it gets far more room.
+    max_body_bytes: int = 15_000_000
+    max_import_body_bytes: int = 300_000_000
 
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_receipt"

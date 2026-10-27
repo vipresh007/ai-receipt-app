@@ -84,11 +84,16 @@ async def _consume_anon_quota(session: AsyncSession, device_id: str) -> int:
 
 
 def _client_ip(request: Request) -> str:
-    """Best-effort caller IP. Container Apps' ingress sets X-Forwarded-For; the
-    left-most entry is the original client."""
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """The caller's IP for rate limiting. Container Apps' ingress appends the
+    address it saw to X-Forwarded-For, so the real client is `trusted_proxy_hops`
+    entries from the right. The left-most entry is whatever the caller sent —
+    trusting it let one client claim a new IP per request and skip the limit."""
+    hops = get_settings().trusted_proxy_hops
+    entries = [
+        e.strip() for e in request.headers.get("x-forwarded-for", "").split(",") if e.strip()
+    ]
+    if hops > 0 and len(entries) >= hops:
+        return entries[-hops]
     return request.client.host if request.client else "unknown"
 
 

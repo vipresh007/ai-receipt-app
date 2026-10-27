@@ -102,3 +102,45 @@ async def test_import_receipts_migrates_local_data(client):
     listed = await client.get("/v1/receipts")
     merchants = {r["merchant"] for r in listed.json()}
     assert merchants == {"Corner Store", "Bus"}
+
+
+async def test_spoofed_forwarded_for_does_not_reset_the_ip_limit(anon_client, monkeypatch):
+    # The ingress appends the real address to X-Forwarded-For; a caller who
+    # puts a fresh fake IP at the front of the header each time must still
+    # count against their real one.
+    monkeypatch.setattr(get_settings(), "anon_ip_hourly_limit", 2)
+    for i in range(2):
+        r = await anon_client.post(
+            "/v1/extract",
+            json=_payload(f"spoof{i}"),
+            headers={
+                "X-Device-Id": f"spoof-dev-{i}",
+                "X-Forwarded-For": f"10.0.0.{i}, 203.0.113.7",
+            },
+        )
+        assert r.status_code == 200, (i, r.text)
+    r = await anon_client.post(
+        "/v1/extract",
+        json=_payload("spoof2"),
+        headers={"X-Device-Id": "spoof-dev-2", "X-Forwarded-For": "10.0.0.99, 203.0.113.7"},
+    )
+    assert r.status_code == 429
+
+
+async def test_oversized_request_is_refused_before_reading(anon_client):
+    r = await anon_client.post(
+        "/v1/extract",
+        content=b"{}",
+        headers={
+            "X-Device-Id": "big",
+            "Content-Type": "application/json",
+            "Content-Length": "999999999",
+        },
+    )
+    assert r.status_code == 413
+
+
+async def test_too_many_ocr_lines_is_rejected(anon_client):
+    payload = _payload("ocr") | {"ocrLines": ["x"] * 501}
+    r = await anon_client.post("/v1/extract", json=payload, headers={"X-Device-Id": "ocr"})
+    assert r.status_code == 422
