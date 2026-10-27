@@ -177,10 +177,17 @@ after creation. Accept that on the single-server plan.
   postcss-selector-parser.
 - ✅ App Store: rating prompt in the app (3rd/10th/25th save, once per
   version) and an English (U.S.) listing, both in 1.0.2.
-- 🟡 Owner actions, deferred: verify both domains in Google Search Console
-  and Bing Webmaster Tools (DNS TXT at Hostinger) and submit the sitemaps
-  (Bing feeds ChatGPT search and Copilot); outreach (Product Hunt,
-  AlternativeTo, Reddit).
+- ✅ Google Search Console (2026-10-27): domain property `dataeaver.ca`
+  (covers tally.), verified via the existing DNS record; both sitemaps
+  submitted and read (tally 3 pages, dataeaver 1). Tally's home page had
+  been crawled as "Blocked by robots.txt" (the old file); re-indexing
+  requested.
+- 🟡 Bing Webmaster Tools: owner signs in at bing.com/webmasters and uses
+  *Import from Google Search Console* (brings the sites and sitemaps; no
+  DNS step). Bing feeds ChatGPT search and Copilot.
+- 🟡 Outreach: ready-to-post copy for Product Hunt, Reddit, AlternativeTo,
+  There's An AI For That, Indie Hackers and Show HN in
+  [`OUTREACH.md`](OUTREACH.md).
 
 ## 5. Legal & data
 
