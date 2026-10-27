@@ -40,7 +40,8 @@ After `provision.sh`, build + ship both services to Azure Container Apps:
 ./deploy.sh                 # both;  TARGET=backend|web for one
 ```
 
-Creates an ACR (`Basic`, ~$5/mo) + a Container Apps environment on the existing
+Uses the shared ACR in `rg-turnout` (apps pull with their system identity, no
+passwords; the CI service principal has Contributor on it) + a Container Apps environment on the existing
 Log Analytics workspace, `az acr build`s each image in the cloud, and
 creates/updates:
 
