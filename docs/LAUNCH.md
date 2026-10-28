@@ -273,7 +273,8 @@ in order:
    backend API contract stable (review tests against production).
    **Approved, and released 2026-10-27** ("Release This Version").
    App Store: https://apps.apple.com/app/id6813650117
-6. **1.0.2 (build 4) submitted 2026-10-27, auto-release on approval:** the
+6. **1.0.2 (build 4) live 2026-10-27** in Canada and the US (submitted
+   the same day, auto-released on approval): the
    item-total fix, the App Store rating prompt, and a new English (U.S.)
    listing (see `APP_STORE.md`). Build 3 (fix only) had been submitted
    first; it was pulled from the queue and replaced by build 4.
