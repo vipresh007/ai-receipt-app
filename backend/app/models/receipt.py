@@ -27,3 +27,9 @@ class Receipt(Base):
 
     # [{ "name": str, "price": "12.34", "quantity": 1 }, ...]
     line_items: Mapped[list[dict]] = mapped_column(JSON, default=list)
+
+    # Set while the receipt is split (docs/SPLITS.md): the owner's share, which
+    # is what counts as their spending. `split_id` isn't a foreign key — splits
+    # already point here, and the pair is kept in step by services/split_store.
+    my_share: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    split_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)

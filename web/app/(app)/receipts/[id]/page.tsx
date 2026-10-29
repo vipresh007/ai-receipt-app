@@ -3,17 +3,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Users } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api";
-import type { ExtractionItem, ReceiptOut } from "@/lib/types";
+import type { ExtractionItem, ReceiptOut, Split } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { fromCents, money, shortDate, toCents } from "@/lib/format";
+import { SplitEditor } from "@/components/split-editor";
+import { SplitSummary } from "@/components/split-summary";
 
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +26,25 @@ export default function ReceiptDetailPage() {
     queryKey: ["receipt", id],
     queryFn: () => apiGet<ReceiptOut>(`v1/receipts/${id}`),
   });
+
+  const { data: split } = useQuery({
+    queryKey: ["split", receipt?.split_id],
+    queryFn: () => apiGet<Split>(`v1/splits/${receipt!.split_id}`),
+    enabled: !!receipt?.split_id,
+  });
+  const [splitting, setSplitting] = useState(false);
+
+  async function afterSplitChange() {
+    setSplitting(false);
+    // The receipt's share changes the dashboard, budgets and lists too.
+    await queryClient.invalidateQueries();
+  }
+
+  async function removeSplit() {
+    if (!split || !window.confirm("Remove this split? The receipt will count in full again.")) return;
+    await apiDelete(`v1/splits/${split.id}`);
+    await afterSplitChange();
+  }
 
   const [merchant, setMerchant] = useState("");
   const [date, setDate] = useState("");
@@ -128,9 +149,16 @@ export default function ReceiptDetailPage() {
         eyebrow={[shortDate(receipt.purchased_at), categoryMeta(receipt.category_slug).label].filter(Boolean).join(" · ")}
         title={receipt.merchant || "Receipt"}
         actions={
-          <span className="font-display text-[28px] font-extrabold tracking-[-0.03em] tabular">
-            {money(receipt.total, receipt.currency)}
-          </span>
+          <div className="text-right">
+            <span className="font-display text-[28px] font-extrabold tracking-[-0.03em] tabular">
+              {money(receipt.total, receipt.currency)}
+            </span>
+            {receipt.my_share != null && (
+              <p className="text-caption text-text-secondary tabular">
+                Your share {money(receipt.my_share, receipt.currency)}
+              </p>
+            )}
+          </div>
         }
       />
 
@@ -238,6 +266,38 @@ export default function ReceiptDetailPage() {
             {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
+      </Card>
+
+      <Card className="space-y-lg">
+        <div className="flex items-center justify-between gap-md">
+          <CardTitle>Split</CardTitle>
+          {!split && !splitting && (
+            <Button variant="secondary" size="sm" onClick={() => setSplitting(true)}>
+              <Users size={15} /> Split this receipt
+            </Button>
+          )}
+        </div>
+        {splitting ? (
+          <SplitEditor
+            receipt={receipt}
+            existing={split}
+            currency={receipt.currency}
+            onDone={afterSplitChange}
+            onCancel={() => setSplitting(false)}
+          />
+        ) : split ? (
+          <SplitSummary
+            split={split}
+            onChange={(next) => queryClient.setQueryData(["split", receipt.split_id], next)}
+            onEdit={() => setSplitting(true)}
+            onRemove={removeSplit}
+          />
+        ) : (
+          <p className="text-callout text-text-secondary">
+            Shared this with someone? Split it by item or evenly and send each person a link
+            with what they owe. Only your share counts toward your spending.
+          </p>
+        )}
       </Card>
     </div>
   );

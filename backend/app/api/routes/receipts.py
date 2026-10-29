@@ -13,7 +13,7 @@ from app.api.deps import get_current_user, get_current_user_optional, get_extrac
 from app.config import get_settings
 from app.date_ranges import month_bounds, month_start
 from app.db import get_session
-from app.models import AnonDevice, AnonRateLimit, Expense, Receipt, User
+from app.models import AnonDevice, AnonRateLimit, Expense, Receipt, Split, User
 from app.schemas.extraction import ExtractedReceipt
 from app.schemas.receipt import (
     ExtractionIn,
@@ -25,6 +25,7 @@ from app.schemas.receipt import (
     ReceiptUpdate,
     RecurringGroupOut,
 )
+from app.services import split_store
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 from app.services.extraction import (
@@ -370,6 +371,8 @@ async def update_receipt(
         expense.amount = receipt.total
         expense.category_slug = receipt.category_slug
         expense.spent_at = receipt.purchased_at or expense.spent_at
+    # A split receipt's spending is the owner's share, recomputed from the new total.
+    await split_store.recompute_receipt_split(session, receipt)
 
     await session.commit()
     await session.refresh(receipt)
@@ -383,6 +386,9 @@ async def delete_receipt(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     receipt = await _owned_receipt(session, user, receipt_id)
+    split = await session.scalar(select(Split).where(Split.receipt_id == receipt.id))
+    if split is not None:
+        await split_store.delete_split(session, split)
     for expense in await session.scalars(select(Expense).where(Expense.receipt_id == receipt.id)):
         await session.delete(expense)
     await session.delete(receipt)
@@ -401,4 +407,6 @@ def _receipt_out(r: Receipt) -> ReceiptOut:
         image_blob_url=r.image_blob_url,
         extraction_confidence=r.extraction_confidence,
         line_items=[ExtractionItemOut(**it) for it in (r.line_items or [])],
+        my_share=f"{r.my_share:.2f}" if r.my_share is not None else None,
+        split_id=r.split_id,
     )

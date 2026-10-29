@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # anything further left is whatever the caller claimed.
     trusted_proxy_hops: int = 1
 
+    # Public web app origin, for share and invite links (docs/SPLITS.md).
+    public_web_url: str = "https://tally.dataeaver.ca"
+
     # Request body caps (bytes), checked from Content-Length before the body is
     # read. Scans are ~0.5 MB; the one-time import of a device's receipts can
     # carry dozens of older full-size photos, so it gets far more room.

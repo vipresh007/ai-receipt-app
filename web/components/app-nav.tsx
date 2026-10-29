@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, ReceiptText, ScanLine, Target } from "lucide-react";
+import { LayoutDashboard, LogOut, ReceiptText, ScanLine, Target, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TallyMark } from "@/components/tally-mark";
 
@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/groups", label: "Groups", icon: Users },
   { href: "/budgets", label: "Budgets", icon: Target },
 ];
 

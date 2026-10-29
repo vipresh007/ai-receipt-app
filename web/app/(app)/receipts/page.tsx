@@ -60,7 +60,7 @@ function groupByMonth(receipts: ReceiptOut[]): MonthGroup[] {
       // grouped) — the comparator always returned -1, so items within a
       // month were never actually ordered by date.
       items: items.slice().sort(byDateDesc),
-      total: items.reduce((s, r) => s + Number(r.total), 0),
+      total: items.reduce((s, r) => s + Number(r.my_share ?? r.total), 0),
     }));
 }
 

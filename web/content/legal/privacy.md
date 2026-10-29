@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: September 18, 2026._
+_Last updated: October 29, 2026._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
 operated by **DATA EAVER INC.**, collects when you use the Tally app and
@@ -17,6 +17,9 @@ choices you have. Questions: **contact@dataeaver.ca**.
 - **Receipts you add** — the photo you capture or upload, and the details
   pulled from it or that you enter (merchant, date, amount, tax, category,
   line items, notes).
+- **Splits and groups** — when you split an expense, the names you type for the
+  people you split with and each person's share. In a group, its name, its
+  members' names, the expenses added and the payments recorded between members.
 
 **Created as you use Tally**
 
@@ -68,6 +71,13 @@ process it on our behalf under contract:
 | Microsoft Azure (incl. Azure OpenAI, PostgreSQL, Blob Storage, Application Insights) | Hosting, database, image storage, AI extraction, diagnostics |
 | Auth0 (Okta) | Sign-in and session management |
 | Google / Apple | Only if you choose their sign-in button |
+
+**People you split with.** When you split an expense, each person gets a link
+that shows them that one expense: the merchant, date, items, the names on the
+split and what each owes. Anyone with the link can open it, so send it only to
+that person. It never shows your receipt photo or anything else in your account,
+and it stops working when you remove the split. Members of a group you join see
+that group's members, expenses, balances and payments.
 
 We may also disclose data if required by law, or to protect our rights, users,
 or the public.

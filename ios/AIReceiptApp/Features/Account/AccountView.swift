@@ -80,6 +80,29 @@ struct AccountView: View {
             }
         }
 
+        NavigationLink {
+            BudgetsView()
+        } label: {
+            AppCard {
+                HStack(spacing: Theme.Space.md) {
+                    Image(systemName: "target").foregroundStyle(Theme.Palette.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Budgets")
+                            .font(.appCallout.weight(.medium))
+                            .foregroundStyle(Theme.Palette.text)
+                        Text("Monthly limits per category")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.appCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+
         AppCard {
             Label {
                 Text("Your receipts sync to the web app and any other device you sign in on.")

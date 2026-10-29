@@ -21,9 +21,9 @@ struct RootView: View {
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
                 .tag(AppTab.receipts)
 
-            BudgetsView()
-                .tabItem { Label("Budgets", systemImage: "target") }
-                .tag(AppTab.budgets)
+            GroupsView()
+                .tabItem { Label("Groups", systemImage: "person.2.fill") }
+                .tag(AppTab.groups)
 
             AccountView()
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }

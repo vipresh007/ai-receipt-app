@@ -16,6 +16,14 @@ final class Receipt {
     /// only, i.e. anonymous or not yet synced). See `AccountSync`.
     var remoteID: String? = nil
 
+    /// Your part of `total` when the receipt is split with others (set by the
+    /// server, see docs/SPLITS.md); `nil` = not split, it's all yours.
+    var myShare: Decimal? = nil
+    var splitID: String? = nil
+
+    /// What this receipt counts for in your spending: your share if split.
+    var spend: Decimal { myShare ?? total }
+
     /// Persisted separately from the row; may be large.
     @Attribute(.externalStorage) var imageData: Data?
 

@@ -48,8 +48,8 @@ struct SpendingSummary {
         let current = receipts.filter { Self.contains(currentInterval, $0.date) }
         let previous = receipts.filter { Self.contains(previousInterval, $0.date) }
 
-        currentMonthTotal = current.reduce(Decimal(0)) { $0 + $1.total }
-        previousMonthTotal = previous.reduce(Decimal(0)) { $0 + $1.total }
+        currentMonthTotal = current.reduce(Decimal(0)) { $0 + $1.spend }
+        previousMonthTotal = previous.reduce(Decimal(0)) { $0 + $1.spend }
 
         currentMonthByCategory = Self.totals(current)
             .map { CategoryTotal(category: $0.key, amount: $0.value) }
@@ -92,7 +92,7 @@ struct SpendingSummary {
             guard let interval = granularity.interval(containing: start, calendar: calendar) else { return nil }
             let total = receipts
                 .filter { interval.contains($0.date) }
-                .reduce(Decimal(0)) { $0 + $1.total }
+                .reduce(Decimal(0)) { $0 + $1.spend }
             return MonthlyPoint(
                 monthStart: interval.start,
                 total: total,
@@ -121,7 +121,7 @@ struct SpendingSummary {
             else { return nil }
             let total = receipts
                 .filter { interval.contains($0.date) }
-                .reduce(Decimal(0)) { $0 + $1.total }
+                .reduce(Decimal(0)) { $0 + $1.spend }
             return MonthlyPoint(monthStart: interval.start, total: total, label: formatter.string(from: start))
         }
     }
@@ -137,7 +137,7 @@ struct SpendingSummary {
         var buckets: [Date: Decimal] = [:]
         for receipt in receipts {
             guard let start = calendar.dateInterval(of: .month, for: receipt.date)?.start else { continue }
-            buckets[start, default: 0] += receipt.total
+            buckets[start, default: 0] += receipt.spend
         }
         return buckets
             .sorted { $0.key > $1.key }
@@ -154,7 +154,7 @@ struct SpendingSummary {
     private static func totals(_ list: [Receipt]) -> [ExpenseCategory: Decimal] {
         var map: [ExpenseCategory: Decimal] = [:]
         for receipt in list {
-            map[receipt.category, default: 0] += receipt.total
+            map[receipt.category, default: 0] += receipt.spend
         }
         return map
     }
@@ -233,7 +233,7 @@ struct SpendingSummary {
                   let interval = calendar.dateInterval(of: .month, for: base) else { return 0 }
             return receipts
                 .filter { $0.category == category && interval.contains($0.date) }
-                .reduce(Decimal(0)) { $0 + $1.total }
+                .reduce(Decimal(0)) { $0 + $1.spend }
         }
 
         for category in ExpenseCategory.allCases {

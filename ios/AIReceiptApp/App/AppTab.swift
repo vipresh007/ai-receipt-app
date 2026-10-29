@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppTab: Hashable {
-    case dashboard, scan, receipts, budgets, account
+    case dashboard, scan, receipts, groups, account
 }
 
 /// Lets a view outside the TabView's own hierarchy (e.g. a "Manage" link on

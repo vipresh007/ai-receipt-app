@@ -92,6 +92,9 @@ class ReceiptOut(BaseModel):
     image_blob_url: str | None
     extraction_confidence: float | None
     line_items: list[ExtractionItemOut]
+    # Set while the receipt is split: your share, which is what counts as spending.
+    my_share: str | None = None
+    split_id: UUID | None = None
 
 
 class RecurringGroupOut(BaseModel):

@@ -69,7 +69,7 @@ struct ReceiptListView: View {
                 id: start,
                 label: start.formatted(.dateTime.month(.wide).year()),
                 items: items,
-                total: items.reduce(Decimal(0)) { $0 + $1.total }
+                total: items.reduce(Decimal(0)) { $0 + $1.spend }
             )
         }
     }
@@ -261,11 +261,29 @@ private struct ReceiptRow: View {
                     .foregroundStyle(Theme.Palette.textSecondary)
             }
             Spacer()
-            Text(receipt.total, format: .currency(code: currencyCode))
-                .font(.appMoney)
-                .foregroundStyle(Theme.Palette.text)
+            ReceiptAmount(receipt: receipt, currencyCode: currencyCode)
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// A receipt's amount in a list: your share (with the full total under it)
+/// when it's split, otherwise the total.
+struct ReceiptAmount: View {
+    let receipt: Receipt
+    let currencyCode: String
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(receipt.spend, format: .currency(code: currencyCode))
+                .font(.appMoney)
+                .foregroundStyle(Theme.Palette.text)
+            if receipt.myShare != nil {
+                Text("of \(receipt.total.formatted(.currency(code: currencyCode)))")
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+            }
+        }
     }
 }
 

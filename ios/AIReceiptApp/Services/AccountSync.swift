@@ -82,10 +82,15 @@ enum AccountSync {
     @MainActor
     static func pushUpdate(_ receipt: Receipt, auth: AuthManager) async {
         guard let id = receipt.remoteID, let client = await client(auth: auth) else { return }
-        _ = try? await client.updateReceipt(
-            id: id,
-            body: ReceiptExtractionAPIClient.ReceiptWrite(from: receipt, includeImage: false)
-        )
+        guard
+            let dto = try? await client.updateReceipt(
+                id: id,
+                body: ReceiptExtractionAPIClient.ReceiptWrite(from: receipt, includeImage: false)
+            )
+        else { return }
+        // A split receipt's shares follow its new total and items.
+        receipt.myShare = dto.myShare.flatMap { Decimal(string: $0) }
+        receipt.splitID = dto.splitID
     }
 
     /// Create a not-yet-synced local receipt on the account (manual entry — a

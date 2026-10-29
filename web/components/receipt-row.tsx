@@ -27,9 +27,18 @@ export function ReceiptRowContent({ receipt }: { receipt: ReceiptOut }) {
           {[shortDate(receipt.purchased_at), meta.label].filter(Boolean).join(" · ")}
         </p>
       </div>
-      <p className="font-mono text-callout tabular">
-        {money(receipt.total, receipt.currency)}
-      </p>
+      {receipt.my_share != null ? (
+        <div className="text-right">
+          <p className="font-mono text-callout tabular">{money(receipt.my_share, receipt.currency)}</p>
+          <p className="font-mono text-[11px] text-text-tertiary tabular">
+            of {money(receipt.total, receipt.currency)}
+          </p>
+        </div>
+      ) : (
+        <p className="font-mono text-callout tabular">
+          {money(receipt.total, receipt.currency)}
+        </p>
+      )}
     </>
   );
 }

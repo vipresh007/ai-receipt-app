@@ -48,6 +48,12 @@ struct ReceiptDetailView: View {
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.decimalPad)
                 }
+                if let myShare = receipt.myShare {
+                    LabeledContent("Your share") {
+                        Text(myShare, format: .currency(code: currencyCode))
+                            .font(.appMoney)
+                    }
+                }
             }
 
             LedgerSection("Category") {
@@ -82,6 +88,8 @@ struct ReceiptDetailView: View {
                     }
                 }
             }
+
+            ReceiptSplitSection(receipt: receipt)
         }
         .ledgerBackground()
         .navigationTitle(receipt.merchant)

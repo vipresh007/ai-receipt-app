@@ -194,7 +194,7 @@ struct ReceiptExtractionAPIClient {
         return request
     }
 
-    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let data: Data
         let response: URLResponse
         do {
@@ -213,7 +213,7 @@ struct ReceiptExtractionAPIClient {
         return (data, http)
     }
 
-    private static func expectOK(_ http: HTTPURLResponse, _ data: Data, _ context: String) throws {
+    static func expectOK(_ http: HTTPURLResponse, _ data: Data, _ context: String) throws {
         guard (200..<300).contains(http.statusCode) else {
             throw ReceiptExtractionError.server(
                 errorMessage(from: data) ?? "\(context) (HTTP \(http.statusCode))."
@@ -359,9 +359,13 @@ struct ReceiptExtractionAPIClient {
         let imageBlobURL: String?
         let extractionConfidence: Double?
         let lineItems: [Item]
+        let myShare: String?
+        let splitID: String?
 
         enum CodingKeys: String, CodingKey {
             case id, merchant, total, tax, currency
+            case myShare = "my_share"
+            case splitID = "split_id"
             case purchasedAt = "purchased_at"
             case categorySlug = "category_slug"
             case imageBlobURL = "image_blob_url"
@@ -394,6 +398,8 @@ struct ReceiptExtractionAPIClient {
                 items: decodedItems
             )
             receipt.remoteID = id
+            receipt.myShare = myShare.flatMap { Decimal(string: $0) }
+            receipt.splitID = splitID
             return receipt
         }
 
@@ -406,6 +412,8 @@ struct ReceiptExtractionAPIClient {
             receipt.category = ExpenseCategory(rawValue: categorySlug) ?? receipt.category
             receipt.items = decodedItems
             receipt.remoteID = id
+            receipt.myShare = myShare.flatMap { Decimal(string: $0) }
+            receipt.splitID = splitID
         }
     }
 

@@ -460,9 +460,7 @@ struct RecentReceiptsCard: View {
                     .foregroundStyle(Theme.Palette.textTertiary)
             }
             Spacer()
-            Text(receipt.total, format: .currency(code: currencyCode))
-                .font(.appMoney)
-                .foregroundStyle(Theme.Palette.text)
+            ReceiptAmount(receipt: receipt, currencyCode: currencyCode)
         }
         .padding(.vertical, Theme.Space.md)
         .contentShape(Rectangle())

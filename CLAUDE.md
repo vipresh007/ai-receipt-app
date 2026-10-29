@@ -125,8 +125,11 @@ Insights** (telemetry).
 `category`, `min_amount`/`max_amount`. Beyond the core loop: `GET
 /v1/receipts/recurring` (same-merchant-across-months detection, mirrored in
 `app/services/recurring.py` and iOS's `RecurringDetector`), `GET /v1/expenses/
-summary|trend`, and `GET/PUT/DELETE /v1/budgets/{category}` (per-category
-monthly limits). Request/response shapes and the Azure OpenAI prompt live in
+summary|trend`, `GET/PUT/DELETE /v1/budgets/{category}` (per-category
+monthly limits), and splits/groups (`/v1/splits`, `/v1/groups`, public
+`/v1/public/splits|groups/{token}` behind the web's `/s/` and `/join/` pages;
+see [`docs/SPLITS.md`](docs/SPLITS.md)). A split receipt carries `my_share`,
+and every spending total uses it (server `expenses`, iOS `Receipt.spend`). Request/response shapes and the Azure OpenAI prompt live in
 [`docs/EXTRACTION_API.md`](docs/EXTRACTION_API.md). The iOS side is
 `ios/AIReceiptApp/Services/ReceiptExtractionAPIClient.swift`; the backend side is
 `backend/app/api/routes/receipts.py` + `services/extraction.py`. Change both

@@ -12,31 +12,33 @@ struct BudgetsView: View {
     @State private var showingAdd = false
     @State private var editingBudget: ReceiptExtractionAPIClient.BudgetDTO?
 
+    // Pushed from the Dashboard's Budgets card or the Account screen, so it
+    // brings no NavigationStack of its own.
     var body: some View {
-        NavigationStack {
-            Group {
-                switch auth.state {
-                case .signedIn:
-                    signedInContent
-                case .anonymous:
-                    anonymousPrompt
+        Group {
+            switch auth.state {
+            case .signedIn:
+                signedInContent
+            case .anonymous:
+                anonymousPrompt
+            }
+        }
+        .background(Theme.Palette.bg.ignoresSafeArea())
+        .navigationTitle("Budgets")
+        .toolbar {
+            if auth.isSignedIn, !budgets.isEmpty {
+                ToolbarItem {
+                    EditButton()
                 }
             }
-            .navigationTitle("Budgets")
-            .toolbar {
-                if auth.isSignedIn, !budgets.isEmpty {
-                    ToolbarItem {
-                        EditButton()
+            if auth.isSignedIn {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAdd = true
+                    } label: {
+                        Image(systemName: "plus")
                     }
-                }
-                if auth.isSignedIn {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            showingAdd = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                    }
+                    .accessibilityLabel("Add budget")
                 }
             }
         }

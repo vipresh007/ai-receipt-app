@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var anchor: Date = .now
     @State private var granularity: Granularity = .month
     @State private var budgets: [ReceiptExtractionAPIClient.BudgetDTO] = []
+    @State private var showingBudgets = false
 
     private let calendar = Calendar.current
 
@@ -170,7 +171,7 @@ struct DashboardView: View {
                                 InsightsCard(insights: summary.insights)
                             }
                             if granularity == .month, !budgets.isEmpty {
-                                BudgetsSummaryCard(budgets: budgets, onManage: { router.selection = .budgets })
+                                BudgetsSummaryCard(budgets: budgets, onManage: { showingBudgets = true })
                             }
                             RecentReceiptsCard(
                                 title: isCurrentPeriod ? "Recent receipts" : "Receipts",
@@ -196,6 +197,7 @@ struct DashboardView: View {
             .background(Theme.Palette.bg.ignoresSafeArea())
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $showingBudgets) { BudgetsView() }
             // The greeting header is the page title; pushed screens (All
             // months, receipt detail) still show their own bar.
             .toolbar(receipts.isEmpty ? .visible : .hidden, for: .navigationBar)

@@ -24,7 +24,7 @@ const vars = (v: Record<string, string | number>) => v as CSSProperties;
 
 /** Apple's own badge artwork (public/app-store-badge.svg, from
  *  developer.apple.com) — Apple requires it unaltered. */
-function AppStoreBadge({ className }: { className?: string }) {
+export function AppStoreBadge({ className }: { className?: string }) {
   return (
     <a href={APP_STORE_URL} className={cn("inline-flex shrink-0", className)} aria-label="Download Tally on the App Store">
       <Image src="/app-store-badge.svg" alt="Download on the App Store" width={150} height={50} unoptimized />
