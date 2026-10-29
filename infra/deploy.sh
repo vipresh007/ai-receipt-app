@@ -142,6 +142,12 @@ if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
     STORAGE_CONN="$(az storage account show-connection-string -n "$_sa" -g "$RESOURCE_GROUP" --query connectionString -o tsv)"
   fi
 
+  # Invite emails (Azure Communication Services). Optional: without them the
+  # API just doesn't send email. `secret set` / `--set-env-vars` only add, so
+  # a value set once on the container app survives deploys that lack it.
+  ACS_CONN="${ACS_EMAIL_CONNECTION_STRING:-$(_from_env_file ACS_EMAIL_CONNECTION_STRING "$ROOT/backend/.env")}"
+  EMAIL_FROM="${EMAIL_SENDER:-$(_from_env_file EMAIL_SENDER "$ROOT/backend/.env")}"
+
   say "Deploy $API_APP"
   api_secrets="database-url=$DB_URL aoai-key=$OPENAI_KEY storage-conn=$STORAGE_CONN appi-conn=$APPI_CONN"
   api_env="ENVIRONMENT=production LOG_LEVEL=INFO AUTO_CREATE_TABLES=true"
@@ -151,6 +157,10 @@ if [ "$TARGET" = "backend" ] || [ "$TARGET" = "both" ]; then
   api_env="$api_env AZURE_OPENAI_API_VERSION=2025-04-01-preview AZURE_OPENAI_DEPLOYMENT=$OPENAI_DEPLOYMENT"
   api_env="$api_env AZURE_STORAGE_CONNECTION_STRING=secretref:storage-conn AZURE_STORAGE_CONTAINER=$STORAGE_CONTAINER"
   api_env="$api_env APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appi-conn"
+  if [ -n "$ACS_CONN" ] && [ -n "$EMAIL_FROM" ]; then
+    api_secrets="$api_secrets acs-email=$ACS_CONN"
+    api_env="$api_env ACS_EMAIL_CONNECTION_STRING=secretref:acs-email EMAIL_SENDER=$EMAIL_FROM"
+  fi
   API_FQDN="$(deploy_app "$API_APP" "$ACR_SERVER/ai-receipt-api:$TAG" 8000 "$api_secrets" "$api_env")"
   echo "backend: https://$API_FQDN"
 fi

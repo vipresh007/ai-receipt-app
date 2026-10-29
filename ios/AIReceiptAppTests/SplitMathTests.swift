@@ -92,4 +92,21 @@ final class SplitMathTests: XCTestCase {
         XCTAssertEqual(split.participants.first?.shareUrl, "https://tally.dataeaver.ca/s/abc")
         XCTAssertEqual(split.payer?.displayName, "Jordan")
     }
+
+    func testPersonDecodesFromServerJSON() throws {
+        let json = """
+            {"id": "p1", "name": "Sam", "email": null, "has_account": false,
+             "invite_url": "https://tally.dataeaver.ca/p/xyz", "invited_at": null,
+             "balance": "-12.50", "currency": "CAD", "can_email": false,
+             "splits": [], "payments": [{"id": "pay1", "you_paid": true, "amount": "5.00",
+               "note": "", "date": "2026-10-29", "can_delete": true}]}
+            """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let person = try decoder.decode(ReceiptExtractionAPIClient.PersonDetailDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(person.balanceValue, Decimal(string: "-12.50"))
+        XCTAssertEqual(person.inviteUrl, "https://tally.dataeaver.ca/p/xyz")
+        XCTAssertEqual(person.payments.first?.youPaid, true)
+        XCTAssertEqual(PersonBalanceBadge.text(person.balanceValue, currency: "CAD", name: "Sam").hasPrefix("You owe"), true)
+    }
 }

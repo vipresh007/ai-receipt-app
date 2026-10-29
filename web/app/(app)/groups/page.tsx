@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { BalanceTag } from "@/components/balance-tag";
+import { PeopleSection } from "@/components/people-section";
 
 export default function GroupsPage() {
   const router = useRouter();
@@ -48,15 +49,19 @@ export default function GroupsPage() {
   return (
     <div className="space-y-2xl">
       <PageHeader
-        eyebrow="Shared expenses"
-        title="Groups"
-        description="Trips, housemates, a standing dinner. Add what you spend together and Tally keeps a running tab of who owes whom."
-        actions={
-          <Button size="sm" variant={creating ? "secondary" : "primary"} onClick={() => setCreating(!creating)}>
-            {creating ? "Cancel" : "New group"}
-          </Button>
-        }
+        eyebrow="Split with others"
+        title="Shared"
+        description="Split with anyone by name, no group needed, and Tally keeps a running tab with each person. Groups are for trips, housemates, a standing dinner."
       />
+
+      <PeopleSection />
+
+      <div className="flex items-center justify-between gap-md">
+        <h2 className="font-display text-[22px] font-extrabold tracking-[-0.02em]">Groups</h2>
+        <Button size="sm" variant={creating ? "secondary" : "primary"} onClick={() => setCreating(!creating)}>
+          {creating ? "Cancel" : "New group"}
+        </Button>
+      </div>
 
       {creating && (
         <Card>
@@ -125,8 +130,7 @@ export default function GroupsPage() {
           <Card className="space-y-sm">
             <CardTitle>No groups yet</CardTitle>
             <p className="text-callout text-text-secondary">
-              Make one for anyone you split costs with. You can also split a single receipt with
-              anyone, no group needed, from the receipt itself.
+              Make one when the same few people share lots of costs, like a trip or a flat.
             </p>
           </Card>
         )

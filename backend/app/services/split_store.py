@@ -20,6 +20,7 @@ from app.models import (
     Expense,
     Group,
     GroupMember,
+    Person,
     Receipt,
     Settlement,
     Split,
@@ -113,6 +114,21 @@ async def _members(session: AsyncSession, group_id: uuid.UUID) -> list[GroupMemb
 # ─────────────────────────── splits ───────────────────────────
 
 
+async def _person_named(session: AsyncSession, user: User, name: str) -> Person:
+    """Your saved person with this name (any case), or a new one."""
+    person = await session.scalar(
+        select(Person)
+        .where(Person.owner_user_id == user.id, func.lower(Person.display_name) == name.lower())
+        .order_by(Person.created_at)
+        .limit(1)
+    )
+    if person is None:
+        person = Person(owner_user_id=user.id, display_name=name[:120], invite_token=new_token())
+        session.add(person)
+        await session.flush()
+    return person
+
+
 async def _participants(session: AsyncSession, split_id: uuid.UUID) -> list[SplitParticipant]:
     return list(
         await session.scalars(
@@ -162,8 +178,10 @@ async def save_split(
     # Build participants.
     rows: list[SplitParticipant] = []
     seen_members: set[uuid.UUID] = set()
+    seen_people: set[uuid.UUID] = set()
     for position, p in enumerate(data.participants):
         member_id: uuid.UUID | None = None
+        person_id: uuid.UUID | None = None
         user_id: uuid.UUID | None = None
         if group is not None:
             if p.is_me:
@@ -182,14 +200,30 @@ async def save_split(
         else:
             if p.member_id is not None:
                 raise _bad("Pick a group to split with its members.")
-            user_id = user.id if p.is_me else None
-            name = display_name_for(user) if p.is_me else p.name.strip()
-            if not name:
-                raise _bad("Every person needs a name.")
+            if p.is_me:
+                user_id = user.id
+                name = display_name_for(user)
+            else:
+                # Everyone else is a saved person: picked, or saved now by name.
+                if p.person_id is not None:
+                    person = await session.get(Person, p.person_id)
+                    if person is None or person.owner_user_id != user.id:
+                        raise _bad("Person not found.", status.HTTP_404_NOT_FOUND)
+                elif p.name.strip():
+                    person = await _person_named(session, user, p.name.strip())
+                else:
+                    raise _bad("Every person needs a name.")
+                if person.id in seen_people:
+                    raise _bad("Someone is in this split twice.")
+                seen_people.add(person.id)
+                person_id = person.id
+                user_id = person.user_id
+                name = person.display_name
         custom = _money(p.amount, "amount") if data.mode == "custom" else None
         rows.append(
             SplitParticipant(
                 member_id=member_id,
+                person_id=person_id,
                 user_id=user_id,
                 display_name=name[:120],
                 position=position,
@@ -231,9 +265,9 @@ async def save_split(
     else:
         # Keep each person's link when they're still on the split.
         old = await _participants(session, split.id)
-        old_by_key = {(o.member_id, o.user_id, o.display_name): o for o in old}
+        old_by_key = {(o.member_id, o.person_id, o.user_id): o for o in old}
         for row in rows:
-            prior = old_by_key.get((row.member_id, row.user_id, row.display_name))
+            prior = old_by_key.get((row.member_id, row.person_id, row.user_id))
             if prior is not None:
                 row.share_token = prior.share_token
                 row.settled_at = prior.settled_at
@@ -354,6 +388,7 @@ async def split_out(
                 if r.member_id and r.member_id in (members or {})
                 else r.display_name,
                 member_id=r.member_id,
+                person_id=r.person_id,
                 is_me=is_me(r),
                 is_payer=r.is_payer,
                 item_indexes=list(r.item_indexes or []),
@@ -370,12 +405,20 @@ async def split_out(
 
 
 async def require_split(session: AsyncSession, split_id: uuid.UUID, user: User) -> Split:
-    """A split the caller may see: their own, or one in a group they're in."""
+    """A split the caller may see: their own, one they're on, or one in a
+    group they're in."""
     split = await session.get(Split, split_id)
     if split is not None and split.owner_user_id != user.id:
-        visible = split.group_id is not None and await session.scalar(
-            select(GroupMember.id).where(
-                GroupMember.group_id == split.group_id, GroupMember.user_id == user.id
+        visible = await session.scalar(
+            select(SplitParticipant.id).where(
+                SplitParticipant.split_id == split.id, SplitParticipant.user_id == user.id
+            )
+        ) or (
+            split.group_id is not None
+            and await session.scalar(
+                select(GroupMember.id).where(
+                    GroupMember.group_id == split.group_id, GroupMember.user_id == user.id
+                )
             )
         )
         if not visible:

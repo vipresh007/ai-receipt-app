@@ -9,14 +9,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.models import Group, GroupMember, Split, SplitParticipant
+from app.models import Group, GroupMember, Person, Split, SplitParticipant, User
 from app.schemas.receipt import ExtractionItemOut
 from app.schemas.split import (
     PublicGroupOut,
     PublicMemberOut,
     PublicParticipantOut,
+    PublicPersonOut,
     PublicSplitOut,
 )
+from app.services import people_store, split_store
 
 router = APIRouter()
 
@@ -93,4 +95,27 @@ async def public_group(
             PublicMemberOut(id=m.id, display_name=m.display_name, claimed=m.user_id is not None)
             for m in members
         ],
+    )
+
+
+@router.get("/people/{invite_token}", response_model=PublicPersonOut)
+async def public_person(
+    invite_token: str, session: AsyncSession = Depends(get_session)
+) -> PublicPersonOut:
+    """An invite to someone's shared expenses: who's asking, and where you
+    stand (from your side)."""
+    person = await session.scalar(select(Person).where(Person.invite_token == invite_token))
+    inviter = await session.get(User, person.owner_user_id) if person else None
+    if person is None or inviter is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This invite link isn't valid any more.")
+    splits, rows = await people_store.shared_splits(session, inviter, person)
+    paid = await people_store.payments(session, inviter, person)
+    owed_to_inviter = people_store.net_balance(inviter, person, splits, rows, paid)
+    return PublicPersonOut(
+        from_name=split_store.display_name_for(inviter),
+        name=person.display_name,
+        claimed=person.user_id is not None,
+        balance=f"{-owed_to_inviter:.2f}",
+        currency=splits[0].currency if splits else "CAD",
+        expense_count=len(splits),
     )

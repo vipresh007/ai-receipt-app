@@ -18,8 +18,10 @@ choices you have. Questions: **contact@dataeaver.ca**.
   pulled from it or that you enter (merchant, date, amount, tax, category,
   line items, notes).
 - **Splits and groups** — when you split an expense, the names you type for the
-  people you split with and each person's share. In a group, its name, its
-  members' names, the expenses added and the payments recorded between members.
+  people you split with, each person's share, the payments you record with
+  them, and their email address if you choose to add it. In a group, its name,
+  its members' names, the expenses added and the payments recorded between
+  members.
 
 **Created as you use Tally**
 
@@ -68,7 +70,7 @@ process it on our behalf under contract:
 
 | Provider | Purpose |
 |---|---|
-| Microsoft Azure (incl. Azure OpenAI, PostgreSQL, Blob Storage, Application Insights) | Hosting, database, image storage, AI extraction, diagnostics |
+| Microsoft Azure (incl. Azure OpenAI, PostgreSQL, Blob Storage, Application Insights, Communication Services) | Hosting, database, image storage, AI extraction, diagnostics, invite emails |
 | Auth0 (Okta) | Sign-in and session management |
 | Google / Apple | Only if you choose their sign-in button |
 
@@ -78,6 +80,14 @@ split and what each owes. Anyone with the link can open it, so send it only to
 that person. It never shows your receipt photo or anything else in your account,
 and it stops working when you remove the split. Members of a group you join see
 that group's members, expenses, balances and payments.
+
+**Invites.** Each person you split with has an invite link. If you add their
+email and ask us to, we send that address one email with the invite link and
+where the two of you stand; we don't add it to any mailing list, and we don't
+email it again unless you ask. If they accept, by signing in from the link,
+they see the expenses you share with them and your balance from their side.
+Someone whose email has been verified by their sign-in provider is connected
+to invites sent to that address automatically.
 
 We may also disclose data if required by law, or to protect our rights, users,
 or the public.

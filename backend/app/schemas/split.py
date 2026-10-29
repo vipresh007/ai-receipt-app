@@ -17,6 +17,8 @@ class ParticipantIn(BaseModel):
 
     is_me: bool = False
     member_id: UUID | None = None
+    # One-off splits: a saved person, or a new `name` (saved as a person).
+    person_id: UUID | None = None
     name: str = Field(default="", max_length=120)
     is_payer: bool = False
     item_indexes: list[int] = Field(default_factory=list, max_length=500)
@@ -41,6 +43,7 @@ class ParticipantOut(BaseModel):
     id: UUID
     display_name: str
     member_id: UUID | None
+    person_id: UUID | None
     is_me: bool
     is_payer: bool
     item_indexes: list[int]
@@ -141,6 +144,59 @@ class JoinIn(BaseModel):
     member_id: UUID | None = None
 
 
+# ─────────────────────────── people ───────────────────────────
+
+
+class PersonIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str | None = Field(default=None, max_length=320)
+    send_invite: bool = False
+
+
+class PersonPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    # "" removes it.
+    email: str | None = Field(default=None, max_length=320)
+
+
+class PersonOut(BaseModel):
+    id: UUID
+    name: str
+    email: str | None
+    # They accepted the invite: they see what you share from their side.
+    has_account: bool
+    invite_url: str
+    invited_at: str | None
+    # Positive = they owe you; negative = you owe them.
+    balance: str
+    currency: str
+    # Tally can email this person their invite (an address is set and email
+    # is configured).
+    can_email: bool
+
+
+class PersonPaymentIn(BaseModel):
+    # True: you paid them. False: they paid you.
+    you_paid: bool
+    amount: str = Field(max_length=20)
+    note: str = Field(default="", max_length=200)
+
+
+class PersonPaymentOut(BaseModel):
+    id: UUID
+    you_paid: bool
+    amount: str
+    note: str
+    date: str
+    # Recorded by you (the other side's records are theirs to remove).
+    can_delete: bool
+
+
+class PersonDetailOut(PersonOut):
+    splits: list[SplitOut]
+    payments: list[PersonPaymentOut]
+
+
 # ─────────────────────────── public (no account) ───────────────────────────
 
 
@@ -174,3 +230,15 @@ class PublicMemberOut(BaseModel):
 class PublicGroupOut(BaseModel):
     name: str
     members: list[PublicMemberOut]
+
+
+class PublicPersonOut(BaseModel):
+    """What an invite link shows: who invited you and where you stand."""
+
+    from_name: str
+    name: str
+    claimed: bool
+    # From the invitee's side: positive = you're owed; negative = you owe.
+    balance: str
+    currency: str
+    expense_count: int

@@ -5,7 +5,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, budgets, expenses, groups, health, public, receipts, splits
+from app.api.routes import (
+    auth,
+    budgets,
+    expenses,
+    groups,
+    health,
+    people,
+    public,
+    receipts,
+    splits,
+)
 from app.config import get_settings
 from app.telemetry import configure_telemetry
 
@@ -72,6 +82,7 @@ app.include_router(expenses.router, prefix="/v1/expenses", tags=["expenses"])
 app.include_router(budgets.router, prefix="/v1/budgets", tags=["budgets"])
 app.include_router(splits.router, prefix="/v1", tags=["splits"])
 app.include_router(groups.router, prefix="/v1/groups", tags=["groups"])
+app.include_router(people.router, prefix="/v1/people", tags=["people"])
 app.include_router(public.router, prefix="/v1/public", tags=["public"])
 
 

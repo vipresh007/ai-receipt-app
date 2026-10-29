@@ -11,6 +11,8 @@ from app.models import (
     Expense,
     Group,
     GroupMember,
+    Person,
+    PersonPayment,
     Receipt,
     Settlement,
     Split,
@@ -67,6 +69,21 @@ async def delete_me(
     await session.execute(
         update(GroupMember).where(GroupMember.user_id == user.id).values(user_id=None)
     )
+    # Your people and payments go; on other people's lists you go back to
+    # being just a name.
+    my_people = select(Person.id).where(Person.owner_user_id == user.id)
+    await session.execute(
+        update(SplitParticipant)
+        .where(SplitParticipant.person_id.in_(my_people))
+        .values(person_id=None)
+    )
+    await session.execute(
+        sa_delete(PersonPayment).where(
+            (PersonPayment.owner_user_id == user.id) | PersonPayment.person_id.in_(my_people)
+        )
+    )
+    await session.execute(sa_delete(Person).where(Person.owner_user_id == user.id))
+    await session.execute(update(Person).where(Person.user_id == user.id).values(user_id=None))
     await session.execute(
         update(Group).where(Group.owner_user_id == user.id).values(owner_user_id=None)
     )

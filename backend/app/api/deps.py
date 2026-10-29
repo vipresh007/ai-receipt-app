@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import TokenError, verify_access_token
 from app.db import get_session
 from app.models import User
+from app.services import people_store
 from app.services.auth0 import fetch_userinfo
 from app.services.azure_openai import AzureOpenAIExtractor
 
@@ -73,23 +74,34 @@ async def _provision_user(session: AsyncSession, sub: str, access_token: str) ->
 
     email = (info.get("email") or "").strip().lower()
     name = info.get("name") or info.get("nickname") or ""
+    # Anyone can sign up with an address they don't own unless the provider
+    # verified it, so nothing keyed by email is handed over without this.
+    verified = bool(email) and info.get("email_verified") is True
 
     # Link an existing email/password-era row if the addresses match.
     existing = await session.scalar(select(User).where(User.email == email)) if email else None
-    if existing is not None:
+    if existing is not None and verified:
         existing.auth0_sub = sub
+        existing.email_verified = True
         if not existing.display_name:
             existing.display_name = name
+        await people_store.link_invited_email(session, existing)
         await session.commit()
         await session.refresh(existing)
         return existing
 
     user = User(
         auth0_sub=sub,
-        email=email or f"{sub}@users.noreply.ai-receipt",
+        # An unverified address that's already taken stays off this account.
+        email=email if email and existing is None else f"{sub}@users.noreply.ai-receipt",
+        email_verified=verified,
         display_name=name,
     )
     session.add(user)
+    await session.flush()
+    if verified:
+        # People who were invited at this address become this account.
+        await people_store.link_invited_email(session, user)
     await session.commit()
     await session.refresh(user)
     return user

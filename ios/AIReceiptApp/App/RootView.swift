@@ -22,7 +22,7 @@ struct RootView: View {
                 .tag(AppTab.receipts)
 
             GroupsView()
-                .tabItem { Label("Groups", systemImage: "person.2.fill") }
+                .tabItem { Label("Shared", systemImage: "person.2.fill") }
                 .tag(AppTab.groups)
 
             AccountView()

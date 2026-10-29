@@ -37,3 +37,39 @@ export function BalanceTag({
     </span>
   );
 }
+
+/** Between you and one person (positive = they owe you): "Sam owes you $20",
+ * "You owe Sam $20", "All square". */
+export function personBalanceText(balance: string | number, currency: string, name: string): string {
+  const n = Number(balance);
+  if (n > 0) return `${name} owes you ${money(n, currency)}`;
+  if (n < 0) return `You owe ${name} ${money(-n, currency)}`;
+  return "All square";
+}
+
+export function PersonBalanceTag({
+  balance,
+  currency,
+  name,
+  className,
+}: {
+  balance: string | number;
+  currency: string;
+  name: string;
+  className?: string;
+}) {
+  const n = Number(balance);
+  return (
+    <span
+      className={cn(
+        "whitespace-nowrap rounded-pill px-md py-xs text-caption font-medium tabular",
+        n > 0 && "bg-success-muted text-success",
+        n < 0 && "bg-danger-muted text-danger",
+        n === 0 && "bg-surface-2 text-text-tertiary",
+        className,
+      )}
+    >
+      {personBalanceText(balance, currency, name)}
+    </span>
+  );
+}

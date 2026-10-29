@@ -68,6 +68,44 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("DELETE", "v1/groups/\(groupID)/settlements/\(id)")
     }
 
+    // MARK: - People (split with anyone, no group)
+
+    func people() async throws -> [PersonDTO] {
+        try await splitsCall("GET", "v1/people")
+    }
+
+    func person(id: String) async throws -> PersonDetailDTO {
+        try await splitsCall("GET", "v1/people/\(id)")
+    }
+
+    func createPerson(name: String, email: String?) async throws -> PersonDetailDTO {
+        try await splitsCall("POST", "v1/people", body: PersonWrite(name: name, email: email))
+    }
+
+    func updatePerson(id: String, name: String? = nil, email: String? = nil) async throws -> PersonDetailDTO {
+        try await splitsCall("PATCH", "v1/people/\(id)", body: PersonWrite(name: name, email: email))
+    }
+
+    /// Email them their invite link (needs an address on file).
+    func invitePerson(id: String) async throws -> PersonDetailDTO {
+        try await splitsCall("POST", "v1/people/\(id)/invite", body: [String: String]())
+    }
+
+    func deletePerson(id: String) async throws {
+        try await splitsSend("DELETE", "v1/people/\(id)")
+    }
+
+    func addPersonPayment(personID: String, youPaid: Bool, amount: Decimal) async throws -> PersonDetailDTO {
+        try await splitsCall(
+            "POST", "v1/people/\(personID)/payments",
+            body: PersonPaymentWrite(youPaid: youPaid, amount: amount.wireString, note: "")
+        )
+    }
+
+    func deletePersonPayment(personID: String, id: String) async throws -> PersonDetailDTO {
+        try await splitsCall("DELETE", "v1/people/\(personID)/payments/\(id)")
+    }
+
     // MARK: - Transport
 
     private static let splitsEncoder: JSONEncoder = {
@@ -105,6 +143,7 @@ extension ReceiptExtractionAPIClient {
     struct ParticipantWrite: Encodable {
         var isMe: Bool?
         var memberId: String?
+        var personId: String?
         var name: String?
         var isPayer: Bool?
         var itemIndexes: [Int]
@@ -145,6 +184,7 @@ extension ReceiptExtractionAPIClient {
         let id: String
         let displayName: String
         let memberId: String?
+        let personId: String?
         let isMe: Bool
         let isPayer: Bool
         let itemIndexes: [Int]
@@ -174,6 +214,59 @@ extension ReceiptExtractionAPIClient {
         var myShareValue: Decimal? { myShare.flatMap { Decimal(string: $0) } }
         var payer: ParticipantDTO? { participants.first(where: \.isPayer) }
         var day: Date { ReceiptExtractionAPIClient.isoDay(date) ?? .now }
+    }
+
+    struct PersonWrite: Encodable {
+        var name: String?
+        var email: String?
+    }
+
+    struct PersonPaymentWrite: Encodable {
+        let youPaid: Bool
+        let amount: String
+        let note: String
+    }
+
+    /// Someone you split with outside groups. Balance: positive = they owe you.
+    struct PersonDTO: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String
+        let email: String?
+        let hasAccount: Bool
+        let inviteUrl: String
+        let invitedAt: String?
+        let balance: String
+        let currency: String
+        let canEmail: Bool
+
+        var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
+    }
+
+    struct PersonPaymentDTO: Decodable, Identifiable, Hashable {
+        let id: String
+        let youPaid: Bool
+        let amount: String
+        let note: String
+        let date: String
+        let canDelete: Bool
+
+        var amountValue: Decimal { Decimal(string: amount) ?? 0 }
+    }
+
+    struct PersonDetailDTO: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String
+        let email: String?
+        let hasAccount: Bool
+        let inviteUrl: String
+        let invitedAt: String?
+        let balance: String
+        let currency: String
+        let canEmail: Bool
+        let splits: [SplitDTO]
+        let payments: [PersonPaymentDTO]
+
+        var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
     }
 
     struct GroupSummaryDTO: Decodable, Identifiable, Hashable {

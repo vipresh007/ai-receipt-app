@@ -75,12 +75,21 @@ class Settings(BaseSettings):
     azure_storage_connection_string: str = ""
     azure_storage_container: str = "receipts"
 
+    # Azure Communication Services Email: invites to people you split with.
+    # Empty = no emails; the invite link still works when shared by hand.
+    acs_email_connection_string: str = ""
+    email_sender: str = ""  # e.g. DoNotReply@dataeaver.ca (a verified ACS sender)
+
     # Monitoring
     applicationinsights_connection_string: str = ""
 
     @property
     def azure_openai_configured(self) -> bool:
         return bool(self.azure_openai_endpoint and self.azure_openai_api_key)
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.acs_email_connection_string and self.email_sender)
 
     @property
     def blob_configured(self) -> bool:

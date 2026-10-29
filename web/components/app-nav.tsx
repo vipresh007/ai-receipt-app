@@ -10,7 +10,7 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
-  { href: "/groups", label: "Groups", icon: Users },
+  { href: "/groups", label: "Shared", icon: Users },
   { href: "/budgets", label: "Budgets", icon: Target },
 ];
 
@@ -27,7 +27,10 @@ export function AppNav({ displayName }: { displayName?: string }) {
       </Link>
 
       {LINKS.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
+        const active =
+          pathname === href ||
+          pathname.startsWith(`${href}/`) ||
+          (href === "/groups" && pathname.startsWith("/people/"));
         return (
           <Link
             key={href}

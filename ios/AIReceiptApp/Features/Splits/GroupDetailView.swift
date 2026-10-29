@@ -176,7 +176,7 @@ struct GroupDetailView: View {
                         Button("Remove expense", role: .destructive) { Task { await removeSplit(split) } }
                     }
                 } label: {
-                    ExpenseRow(split: split)
+                    SharedExpenseRow(split: split)
                 }
             }
         } header: {
@@ -322,51 +322,6 @@ struct GroupDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-}
-
-private struct ExpenseRow: View {
-    let split: ReceiptExtractionAPIClient.SplitDTO
-
-    var body: some View {
-        HStack(spacing: Theme.Space.md) {
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    if split.receiptId != nil {
-                        Image(systemName: "doc.text")
-                            .font(.appCaption)
-                            .foregroundStyle(Theme.Palette.textTertiary)
-                    }
-                    Text(split.description.isEmpty ? "Expense" : split.description)
-                        .font(.appCallout.weight(.medium))
-                        .lineLimit(1)
-                }
-                Text(subtitle)
-                    .font(.appCaption)
-                    .foregroundStyle(Theme.Palette.textTertiary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 1) {
-                if let mine = split.myShareValue {
-                    Text(mine, format: .currency(code: split.currency)).font(.appMoney)
-                    Text("your share")
-                        .font(.appCaption)
-                        .foregroundStyle(Theme.Palette.textTertiary)
-                } else {
-                    Text("not in it")
-                        .font(.appCaption)
-                        .foregroundStyle(Theme.Palette.textTertiary)
-                }
-            }
-        }
-    }
-
-    private var subtitle: String {
-        let day = split.day.formatted(.dateTime.month(.abbreviated).day())
-        let total = split.totalValue.formatted(.currency(code: split.currency))
-        guard let payer = split.payer else { return "\(day) · \(total)" }
-        return "\(day) · \(payer.isMe ? "You" : payer.displayName) paid \(total)"
     }
 }
 

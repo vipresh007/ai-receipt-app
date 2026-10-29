@@ -11,6 +11,7 @@ import type {
   GroupDetail,
   GroupSummary,
   ParticipantIn,
+  PersonSummary,
   ReceiptOut,
   Split,
   SplitIn,
@@ -27,12 +28,14 @@ const MODES: { value: SplitMode; label: string }[] = [
   { value: "custom", label: "Amounts" },
 ];
 
-/** A person in the editor: you, a group member, or a typed name (one-off). */
+/** A person in the editor: you, a group member, a saved person, or a new
+ * name (saved as a person when the split is). */
 interface Person {
   key: string;
   label: string;
   isMe: boolean;
   memberId?: string;
+  personId?: string;
 }
 
 function today(): string {
@@ -47,6 +50,7 @@ function today(): string {
 export function SplitEditor({
   receipt,
   fixedGroupId,
+  withPeople,
   existing,
   currency,
   onDone,
@@ -54,6 +58,8 @@ export function SplitEditor({
 }: {
   receipt?: ReceiptOut;
   fixedGroupId?: string;
+  /** Saved people to start with (adding an expense from a person's page). */
+  withPeople?: { id: string; name: string }[];
   existing?: Split;
   currency: string;
   onDone: (split: Split) => void;
@@ -79,13 +85,26 @@ export function SplitEditor({
   const items: ExtractionItem[] = receipt?.line_items ?? existing?.items ?? [];
   const splitTotal = receipt ? receipt.total : total || "0";
 
-  // One-off people (beyond you), keyed p0, p1, …
-  const [names, setNames] = useState<string[]>(() =>
-    existing && !existing.group_id
-      ? existing.participants.filter((p) => !p.is_me).map((p) => p.display_name)
-      : [""],
+  // One-off: saved people picked (in order), plus new names (keyed p0, p1, …).
+  const { data: savedPeople } = useQuery({
+    queryKey: ["people"],
+    queryFn: () => apiGet<PersonSummary[]>("v1/people"),
+  });
+  const oneOffExisting = existing && !existing.group_id ? existing.participants : [];
+  const [picked, setPicked] = useState<{ id: string; name: string }[]>(() =>
+    existing
+      ? oneOffExisting.filter((p) => !p.is_me && p.person_id).map((p) => ({ id: p.person_id!, name: p.display_name }))
+      : withPeople ?? [],
   );
+  const [names, setNames] = useState<string[]>(() => {
+    const unsaved = oneOffExisting.filter((p) => !p.is_me && !p.person_id).map((p) => p.display_name);
+    return unsaved.length ? unsaved : existing || withPeople?.length ? [] : [""];
+  });
   const [includeMe, setIncludeMe] = useState(existing ? existing.participants.some((p) => p.is_me) : true);
+  const [oneOffPayer, setOneOffPayer] = useState<string>(() => {
+    const payer = oneOffExisting.find((p) => p.is_payer);
+    return payer && !payer.is_me && payer.person_id ? `person:${payer.person_id}` : "me";
+  });
   // Group members taking part (default: everyone), and who paid.
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [payerId, setPayerId] = useState<string>("");
@@ -103,9 +122,18 @@ export function SplitEditor({
         .map((m) => ({ key: m.id, label: m.is_me ? `${m.display_name} (you)` : m.display_name, isMe: m.is_me, memberId: m.id }));
     }
     const list: Person[] = includeMe ? [{ key: "me", label: "You", isMe: true }] : [];
-    names.forEach((name, i) => list.push({ key: `p${i}`, label: name.trim() || `Person ${i + 1}`, isMe: false }));
+    picked.forEach((p) => list.push({ key: `person:${p.id}`, label: p.name, isMe: false, personId: p.id }));
+    names.forEach((name, i) => {
+      if (name.trim()) list.push({ key: `p${i}`, label: name.trim(), isMe: false });
+    });
     return list;
-  }, [groupId, group, excluded, includeMe, names]);
+  }, [groupId, group, excluded, includeMe, picked, names]);
+
+  function togglePicked(person: PersonSummary) {
+    setPicked((prev) =>
+      prev.some((p) => p.id === person.id) ? prev.filter((p) => p.id !== person.id) : [...prev, { id: person.id, name: person.name }],
+    );
+  }
 
   // Seed item assignments/amounts from an existing split, once people exist.
   const [seeded, setSeeded] = useState(false);
@@ -113,7 +141,15 @@ export function SplitEditor({
     const nextAssigned: Record<string, number[]> = {};
     const nextAmounts: Record<string, string> = {};
     for (const p of existing.participants) {
-      const person = people.find((x) => (p.member_id ? x.memberId === p.member_id : p.is_me ? x.isMe : x.label === p.display_name));
+      const person = people.find((x) =>
+        p.member_id
+          ? x.memberId === p.member_id
+          : p.is_me
+            ? x.isMe
+            : p.person_id
+              ? x.personId === p.person_id
+              : x.label === p.display_name,
+      );
       if (!person) continue;
       nextAssigned[person.key] = p.item_indexes;
       if (p.amount) nextAmounts[person.key] = p.amount;
@@ -129,6 +165,8 @@ export function SplitEditor({
   }
 
   const effectivePayer = groupId ? payerId || group?.members.find((m) => m.is_me)?.id || "" : "";
+  // One-off: you by default; falls back to the first person if you're not in it.
+  const oneOffPayerKey = people.some((p) => p.key === oneOffPayer) ? oneOffPayer : people[0]?.key;
 
   const preview = previewShares(
     splitTotal,
@@ -157,8 +195,9 @@ export function SplitEditor({
     const participants: ParticipantIn[] = people.map((p) => ({
       is_me: p.isMe,
       member_id: p.memberId ?? null,
-      name: p.memberId ? undefined : p.isMe ? undefined : p.label,
-      is_payer: groupId ? p.memberId === effectivePayer : p.isMe,
+      person_id: p.personId ?? null,
+      name: p.memberId || p.personId || p.isMe ? undefined : p.label,
+      is_payer: groupId ? p.memberId === effectivePayer : p.key === oneOffPayerKey,
       item_indexes: mode === "items" ? assigned[p.key] ?? [] : [],
       amount: mode === "custom" ? amounts[p.key] ?? "0" : null,
     }));
@@ -274,35 +313,82 @@ export function SplitEditor({
           </div>
         )
       ) : (
-        <div className="space-y-sm">
+        <div className="space-y-md">
           <label className="flex items-center gap-sm text-callout">
             <input type="checkbox" checked={includeMe} onChange={(e) => setIncludeMe(e.target.checked)} className="h-4 w-4 accent-[var(--c-accent)]" />
-            Include me (I paid; my share counts as my spending)
+            Include me (my share counts as my spending)
           </label>
-          {names.map((name, i) => (
-            <div key={i} className="flex items-center gap-sm">
-              <Input
-                aria-label={`Person ${i + 1} name`}
-                placeholder={`Person ${i + 1}`}
-                value={name}
-                onChange={(e) => setNames((prev) => prev.map((n, j) => (j === i ? e.target.value : n)))}
-              />
-              {names.length > 1 && (
+          {(savedPeople ?? []).length > 0 && (
+            <div className="space-y-xs">
+              <p className="text-caption text-text-secondary">Your people</p>
+              <div className="flex flex-wrap gap-sm">
+                {savedPeople!.map((person) => {
+                  const on = picked.some((p) => p.id === person.id);
+                  return (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() => togglePicked(person)}
+                      aria-pressed={on}
+                      className={cn(
+                        "rounded-pill px-md py-xs text-caption font-medium ring-1 transition-colors",
+                        on ? "bg-accent-muted text-accent ring-accent/40" : "bg-surface-2 text-text-secondary ring-transparent",
+                      )}
+                    >
+                      {person.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="space-y-sm">
+            {(savedPeople ?? []).length > 0 && names.length > 0 && (
+              <p className="text-caption text-text-secondary">Someone new</p>
+            )}
+            {names.map((name, i) => (
+              <div key={i} className="flex items-center gap-sm">
+                <Input
+                  aria-label={`New person ${i + 1} name`}
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => setNames((prev) => prev.map((n, j) => (j === i ? e.target.value : n)))}
+                />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Remove ${name || `person ${i + 1}`}`}
+                  aria-label={`Remove ${name || "this name"}`}
                   onClick={() => setNames((prev) => prev.filter((_, j) => j !== i))}
                 >
                   <X size={16} />
                 </Button>
-              )}
+              </div>
+            ))}
+            <Button type="button" variant="secondary" size="sm" onClick={() => setNames((prev) => [...prev, ""])}>
+              <Plus size={15} /> Someone new
+            </Button>
+            <p className="text-caption text-text-tertiary">
+              New names are saved to your people. Add their email later to invite them.
+            </p>
+          </div>
+          {people.length > 1 && (
+            <div className="space-y-xs">
+              <Label htmlFor="split-oneoff-payer">Paid by</Label>
+              <select
+                id="split-oneoff-payer"
+                value={oneOffPayerKey}
+                onChange={(e) => setOneOffPayer(e.target.value)}
+                className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
+              >
+                {people.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          ))}
-          <Button type="button" variant="secondary" size="sm" onClick={() => setNames((prev) => [...prev, ""])}>
-            <Plus size={15} /> Add person
-          </Button>
+          )}
         </div>
       )}
 

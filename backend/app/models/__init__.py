@@ -5,7 +5,15 @@ from app.models.budget import Budget
 from app.models.category import DEFAULT_CATEGORY_SLUGS, Category
 from app.models.expense import Expense
 from app.models.receipt import Receipt
-from app.models.split import Group, GroupMember, Settlement, Split, SplitParticipant
+from app.models.split import (
+    Group,
+    GroupMember,
+    Person,
+    PersonPayment,
+    Settlement,
+    Split,
+    SplitParticipant,
+)
 from app.models.user import User
 
 __all__ = [
@@ -18,6 +26,8 @@ __all__ = [
     "Expense",
     "Group",
     "GroupMember",
+    "Person",
+    "PersonPayment",
     "Receipt",
     "Settlement",
     "Split",

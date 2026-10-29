@@ -92,6 +92,7 @@ export type SplitMode = "even" | "items" | "custom";
 export interface ParticipantIn {
   is_me?: boolean;
   member_id?: string | null;
+  person_id?: string | null;
   name?: string;
   is_payer?: boolean;
   item_indexes?: number[];
@@ -114,6 +115,7 @@ export interface Participant {
   id: string;
   display_name: string;
   member_id: string | null;
+  person_id: string | null;
   is_me: boolean;
   is_payer: boolean;
   item_indexes: number[];
@@ -200,4 +202,41 @@ export interface PublicSplit {
 export interface PublicGroup {
   name: string;
   members: { id: string; display_name: string; claimed: boolean }[];
+}
+
+/** Someone you split with outside groups. Balance: positive = they owe you. */
+export interface PersonSummary {
+  id: string;
+  name: string;
+  email: string | null;
+  has_account: boolean;
+  invite_url: string;
+  invited_at: string | null;
+  balance: string;
+  currency: string;
+  can_email: boolean;
+}
+
+export interface PersonPayment {
+  id: string;
+  you_paid: boolean;
+  amount: string;
+  note: string;
+  date: string;
+  can_delete: boolean;
+}
+
+export interface PersonDetail extends PersonSummary {
+  splits: Split[];
+  payments: PersonPayment[];
+}
+
+/** An invite link, seen by the person invited. Balance from their side. */
+export interface PublicPerson {
+  from_name: string;
+  name: string;
+  claimed: boolean;
+  balance: string;
+  currency: string;
+  expense_count: number;
 }

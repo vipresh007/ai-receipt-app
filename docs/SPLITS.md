@@ -54,6 +54,7 @@ needs more than `members − 1` payments.
 |---|---|---|
 | `tally.dataeaver.ca/s/<token>` | One participant's view of a split: what they owe, the items, who paid. | No |
 | `tally.dataeaver.ca/join/<token>` | A group invite; sign in, then claim your name or join as new. | To join, yes |
+| `tally.dataeaver.ca/p/<token>` | A person invite: who's sharing with you and where you stand; sign in to see every expense. | To accept, yes |
 
 A share link is a **snapshot of the split** (merchant, date, items, names,
 amounts). It never exposes the receipt image or anything else in the
@@ -75,19 +76,45 @@ Who may do what: group members see the group and its splits; the split's
 creator edits or deletes it; any member records a settlement or adds a
 member; only the group's creator deletes the group.
 
+## People (splitting without a group)
+
+Anyone you split with outside a group is a saved **person** (`people`): typed
+names on a split become people (same name, any case, is the same person), and
+you can add someone directly. Each has a running balance with you, computed
+from the one-off splits you're both on (whoever paid is owed the other's share,
+unless it was ticked paid) plus payments recorded between you
+(`person_payments`). Positive = they owe you.
+
+**Invites.** Every person has an invite link, `/p/<token>`, that you share
+yourself, or Tally emails it (`POST /people/{id}/invite`, Azure Communication
+Services; at most one per person per 10 minutes and 20 per sender per day).
+Accepting it (sign in, `POST /people/claim/{token}`) links the person to that
+account: their spots on your splits become theirs (so they see them, with
+their share as "you"), and they get a person of their own pointing back at
+you, with the same balance negated. A new account whose email the sign-in
+provider has **verified** accepts invites sent to that address automatically.
+Unverified addresses never link anything (they also no longer take over an
+older account with the same email).
+
+API: `GET/POST /people`, `GET/PATCH/DELETE /people/{id}`,
+`POST /people/{id}/invite`, `POST /people/{id}/payments`,
+`DELETE /people/{id}/payments/{pid}`, `POST /people/claim/{token}`;
+public `GET /public/people/{token}`.
+
 ## Account deletion
 
 Your memberships become placeholders under your name (so others' balances
 survive), your splits are deleted, and groups you created stay with the
-other members.
+other members. Your people and the payments you recorded are deleted; on
+other people's lists you go back to being just a name.
 
 ## Clients
 
 | | Web | iOS |
 |---|---|---|
 | Split a receipt | Receipt page → **Split** card (`components/split-editor.tsx`, `split-summary.tsx`) | Receipt detail → **Split** section (`Features/Splits/SplitSummaryView.swift` → `SplitEditorView`) |
-| Groups | `/groups`, `/groups/[id]` | **Groups** tab (`GroupsView`, `GroupDetailView`); Budgets moved under Dashboard / Account |
-| Share / invite links | `/s/[token]`, `/join/[token]` (public, noindex) | System share sheet with the web links; invites are joined on the web |
+| People & groups | `/groups` (titled Shared), `/people/[id]`, `/groups/[id]` | **Shared** tab (`GroupsView`, `PersonDetailView`, `GroupDetailView`); Budgets moved under Dashboard / Account |
+| Share / invite links | `/s/[token]`, `/join/[token]`, `/p/[token]` (public, noindex) | System share sheet with the web links; invites are joined on the web |
 | Live share preview | `lib/splits.ts` | `Services/SplitMath.swift` (`SplitMathTests` mirror the server's cases) |
 
 Both previews are conveniences: the shares saved are always the server's.

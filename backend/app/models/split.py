@@ -90,6 +90,10 @@ class SplitParticipant(Base):
     member_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("group_members.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # One-off splits: the saved person this is (see `Person`).
+    person_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("people.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     # Set when the participant is a Tally account (always for the split's owner).
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
@@ -128,3 +132,42 @@ class Settlement(Base):
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class Person(Base):
+    """Someone you split with outside a group. Starts as just a name; an email
+    can be added later. Linked to their account (`user_id`) once they open
+    their invite link and sign in, after which they see what you share from
+    their side (as a `Person` of their own pointing back at you)."""
+
+    __tablename__ = "people"
+    __table_args__ = (UniqueConstraint("owner_user_id", "user_id", name="uq_person_owner_user"),)
+
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    display_name: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # Their invite link (/p/<token>); shared by you, or emailed by Tally.
+    invite_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PersonPayment(Base):
+    """Money that changed hands between you and a person, outside groups."""
+
+    __tablename__ = "person_payments"
+
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"), index=True
+    )
+    # True: you paid them. False: they paid you.
+    from_owner: Mapped[bool] = mapped_column(default=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str] = mapped_column(String(200), default="")

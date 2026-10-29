@@ -26,9 +26,12 @@ struct SplitEditorView: View {
     @State private var amount: Decimal?
     @State private var date: Date
 
-    // One-off: you, plus typed names.
+    // One-off: you, saved people picked, and new names (saved as people).
     @State private var includeMe: Bool
+    @State private var savedPeople: [API.PersonDTO] = []
+    @State private var picked: [PickedPerson]
     @State private var names: [NamedPerson]
+    @State private var oneOffPayer: String
     // Group: who's in (nil = everyone), and who paid.
     @State private var included: Set<String>?
     @State private var payerID: String
@@ -43,6 +46,7 @@ struct SplitEditorView: View {
         receipt: Receipt? = nil,
         group: API.GroupDetailDTO? = nil,
         existing: API.SplitDTO? = nil,
+        withPeople: [PickedPerson] = [],
         onDone: @escaping (API.SplitDTO) -> Void
     ) {
         self.receipt = receipt
@@ -50,14 +54,17 @@ struct SplitEditorView: View {
         self.existing = existing
         self.onDone = onDone
 
-        let others: [NamedPerson] =
-            existing.map { split in
-                split.groupId == nil
-                    ? split.participants.filter { !$0.isMe }.map { NamedPerson(name: $0.displayName) } : []
-            } ?? []
+        let oneOff = existing?.groupId == nil ? existing?.participants ?? [] : []
+        let others: [NamedPerson] = oneOff.filter { !$0.isMe && $0.personId == nil }
+            .map { NamedPerson(name: $0.displayName) }
+        let pickedAtStart: [PickedPerson] =
+            existing == nil
+            ? withPeople
+            : oneOff.compactMap { p in p.personId.map { PickedPerson(id: $0, name: p.displayName) } }
         var assigned: [String: Set<Int>] = [:]
         var amounts: [String: Decimal] = [:]
         var payer = ""
+        var oneOffPayer = NamedPerson.meKey
         var nextOther = 0
         for p in existing?.participants ?? [] {
             let key: String
@@ -65,6 +72,8 @@ struct SplitEditorView: View {
                 key = member
             } else if p.isMe {
                 key = NamedPerson.meKey
+            } else if let person = p.personId {
+                key = PickedPerson.key(person)
             } else {
                 guard nextOther < others.count else { continue }
                 key = others[nextOther].id
@@ -73,6 +82,7 @@ struct SplitEditorView: View {
             assigned[key] = Set(p.itemIndexes)
             if let amount = p.amount.flatMap({ Decimal(string: $0) }) { amounts[key] = amount }
             if p.isPayer, let member = p.memberId { payer = member }
+            if p.isPayer, p.memberId == nil { oneOffPayer = key }
         }
 
         _groupID = State(initialValue: group?.id ?? existing?.groupId ?? "")
@@ -81,7 +91,11 @@ struct SplitEditorView: View {
         _amount = State(initialValue: receipt == nil ? existing?.totalValue : nil)
         _date = State(initialValue: existing?.day ?? .now)
         _includeMe = State(initialValue: existing.map { $0.participants.contains(where: \.isMe) } ?? true)
-        _names = State(initialValue: others.isEmpty ? [NamedPerson(name: "")] : others)
+        _picked = State(initialValue: pickedAtStart)
+        _names = State(
+            initialValue: !others.isEmpty ? others : (existing != nil || !withPeople.isEmpty) ? [] : [NamedPerson(name: "")]
+        )
+        _oneOffPayer = State(initialValue: oneOffPayer)
         _included = State(
             initialValue: existing?.groupId != nil ? Set(existing!.participants.compactMap(\.memberId)) : nil
         )
@@ -98,6 +112,7 @@ struct SplitEditorView: View {
         let label: String
         let isMe: Bool
         let memberID: String?
+        var personID: String? = nil
         var id: String { key }
     }
 
@@ -109,11 +124,19 @@ struct SplitEditorView: View {
                 .map { Person(key: $0.id, label: $0.isMe ? "You" : $0.displayName, isMe: $0.isMe, memberID: $0.id) }
         }
         var list = includeMe ? [Person(key: NamedPerson.meKey, label: "You", isMe: true, memberID: nil)] : []
-        for (i, person) in names.enumerated() {
+        for person in picked {
+            list.append(Person(key: person.key, label: person.name, isMe: false, memberID: nil, personID: person.id))
+        }
+        for person in names {
             let name = person.name.trimmingCharacters(in: .whitespaces)
-            list.append(Person(key: person.id, label: name.isEmpty ? "Person \(i + 1)" : name, isMe: false, memberID: nil))
+            if !name.isEmpty { list.append(Person(key: person.id, label: name, isMe: false, memberID: nil)) }
         }
         return list
+    }
+
+    /// Who paid a one-off split: you by default, else the first person.
+    private var oneOffPayerKey: String {
+        people.contains(where: { $0.key == oneOffPayer }) ? oneOffPayer : (people.first?.key ?? "")
     }
 
     private var items: [(name: String, price: Decimal)] {
@@ -236,15 +259,48 @@ struct SplitEditorView: View {
 
             if groupID.isEmpty {
                 Toggle("Include me", isOn: $includeMe)
+                if !savedPeople.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                        Text("Your people")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                        FlowLayout(spacing: 6) {
+                            ForEach(savedPeople) { person in
+                                let on = picked.contains { $0.id == person.id }
+                                Button {
+                                    togglePicked(person)
+                                } label: {
+                                    Text(person.name)
+                                        .font(.appCaption.weight(.medium))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .foregroundStyle(on ? Theme.Palette.accent : Theme.Palette.textSecondary)
+                                        .background(
+                                            on ? Theme.Palette.accent.opacity(0.14) : Theme.Palette.surface2,
+                                            in: Capsule()
+                                        )
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityAddTraits(on ? .isSelected : [])
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
                 ForEach($names) { $person in
-                    TextField("Name", text: $person.name)
+                    TextField("New person's name", text: $person.name)
                         .textContentType(.name)
                 }
                 .onDelete { names.remove(atOffsets: $0) }
                 Button {
                     names.append(NamedPerson(name: ""))
                 } label: {
-                    Label("Add someone", systemImage: "plus")
+                    Label("Someone new", systemImage: "plus")
+                }
+                if people.count > 1 {
+                    Picker("Paid by", selection: Binding(get: { oneOffPayerKey }, set: { oneOffPayer = $0 })) {
+                        ForEach(people) { Text($0.label).tag($0.key) }
+                    }
                 }
             } else if let group {
                 ForEach(group.members) { member in
@@ -382,8 +438,17 @@ struct SplitEditorView: View {
     }
 
     private func loadGroups() async {
-        guard fixedGroup == nil, let client = try? await Splits.client(auth) else { return }
-        groups = (try? await client.groups()) ?? []
+        guard let client = try? await Splits.client(auth) else { return }
+        if fixedGroup == nil { groups = (try? await client.groups()) ?? [] }
+        savedPeople = (try? await client.people()) ?? []
+    }
+
+    private func togglePicked(_ person: API.PersonDTO) {
+        if let index = picked.firstIndex(where: { $0.id == person.id }) {
+            picked.remove(at: index)
+        } else {
+            picked.append(PickedPerson(id: person.id, name: person.name))
+        }
     }
 
     private func loadGroup() async {
@@ -407,8 +472,9 @@ struct SplitEditorView: View {
             API.ParticipantWrite(
                 isMe: p.isMe,
                 memberId: p.memberID,
-                name: p.memberID == nil && !p.isMe ? p.label : nil,
-                isPayer: inGroup ? p.memberID == effectivePayer : p.isMe,
+                personId: p.personID,
+                name: p.memberID == nil && p.personID == nil && !p.isMe ? p.label : nil,
+                isPayer: inGroup ? p.memberID == effectivePayer : p.key == oneOffPayerKey,
                 itemIndexes: mode == .items ? (assigned[p.key] ?? []).sorted() : [],
                 amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil
             )
@@ -442,6 +508,15 @@ struct SplitEditorView: View {
             errorMessage = error.localizedDescription
         }
     }
+}
+
+/// A saved person on a one-off split.
+struct PickedPerson: Hashable {
+    let id: String
+    let name: String
+
+    static func key(_ id: String) -> String { "person:\(id)" }
+    var key: String { Self.key(id) }
 }
 
 /// A typed name in a one-off split, with a stable key while names are edited.
