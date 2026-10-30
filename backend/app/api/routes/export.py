@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,15 +33,28 @@ def _csv(name: str, header: list[str], rows: list[list[object]]) -> Response:
     )
 
 
+def _range(start: date | None, end: date | None) -> tuple[date | None, date | None]:
+    if start and end and start > end:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The start is after the end.")
+    return start, end
+
+
 @router.get("/receipts.csv")
 async def receipts_csv(
+    start: date | None = Query(default=None, alias="from"),
+    end: date | None = Query(default=None, alias="to"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
+    """Your receipts, optionally between two dates (inclusive)."""
+    start, end = _range(start, end)
+    query = select(Receipt).where(Receipt.user_id == user.id)
+    if start:
+        query = query.where(Receipt.purchased_at >= start)
+    if end:
+        query = query.where(Receipt.purchased_at <= end)
     receipts = await session.scalars(
-        select(Receipt)
-        .where(Receipt.user_id == user.id)
-        .order_by(Receipt.purchased_at.desc(), Receipt.created_at.desc())
+        query.order_by(Receipt.purchased_at.desc(), Receipt.created_at.desc())
     )
     return _csv(
         "receipts",
@@ -63,17 +76,22 @@ async def receipts_csv(
 
 @router.get("/shared.csv")
 async def shared_csv(
+    start: date | None = Query(default=None, alias="from"),
+    end: date | None = Query(default=None, alias="to"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
-    """Every expense you're on: who paid, everyone's share, yours."""
+    """Every expense you're on (optionally between two dates): who paid,
+    everyone's share, yours."""
+    start, end = _range(start, end)
     mine = select(SplitParticipant.split_id).where(SplitParticipant.user_id == user.id)
+    query = select(Split).where((Split.owner_user_id == user.id) | Split.id.in_(mine))
+    if start:
+        query = query.where(Split.spent_at >= start)
+    if end:
+        query = query.where(Split.spent_at <= end)
     splits = list(
-        await session.scalars(
-            select(Split)
-            .where((Split.owner_user_id == user.id) | Split.id.in_(mine))
-            .order_by(Split.spent_at.desc(), Split.created_at.desc())
-        )
+        await session.scalars(query.order_by(Split.spent_at.desc(), Split.created_at.desc()))
     )
     groups = {g.id: g.name for g in await session.scalars(select(Group))} if splits else {}
     rows: list[list[object]] = []

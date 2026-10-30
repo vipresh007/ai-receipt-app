@@ -424,3 +424,20 @@ async def test_home_currency_follows_your_receipts_until_you_set_it(client):
     assert (me["currency"], me["currency_is_set"]) == ("EUR", True)
     assert (await client.patch("/v1/auth/me", json={"currency": "E1"})).status_code == 422
     assert (await client.patch("/v1/auth/me", json={"currency": ""})).json()["currency"] == "CAD"
+
+
+async def test_csv_export_between_dates(client):
+    for day, name in (("2026-09-15", "Sept"), ("2026-10-05", "Oct")):
+        await _expense(
+            client, "10.00", [{"is_me": True}, {"name": "A"}], description=name, date=day
+        )
+        await client.post(
+            "/v1/receipts",
+            json={"merchant": name, "date": day, "total": "10", "items": []},
+        )
+    shared = (await client.get("/v1/export/shared.csv?from=2026-10-01&to=2026-10-31")).text
+    assert "Oct" in shared and "Sept" not in shared
+    receipts = (await client.get("/v1/export/receipts.csv?from=2026-09-01&to=2026-09-30")).text
+    assert "Sept" in receipts and "Oct" not in receipts
+    bad = await client.get("/v1/export/receipts.csv?from=2026-10-31&to=2026-10-01")
+    assert bad.status_code == 422

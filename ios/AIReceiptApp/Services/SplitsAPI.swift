@@ -159,9 +159,12 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("PATCH", "v1/auth/me", body: body)
     }
 
-    /// `receipts` or `shared`: a CSV file's bytes.
-    func exportCSV(_ name: String) async throws -> Data {
-        let (data, http) = try await send(try authorized("v1/export/\(name).csv", method: "GET"))
+    /// `receipts` or `shared`: a CSV file's bytes, optionally between two
+    /// dates (YYYY-MM-DD, inclusive).
+    func exportCSV(_ name: String, from: String? = nil, to: String? = nil) async throws -> Data {
+        var path = "v1/export/\(name).csv"
+        if let from, let to { path += "?from=\(from)&to=\(to)" }
+        let (data, http) = try await send(try authorized(path, method: "GET"))
         try Self.expectOK(http, data, "Couldn't export")
         return data
     }
