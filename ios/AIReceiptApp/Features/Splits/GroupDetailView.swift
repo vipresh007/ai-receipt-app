@@ -29,8 +29,7 @@ struct GroupDetailView: View {
     @State private var notice: String?
     @State private var addingMember = false
     @State private var newMemberEmail = ""
-    @State private var invitingMember: API.GroupMemberDTO?
-    @State private var inviteEmail = ""
+    @State private var selectedMember: API.GroupMemberDTO?
 
     var body: some View {
         Group {
@@ -119,18 +118,25 @@ struct GroupDetailView: View {
         } message: {
             Text("With an email, Tally sends them the invite with their name already picked.")
         }
-        .alert(
-            "Invite \(invitingMember?.displayName ?? "")",
-            isPresented: Binding(get: { invitingMember != nil }, set: { if !$0 { invitingMember = nil } })
-        ) {
-            TextField("Email", text: $inviteEmail)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-            Button("Send") { Task { await sendInvite() } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Tally emails them the invite with their name already picked.")
+        .sheet(item: $selectedMember) { member in
+            if let group {
+                MemberSheet(
+                    group: group,
+                    member: member,
+                    owed: withMe(member, in: group),
+                    onRecordPayment: { draft in
+                        selectedMember = nil
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(350))
+                            payment = draft
+                        }
+                    },
+                    onChange: { next in
+                        self.group = next
+                        onChange()
+                    }
+                )
+            }
         }
         .confirmationDialog("Delete \(group?.name ?? "this group")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete group", role: .destructive) { Task { await deleteGroup() } }
@@ -187,20 +193,26 @@ struct GroupDetailView: View {
         let me = group.members.first(where: \.isMe)
         let others = group.payments.filter { $0.fromMemberId != me?.id && $0.toMemberId != me?.id }
         return Section {
+            // One compact row each; tap for what you can do with them.
             ForEach(group.members.filter { !$0.isMe }) { m in
                 let owed = withMe(m, in: group)
                 let elsewhere = m.balanceValue - owed
-                VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                Button {
+                    selectedMember = m
+                } label: {
                     HStack(spacing: Theme.Space.md) {
                         Text(m.displayName.prefix(1).uppercased())
                             .font(.appCallout.weight(.semibold))
+                            .foregroundStyle(Theme.Palette.text)
                             .frame(width: 34, height: 34)
                             .background(Theme.Palette.surface2, in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             HStack(spacing: 6) {
-                                Text(m.displayName).font(.appCallout.weight(.medium))
+                                Text(m.displayName)
+                                    .font(.appCallout.weight(.medium))
+                                    .foregroundStyle(Theme.Palette.text)
                                 if !m.hasAccount {
-                                    Text("not joined")
+                                    Text(m.invitedAt != nil ? "invited" : "not joined")
                                         .font(.system(size: 10.5))
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 1)
@@ -215,63 +227,20 @@ struct GroupDetailView: View {
                                 )
                         }
                         Spacer()
-                        if owed != 0, let me {
-                            Button("Record payment") {
-                                payment = owed > 0
-                                    ? PaymentDraft(from: m.id, to: me.id, amount: owed)
-                                    : PaymentDraft(from: me.id, to: m.id, amount: -owed)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .tint(Theme.Palette.accent)
-                        }
+                        Image(systemName: "chevron.right")
+                            .font(.appCaption.weight(.semibold))
+                            .foregroundStyle(Theme.Palette.textTertiary)
                     }
-                    if owed > 0, m.hasAccount {
-                        Button("Remind \(m.displayName)") {
-                            Task {
-                                await mutate { try await $0.remindMember(groupID: groupID, memberID: m.id) }
-                                if errorMessage == nil { notice = "Reminder sent to \(m.displayName)." }
-                            }
-                        }
-                        .font(.appCaption)
-                        .buttonStyle(.borderless)
-                        .padding(.leading, 46)
-                    }
-                    if owed < 0, let payTo = m.payTo {
-                        PayToView(payTo: payTo, amount: -owed, currency: group.currency, name: m.displayName)
-                            .padding(.leading, 46)
-                    }
-                    if !m.hasAccount {
-                        HStack(spacing: 6) {
-                            if let email = m.email {
-                                Text(m.invitedAt != nil ? "Invite emailed to \(email)" : email)
-                                    .lineLimit(1)
-                                    .foregroundStyle(Theme.Palette.textTertiary)
-                            }
-                            Button(m.invitedAt != nil ? "Send again" : "Invite by email") {
-                                inviteEmail = m.email ?? ""
-                                invitingMember = m
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                        .font(.appCaption)
-                        .padding(.leading, 46)
-                    }
+                    .contentShape(Rectangle())
                 }
-                .swipeActions {
-                    if !m.hasAccount, owed == 0, abs(elsewhere) < 0.005 {
-                        Button("Remove", role: .destructive) {
-                            Task { await mutate { try await $0.removeMember(groupID: groupID, memberID: m.id) } }
-                        }
-                    }
-                }
+                .buttonStyle(.plain)
             }
             if !others.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Between others").font(.appCaption.weight(.medium)).foregroundStyle(Theme.Palette.textSecondary)
                     ForEach(others, id: \.self) { p in
                         HStack {
-                            Text("\(group.memberName(p.fromMemberId)) owes \(group.memberName(p.toMemberId))")
+                            Text("\(group.memberName(p.fromMemberId)) owes \(group.memberName(p.toMemberId, midSentence: true))")
                             Spacer()
                             Text(p.amountValue, format: .currency(code: group.currency)).monospacedDigit()
                         }
@@ -406,7 +375,7 @@ struct GroupDetailView: View {
                         .frame(width: 28, height: 28)
                         .background(Theme.Palette.success.opacity(0.14), in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("\(group.memberName(s.fromMemberId)) paid \(group.memberName(s.toMemberId))")
+                        Text("\(group.memberName(s.fromMemberId)) paid \(group.memberName(s.toMemberId, midSentence: true))")
                             .font(.appCallout)
                         if let day = API.isoDay(s.date) {
                             Text(day, format: .dateTime.month(.abbreviated).day())
@@ -467,14 +436,6 @@ struct GroupDetailView: View {
             newMemberEmail = ""
             if !email.isEmpty { notice = "Added \(name) and emailed the invite." }
         }
-    }
-
-    private func sendInvite() async {
-        guard let member = invitingMember else { return }
-        let email = inviteEmail.trimmingCharacters(in: .whitespaces)
-        guard !email.isEmpty else { return }
-        await mutate { try await $0.inviteMember(groupID: groupID, memberID: member.id, email: email) }
-        if errorMessage == nil { notice = "Invite emailed to \(email)." }
     }
 
     private func removeSplit(_ split: API.SplitDTO) async {

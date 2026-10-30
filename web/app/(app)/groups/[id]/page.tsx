@@ -55,6 +55,7 @@ export default function GroupPage() {
   });
 
   const [editing, setEditing] = useState<Split | null>(null);
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentDraft | null>(null);
   const [newMember, setNewMember] = useState("");
@@ -247,22 +248,36 @@ export default function GroupPage() {
                 .map((m) => {
                   const owed = withMe(m);
                   const elsewhere = Number(m.balance) - owed;
+                  const expanded = selectedMember === m.id;
+                  const removable =
+                    !m.has_account &&
+                    owed === 0 &&
+                    Math.abs(Number(m.balance)) < 0.005;
                   return (
-                    <li key={m.id} className="space-y-sm py-md last:pb-0">
-                      <div className="flex items-center gap-md">
+                    <li key={m.id} className="py-xs last:pb-0">
+                      {/* One compact row; click for what you can do with them. */}
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => {
+                          setSelectedMember(expanded ? null : m.id);
+                          setInviting(null);
+                        }}
+                        className="flex w-full items-center gap-md rounded-md py-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)]"
+                      >
                         <Avatar name={m.display_name} />
-                        <div className="min-w-0 flex-1">
-                          <p className="flex items-center gap-xs truncate text-callout font-medium">
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-xs truncate text-callout font-medium">
                             {m.display_name}
                             {!m.has_account && (
                               <span className="rounded-pill bg-surface-2 px-sm text-[10.5px] font-normal text-text-tertiary">
-                                not joined
+                                {m.invited_at ? "invited" : "not joined"}
                               </span>
                             )}
-                          </p>
-                          <p
+                          </span>
+                          <span
                             className={cn(
-                              "text-caption tabular",
+                              "block text-caption tabular",
                               owed > 0
                                 ? "text-success"
                                 : owed < 0
@@ -279,15 +294,138 @@ export default function GroupPage() {
                                   : elsewhere < 0
                                     ? `owes others ${money(-elsewhere, g.currency)}`
                                     : `is owed ${money(elsewhere, g.currency)} by others`}
-                          </p>
-                        </div>
-                        {!m.has_account &&
-                          owed === 0 &&
-                          Math.abs(elsewhere) < 0.005 && (
+                          </span>
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className={cn(
+                            "shrink-0 text-text-tertiary transition-transform",
+                            expanded && "rotate-180",
+                          )}
+                        />
+                      </button>
+
+                      {expanded && (
+                        <div className="mb-sm ml-[48px] space-y-md rounded-lg bg-surface-2 p-md">
+                          {owed !== 0 && me && (
+                            <div className="flex flex-wrap gap-sm">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() =>
+                                  setPayment(
+                                    owed > 0
+                                      ? {
+                                          from: m.id,
+                                          to: me.id,
+                                          amount: owed.toFixed(2),
+                                        }
+                                      : {
+                                          from: me.id,
+                                          to: m.id,
+                                          amount: (-owed).toFixed(2),
+                                        },
+                                  )
+                                }
+                              >
+                                <Check size={14} /> Record a payment
+                              </Button>
+                              {owed > 0 && m.has_account && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    run(async () => {
+                                      const next = await apiPost<GroupDetail>(
+                                        `v1/groups/${id}/members/${m.id}/remind`,
+                                        {},
+                                      );
+                                      setNotice(
+                                        `Reminder sent to ${m.display_name}.`,
+                                      );
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  <Bell size={14} /> Remind
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {owed < 0 && (
+                            <PayTo
+                              payTo={m.pay_to}
+                              amount={owed}
+                              currency={g.currency}
+                              name={m.display_name}
+                            />
+                          )}
+
+                          {!m.has_account && (
+                            <form
+                              className="space-y-xs"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const email = (
+                                  inviting?.id === m.id
+                                    ? inviting.email
+                                    : (m.email ?? "")
+                                ).trim();
+                                if (!email) return;
+                                run(async () => {
+                                  if (email !== (m.email ?? "")) {
+                                    await apiPatch<GroupDetail>(
+                                      `v1/groups/${id}/members/${m.id}`,
+                                      { email },
+                                    );
+                                  }
+                                  const next = await apiPost<GroupDetail>(
+                                    `v1/groups/${id}/members/${m.id}/invite`,
+                                    {},
+                                  );
+                                  setInviting(null);
+                                  setNotice(`Invite emailed to ${email}.`);
+                                  return next;
+                                });
+                              }}
+                            >
+                              <Label htmlFor={`invite-${m.id}`}>
+                                Invite by email
+                              </Label>
+                              <div className="flex gap-sm">
+                                <Input
+                                  id={`invite-${m.id}`}
+                                  type="email"
+                                  value={
+                                    inviting?.id === m.id
+                                      ? inviting.email
+                                      : (m.email ?? "")
+                                  }
+                                  onChange={(e) =>
+                                    setInviting({
+                                      id: m.id,
+                                      email: e.target.value,
+                                    })
+                                  }
+                                  placeholder={`${m.display_name}'s email`}
+                                  className="h-9"
+                                />
+                                <Button type="submit" size="sm">
+                                  {m.invited_at ? "Send again" : "Send"}
+                                </Button>
+                              </div>
+                              <p className="text-caption text-text-tertiary">
+                                {m.invited_at
+                                  ? `Last emailed ${shortDate(m.invited_at.slice(0, 10))}. Their name is already picked when they open it.`
+                                  : "Tally emails them the group's invite with their name already picked."}
+                              </p>
+                            </form>
+                          )}
+
+                          {removable && (
                             <button
                               type="button"
-                              aria-label={`Remove ${m.display_name}`}
-                              className="grid h-7 w-7 place-items-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-danger"
+                              className="text-caption text-danger"
                               onClick={() => {
                                 if (
                                   window.confirm(
@@ -301,138 +439,16 @@ export default function GroupPage() {
                                   );
                               }}
                             >
-                              <X size={14} />
+                              Remove from {g.name}
                             </button>
                           )}
-                      </div>
-                      {owed !== 0 && me && (
-                        <div className="flex flex-wrap gap-sm pl-[48px]">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() =>
-                              setPayment(
-                                owed > 0
-                                  ? {
-                                      from: m.id,
-                                      to: me.id,
-                                      amount: owed.toFixed(2),
-                                    }
-                                  : {
-                                      from: me.id,
-                                      to: m.id,
-                                      amount: (-owed).toFixed(2),
-                                    },
-                              )
-                            }
-                          >
-                            <Check size={14} /> Record payment
-                          </Button>
-                          {owed > 0 && m.has_account && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                run(async () => {
-                                  const next = await apiPost<GroupDetail>(
-                                    `v1/groups/${id}/members/${m.id}/remind`,
-                                    {},
-                                  );
-                                  setNotice(
-                                    `Reminder sent to ${m.display_name}.`,
-                                  );
-                                  return next;
-                                })
-                              }
-                            >
-                              <Bell size={14} /> Remind
-                            </Button>
+                          {m.has_account && owed === 0 && (
+                            <p className="text-caption text-text-tertiary">
+                              Nothing to do: you&apos;re square.
+                            </p>
                           )}
                         </div>
                       )}
-                      {owed < 0 && (
-                        <div className="pl-[48px]">
-                          <PayTo
-                            payTo={m.pay_to}
-                            amount={owed}
-                            currency={g.currency}
-                            name={m.display_name}
-                          />
-                        </div>
-                      )}
-                      {!m.has_account &&
-                        (inviting?.id === m.id ? (
-                          <form
-                            className="flex gap-sm pl-[48px]"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              const email = inviting.email.trim();
-                              run(async () => {
-                                if (email !== (m.email ?? "")) {
-                                  await apiPatch<GroupDetail>(
-                                    `v1/groups/${id}/members/${m.id}`,
-                                    { email },
-                                  );
-                                }
-                                const next = await apiPost<GroupDetail>(
-                                  `v1/groups/${id}/members/${m.id}/invite`,
-                                  {},
-                                );
-                                setInviting(null);
-                                setNotice(`Invite emailed to ${email}.`);
-                                return next;
-                              });
-                            }}
-                          >
-                            <Input
-                              type="email"
-                              value={inviting.email}
-                              onChange={(e) =>
-                                setInviting({ id: m.id, email: e.target.value })
-                              }
-                              placeholder={`${m.display_name}'s email`}
-                              aria-label={`${m.display_name}'s email`}
-                              className="h-9"
-                              autoFocus
-                            />
-                            <Button
-                              type="submit"
-                              size="sm"
-                              disabled={!inviting.email.trim()}
-                            >
-                              Send
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setInviting(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </form>
-                        ) : (
-                          <p className="pl-[48px] text-caption text-text-tertiary">
-                            {m.invited_at
-                              ? `Invite emailed to ${m.email} · ${shortDate(m.invited_at.slice(0, 10))}. `
-                              : m.email
-                                ? `${m.email}. `
-                                : ""}
-                            <button
-                              type="button"
-                              className="text-accent"
-                              onClick={() =>
-                                setInviting({ id: m.id, email: m.email ?? "" })
-                              }
-                            >
-                              {m.invited_at
-                                ? "Send again"
-                                : m.email
-                                  ? "Email the invite"
-                                  : "Invite by email"}
-                            </button>
-                          </p>
-                        ))}
                     </li>
                   );
                 })}

@@ -498,9 +498,12 @@ extension ReceiptExtractionAPIClient {
 
         var myBalanceValue: Decimal { Decimal(string: myBalance) ?? 0 }
 
-        func memberName(_ memberID: String) -> String {
-            guard let member = members.first(where: { $0.id == memberID }) else { return "Someone" }
-            return member.isMe ? "You" : member.displayName
+        /// "You" / "Mit" to start a sentence; `midSentence` gives "you".
+        func memberName(_ memberID: String, midSentence: Bool = false) -> String {
+            guard let member = members.first(where: { $0.id == memberID }) else {
+                return midSentence ? "someone" : "Someone"
+            }
+            return member.isMe ? (midSentence ? "you" : "You") : member.displayName
         }
     }
 }
