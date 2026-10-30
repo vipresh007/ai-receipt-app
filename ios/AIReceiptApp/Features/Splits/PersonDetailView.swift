@@ -20,6 +20,8 @@ struct PersonDetailView: View {
     @State private var pickingReceipt = false
     @State private var pendingReceipt: Receipt?
     @State private var receiptToSplit: Receipt?
+    @State private var scanning = false
+    @State private var scanStatus: String?
     @State private var editingSplit: API.SplitDTO?
     @State private var recordingPayment = false
     @State private var email = ""
@@ -69,6 +71,7 @@ struct PersonDetailView: View {
         }) {
             ReceiptPickerSheet { pendingReceipt = $0 }
         }
+        .scanToSplit(isPresented: $scanning, ready: $receiptToSplit, status: $scanStatus)
         .sheet(item: $receiptToSplit) { receipt in
             if let person {
                 SplitEditorView(receipt: receipt, withPeople: [PickedPerson(id: person.id, name: person.name)]) { saved in
@@ -208,10 +211,17 @@ struct PersonDetailView: View {
     private func expensesSection(_ person: API.PersonDetailDTO) -> some View {
         Section {
             Menu {
+                Button("Take a photo", systemImage: "camera") { scanning = true }
                 Button("From a receipt", systemImage: "doc.text") { pickingReceipt = true }
                 Button("Type it in", systemImage: "pencil") { addingExpense = true }
             } label: {
                 Label("Add expense", systemImage: "plus")
+            }
+            if let scanStatus {
+                HStack(spacing: Theme.Space.sm) {
+                    if scanStatus.hasSuffix("…") { ProgressView() }
+                    Text(scanStatus).font(.appCaption).foregroundStyle(Theme.Palette.textSecondary)
+                }
             }
             if person.splits.isEmpty {
                 Text("Nothing shared yet. Add an expense, or split a receipt with \(person.name) from the receipt.")

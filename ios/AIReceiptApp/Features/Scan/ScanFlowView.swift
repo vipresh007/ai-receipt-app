@@ -9,8 +9,13 @@ import SwiftUI
 /// when that lands it fills in what the user hasn't touched. Save and Discard
 /// work at any point — a late result follows the receipt (see `PendingScan`).
 struct ScanFlowView: View {
+    /// Set when opened from somewhere else (a group's "Take a photo"): called
+    /// with the saved receipt, and the screen gets a Cancel button.
+    var onSaved: ((Receipt) -> Void)? = nil
+
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var auth
+    @Environment(\.dismiss) private var dismiss
 
     @State private var pickedItem: PhotosPickerItem?
     @State private var showCamera = false
@@ -68,6 +73,13 @@ struct ScanFlowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.Palette.bg.ignoresSafeArea())
                 .navigationTitle("Scan")
+                .toolbar {
+                    if onSaved != nil, stage == .idle {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }
+                        }
+                    }
+                }
                 .safeAreaInset(edge: .top) { scanAllowance }
                 .alert("Couldn't scan receipt", isPresented: errorBinding) {
                     Button("OK", role: .cancel) {}
@@ -373,6 +385,10 @@ struct ScanFlowView: View {
         }
         pendingServerID = nil
         reset()
+        if let onSaved {
+            onSaved(receipt)
+            return
+        }
         askForReviewIfDue()
     }
 

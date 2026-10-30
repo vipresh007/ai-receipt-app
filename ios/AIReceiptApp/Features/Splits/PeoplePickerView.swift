@@ -8,6 +8,7 @@ struct PeoplePickerView: View {
     let saved: [API.PersonDTO]
     @Binding var picked: [PickedPerson]
     @Binding var names: [NamedPerson]
+    @Binding var includeMe: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
@@ -37,6 +38,27 @@ struct PeoplePickerView: View {
 
     var body: some View {
         List {
+            if trimmed.isEmpty {
+                Section {
+                    Toggle("Include me", isOn: $includeMe)
+                    ForEach(picked, id: \.id) { person in
+                        Text(person.name)
+                    }
+                    .onDelete { picked.remove(atOffsets: $0) }
+                    ForEach(names) { person in
+                        HStack {
+                            Text(person.name)
+                            Text("new").font(.appCaption).foregroundStyle(Theme.Palette.textTertiary)
+                        }
+                    }
+                    .onDelete { names.remove(atOffsets: $0) }
+                } header: {
+                    Text("On it")
+                } footer: {
+                    Text("Swipe to take someone off. Search to add people, or type a new name.").font(.appCaption)
+                }
+                .listRowBackground(Theme.Palette.surface)
+            }
             if canAddNew {
                 Section {
                     Button {
@@ -116,5 +138,50 @@ struct WhoHadItView: View {
         .ledgerBackground()
         .navigationTitle(item)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+
+/// Who's on a group expense: everyone by default; untick to leave people out.
+struct GroupMembersView: View {
+    let group: ReceiptExtractionAPIClient.GroupDetailDTO
+    /// nil = everyone.
+    @Binding var included: Set<String>?
+    @State private var query = ""
+
+    private var shown: [ReceiptExtractionAPIClient.GroupMemberDTO] {
+        query.isEmpty ? group.members : group.members.filter { $0.displayName.localizedCaseInsensitiveContains(query) }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(shown) { member in
+                    Toggle(member.isMe ? "\(member.displayName) (you)" : member.displayName, isOn: on(member.id))
+                }
+            } footer: {
+                HStack(spacing: Theme.Space.lg) {
+                    Button("Everyone") { included = nil }
+                    Button("Just me") { included = Set(group.members.filter(\.isMe).map(\.id)) }
+                }
+                .font(.appCaption)
+            }
+            .listRowBackground(Theme.Palette.surface)
+        }
+        .ledgerBackground()
+        .searchable(text: $query, prompt: "Name")
+        .navigationTitle("Who's in")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func on(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { included?.contains(id) ?? true },
+            set: { isOn in
+                var next = included ?? Set(group.members.map(\.id))
+                if isOn { next.insert(id) } else { next.remove(id) }
+                included = next
+            }
+        )
     }
 }

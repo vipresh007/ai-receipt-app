@@ -245,7 +245,6 @@ struct SplitEditorView: View {
                 } else {
                     withSection
                 }
-                if people.count > 1 { paidBySection }
                 modeSection
                 if mode == .items { itemsSection }
                 sharesSection
@@ -314,8 +313,8 @@ struct SplitEditorView: View {
         }
     }
 
-    private var paidBySection: some View {
-        LedgerSection("Paid by") {
+    private var paidByRows: some View {
+        Group {
             Picker(
                 "Paid by",
                 selection: Binding(
@@ -365,12 +364,14 @@ struct SplitEditorView: View {
     }
 
     @ViewBuilder
+    /// Who's on it and who paid, in a few rows: each person is listed once,
+    /// under "Each pays", with their amount.
     private var withSection: some View {
-        LedgerSection("Split with") {
+        LedgerSection("Who") {
             // Only a choice once there's a group to choose (or this split is in one).
             if fixedGroup == nil, !groups.isEmpty || !groupID.isEmpty {
-                Picker("Split with", selection: $groupID) {
-                    Text("People").tag("")
+                Picker("Group", selection: $groupID) {
+                    Text("None").tag("")
                     ForEach(groups) { Text($0.name).tag($0.id) }
                 }
                 .onChange(of: groupID) { _, _ in
@@ -378,39 +379,31 @@ struct SplitEditorView: View {
                     payerID = ""
                 }
             }
-
             if groupID.isEmpty {
-                Toggle("Include me", isOn: $includeMe)
-                // Who's on it: picked people and new names, with a search
-                // screen to add more (any number of people).
-                ForEach(picked, id: \.id) { person in
-                    Text(person.name)
-                }
-                .onDelete { picked.remove(atOffsets: $0) }
-                ForEach(names.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }) { person in
-                    HStack {
-                        Text(person.name)
-                        Text("new").font(.appCaption).foregroundStyle(Theme.Palette.textTertiary)
-                    }
-                }
-                .onDelete { offsets in
-                    let shown = names.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
-                    let gone = Set(offsets.map { shown[$0].id })
-                    names.removeAll { gone.contains($0.id) }
-                }
                 NavigationLink {
-                    PeoplePickerView(saved: savedPeople, picked: $picked, names: $names)
+                    PeoplePickerView(saved: savedPeople, picked: $picked, names: $names, includeMe: $includeMe)
                 } label: {
-                    Label(picked.isEmpty && names.isEmpty ? "Add people" : "Add or remove people", systemImage: "person.badge.plus")
+                    LabeledContent("People", value: peopleSummary)
                 }
             } else if let group {
-                ForEach(group.members) { member in
-                    Toggle(member.isMe ? "\(member.displayName) (you)" : member.displayName, isOn: memberIncluded(member.id))
+                NavigationLink {
+                    GroupMembersView(group: group, included: $included)
+                } label: {
+                    LabeledContent("People", value: peopleSummary)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity)
             }
+            if people.count > 1 { paidByRows }
         }
+    }
+
+    /// "You, Akash" / "Everyone (5)" / "You and 6 others".
+    private var peopleSummary: String {
+        if people.isEmpty { return "Add people" }
+        if !groupID.isEmpty, let group, people.count == group.members.count { return "Everyone (\(people.count))" }
+        let names = people.map(\.label)
+        return names.count <= 3 ? names.joined(separator: ", ") : "\(names[0]) and \(names.count - 1) others"
     }
 
     private var modeSection: some View {
@@ -546,17 +539,6 @@ struct SplitEditorView: View {
     }
 
     // MARK: - Actions
-
-    private func memberIncluded(_ id: String) -> Binding<Bool> {
-        Binding(
-            get: { included?.contains(id) ?? true },
-            set: { on in
-                var next = included ?? Set(group?.members.map(\.id) ?? [])
-                if on { next.insert(id) } else { next.remove(id) }
-                included = next
-            }
-        )
-    }
 
     /// Who had item `index`, as a set of people keys (for the checklist).
     private func whoHad(_ index: Int) -> Binding<Set<String>> {

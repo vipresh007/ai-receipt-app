@@ -20,11 +20,14 @@ struct GroupDetailView: View {
     @State private var pickingReceipt = false
     @State private var pendingReceipt: Receipt?
     @State private var receiptToSplit: Receipt?
+    @State private var scanning = false
+    @State private var scanStatus: String?
     @State private var editingSplit: API.SplitDTO?
     @State private var payment: PaymentDraft?
     @State private var newMember = ""
     @State private var confirmingDelete = false
     @State private var notice: String?
+    @State private var addingMember = false
 
     var body: some View {
         Group {
@@ -72,6 +75,7 @@ struct GroupDetailView: View {
         }) {
             ReceiptPickerSheet { pendingReceipt = $0 }
         }
+        .scanToSplit(isPresented: $scanning, ready: $receiptToSplit, status: $scanStatus)
         .sheet(item: $receiptToSplit) { receipt in
             if let group {
                 SplitEditorView(receipt: receipt, group: group) { saved in
@@ -99,6 +103,14 @@ struct GroupDetailView: View {
                     onChange()
                 }
             }
+        }
+        .alert("Add someone", isPresented: $addingMember) {
+            TextField("Name", text: $newMember)
+                .textContentType(.name)
+            Button("Add") { Task { await addMember() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("They can claim their name later from the invite link.")
         }
         .confirmationDialog("Delete \(group?.name ?? "this group")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete group", role: .destructive) { Task { await deleteGroup() } }
@@ -234,13 +246,11 @@ struct GroupDetailView: View {
             if let notice {
                 Text(notice).font(.appCaption).foregroundStyle(Theme.Palette.success)
             }
-            HStack {
-                TextField("Add someone", text: $newMember)
-                    .textContentType(.name)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await addMember() } }
-                Button("Add") { Task { await addMember() } }
-                    .disabled(newMember.trimmingCharacters(in: .whitespaces).isEmpty)
+            Button {
+                newMember = ""
+                addingMember = true
+            } label: {
+                Label("Add someone", systemImage: "person.badge.plus")
             }
             if let url = URL(string: group.inviteUrl) {
                 ShareLink(item: url, message: Text("Join \(group.name) on Tally to see what we've spent and who owes whom.")) {
@@ -297,10 +307,17 @@ struct GroupDetailView: View {
             .sorted { $0.key > $1.key }
         Section {
             Menu {
+                Button("Take a photo", systemImage: "camera") { scanning = true }
                 Button("From a receipt", systemImage: "doc.text") { pickingReceipt = true }
                 Button("Type it in", systemImage: "pencil") { addingExpense = true }
             } label: {
                 Label("Add expense", systemImage: "plus")
+            }
+            if let scanStatus {
+                HStack(spacing: Theme.Space.sm) {
+                    if scanStatus.hasSuffix("…") { ProgressView() }
+                    Text(scanStatus).font(.appCaption).foregroundStyle(Theme.Palette.textSecondary)
+                }
             }
             if group.splits.isEmpty {
                 Text("Add one here, or split a receipt with this group from the receipt itself.")

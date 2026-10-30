@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Banknote,
+  UserPlus,
   Bell,
   Check,
   ChevronDown,
@@ -57,6 +58,7 @@ export default function GroupPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentDraft | null>(null);
   const [newMember, setNewMember] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -146,6 +148,7 @@ export default function GroupPage() {
         name: newMember,
       });
       setNewMember("");
+      setAddingMember(false);
       return next;
     });
   }
@@ -441,25 +444,44 @@ export default function GroupPage() {
               </form>
             )}
 
-            <form
-              onSubmit={addMember}
-              className="flex gap-sm border-t border-border pt-lg"
-            >
-              <Input
-                value={newMember}
-                onChange={(e) => setNewMember(e.target.value)}
-                placeholder="Add someone"
-                maxLength={120}
-                aria-label="New person's name"
-              />
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={!newMember.trim()}
+            {addingMember ? (
+              <form
+                onSubmit={addMember}
+                className="flex gap-sm border-t border-border pt-lg"
               >
-                Add
-              </Button>
-            </form>
+                <Input
+                  value={newMember}
+                  onChange={(e) => setNewMember(e.target.value)}
+                  placeholder="Their name"
+                  maxLength={120}
+                  aria-label="New person's name"
+                  autoFocus
+                />
+                <Button type="submit" disabled={!newMember.trim()}>
+                  Add
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setAddingMember(false);
+                    setNewMember("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </form>
+            ) : (
+              <div className="border-t border-border pt-lg">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setAddingMember(true)}
+                >
+                  <UserPlus size={15} /> Add someone
+                </Button>
+              </div>
+            )}
             <InviteLink url={g.invite_url} groupName={g.name} />
 
             <div className="space-y-sm border-t border-border pt-lg">
