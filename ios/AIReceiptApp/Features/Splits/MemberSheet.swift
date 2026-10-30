@@ -64,11 +64,10 @@ struct MemberSheet: View {
                             }
                         }
                         if recording {
-                            Picker("Who paid", selection: $theyPaid) {
-                                Text("\(member.displayName) paid you").tag(true)
-                                Text("You paid \(member.displayName)").tag(false)
-                            }
-                            .pickerStyle(.segmented)
+                            PillPicker(
+                                options: [(true, "\(member.displayName) paid you"), (false, "You paid \(member.displayName)")],
+                                selection: $theyPaid
+                            )
                             LabeledContent("Amount") {
                                 TextField("0.00", value: $amount, format: .currency(code: group.currency))
                                     .multilineTextAlignment(.trailing)

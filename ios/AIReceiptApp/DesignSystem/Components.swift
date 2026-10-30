@@ -184,3 +184,46 @@ extension ButtonStyle where Self == PrimaryButtonStyle {
 extension ButtonStyle where Self == SecondaryButtonStyle {
     static var secondaryFill: SecondaryButtonStyle { .init() }
 }
+
+/// A segmented choice in Tally's style (used instead of the stock grey
+/// segmented control): a quiet rounded track, the selected option a gold pill
+/// that slides between choices.
+struct PillPicker<Value: Hashable>: View {
+    let options: [(value: Value, label: String)]
+    @Binding var selection: Value
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.value) { option in
+                let selected = option.value == selection
+                Button {
+                    withAnimation(Theme.Motion.spring) { selection = option.value }
+                } label: {
+                    Text(option.label)
+                        .font(.appSubhead)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .foregroundStyle(selected ? Theme.Palette.accentForeground : Theme.Palette.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if selected {
+                                Capsule()
+                                    .fill(Theme.Palette.accent)
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Theme.Palette.surface2.opacity(0.7), in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.Palette.border, lineWidth: 1))
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+}

@@ -260,12 +260,7 @@ struct DashboardView: View {
     }
 
     private var granularityPicker: some View {
-        Picker("Granularity", selection: $granularity) {
-            ForEach(Granularity.allCases) { g in
-                Text(g.label).tag(g)
-            }
-        }
-        .pickerStyle(.segmented)
+        PillPicker(options: Granularity.allCases.map { ($0, $0.label) }, selection: $granularity)
     }
 
     private var periodSwitcher: some View {

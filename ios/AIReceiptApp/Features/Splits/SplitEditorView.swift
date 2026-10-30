@@ -408,13 +408,12 @@ struct SplitEditorView: View {
 
     private var modeSection: some View {
         LedgerSection("How") {
-            Picker("Split", selection: $mode) {
-                ForEach(SplitMath.Mode.allCases.filter { $0 != .items || !items.isEmpty }) {
-                    Text($0.label).tag($0)
-                }
-            }
-            .pickerStyle(.segmented)
+            PillPicker(
+                options: SplitMath.Mode.allCases.filter { $0 != .items || !items.isEmpty }.map { ($0, $0.label) },
+                selection: $mode
+            )
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
         }
     }
 
