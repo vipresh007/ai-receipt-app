@@ -138,8 +138,11 @@ is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-onl
 | 4 | `out/<size>/04-dashboard.png` | This month's total + trend |
 | 5 | `out/<size>/05-shared.png` | The Shared tab: people and groups |
 | 6 | `out/<size>/06-insights.png` | Where it went + insights |
-| 7 | `out/<size>/07-receipts.png` | Receipts list, light mode |
-| 8 | `out/<size>/08-history.png` | Month history, light mode |
+| 7 | `out/<size>/07-receipts.png` | Receipts list (light ground) |
+| 8 | `out/<size>/08-history.png` | Month history (light ground) |
+
+Slides 1–6 sit on the dark ground and 7–8 on the light one: mostly dark, with
+the two light ones together at the end rather than alternating.
 
 The raw captures are in `brand/app-store/raw/`: iPhone 17 Pro Max simulator,
 status bar overridden to 9:41, launched with the debug-only

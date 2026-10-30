@@ -22,12 +22,12 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 # (output name, raw capture, theme, eyebrow, headline) — in App Store order.
 SLIDES = [
     ("01-scan", "scan.png", "dark", "Scan", "Snap a receipt.<br>It reads itself."),
-    ("02-split", "split-items.png", "light", "Split it", "Split the bill,<br>item by item."),
+    ("02-split", "split-items.png", "dark", "Split it", "Split the bill,<br>item by item."),
     ("03-group", "group.png", "dark", "Groups", "Who owes whom,<br>always up to date."),
-    ("04-dashboard", "dashboard.png", "light", "This month", "Know where your<br>month stands."),
+    ("04-dashboard", "dashboard.png", "dark", "This month", "Know where your<br>month stands."),
     ("05-shared", "shared.png", "dark", "Shared", "Trips, roommates,<br>friends. One balance."),
-    ("06-insights", "insights.png", "light", "Insights", "See where it went<br>and what changed."),
-    ("07-receipts", "receipts.png", "dark", "Receipts", "Every receipt,<br>one search away."),
+    ("06-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
+    ("07-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),
     ("08-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
 ]
 
