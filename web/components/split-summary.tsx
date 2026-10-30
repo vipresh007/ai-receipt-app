@@ -63,8 +63,9 @@ export function SplitSummary({
 }) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
-  const oneOff = !split.group_id;
-  const severalPayers = split.participants.filter((p) => p.is_payer).length > 1;
+  const payers = split.participants.filter((p) => p.is_payer);
+  const payerLabel =
+    payers.length === 1 ? (payers[0].is_me ? "you" : payers[0].display_name) : "the payers";
 
   async function toggleSettled(p: Participant) {
     setBusy(p.id);
@@ -80,38 +81,43 @@ export function SplitSummary({
   return (
     <div className="space-y-lg">
       <ul className="divide-y divide-border">
-        {split.participants.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center gap-md py-sm">
-            <div className="min-w-0 flex-1">
-              <p className={cn("truncate text-callout", p.settled && "text-text-tertiary line-through")}>
-                {p.is_me ? "You" : p.display_name}
-                {p.is_payer && (
-                  <span className="ml-sm text-caption text-text-tertiary">
-                    {severalPayers && p.paid ? `paid ${money(p.paid, split.currency)}` : "paid"}
-                  </span>
-                )}
-              </p>
-            </div>
-            <span className="font-mono text-callout tabular">{money(p.share, split.currency)}</span>
-            {!p.is_me && split.is_owner && (
-              <div className="flex items-center gap-xs">
-                {oneOff && (
-                  <Button
-                    type="button"
-                    variant={p.settled ? "secondary" : "ghost"}
-                    size="sm"
-                    disabled={busy === p.id}
-                    aria-pressed={p.settled}
-                    onClick={() => toggleSettled(p)}
-                  >
-                    <Check size={14} /> {p.settled ? "Paid" : "Mark paid"}
-                  </Button>
-                )}
-                <ShareLinkButton participant={p} split={split} />
+        {split.participants.map((p) => {
+          const owes = !p.is_payer && Number(p.share) > 0;
+          return (
+            <li key={p.id} className="flex flex-wrap items-center gap-x-md gap-y-xs py-sm">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-callout">{p.is_me ? "You" : p.display_name}</p>
+                <p className="text-caption text-text-tertiary">
+                  {p.is_payer
+                    ? `paid ${money(p.paid ?? split.total, split.currency)}`
+                    : p.settled
+                      ? "paid back"
+                      : `owes ${payerLabel}`}
+                </p>
               </div>
-            )}
-          </li>
-        ))}
+              <span className={cn("font-mono text-callout tabular", p.settled && "text-text-tertiary line-through")}>
+                {money(p.share, split.currency)}
+              </span>
+              {(owes && split.can_edit) || (!p.is_me && split.is_owner) ? (
+                <div className="flex items-center gap-xs">
+                  {owes && split.can_edit && (
+                    <Button
+                      type="button"
+                      variant={p.settled ? "secondary" : "ghost"}
+                      size="sm"
+                      disabled={busy === p.id}
+                      aria-pressed={p.settled}
+                      onClick={() => toggleSettled(p)}
+                    >
+                      <Check size={14} /> {p.settled ? "Paid" : "Mark paid"}
+                    </Button>
+                  )}
+                  {!p.is_me && split.is_owner && !p.settled && <ShareLinkButton participant={p} split={split} />}
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
       {split.repeat && (
         <p className="flex items-center gap-xs text-caption text-text-tertiary">

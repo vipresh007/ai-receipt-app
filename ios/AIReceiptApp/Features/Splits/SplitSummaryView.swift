@@ -33,49 +33,57 @@ struct SplitParticipantRows: View {
     @ViewBuilder
     private var rows: some View {
         ForEach(split.participants) { person in
+            let owes = !person.isPayer && person.shareValue > 0
             HStack(spacing: Theme.Space.md) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(person.isMe ? "You" : person.displayName)
                         .font(.appCallout)
-                        .strikethrough(person.settled)
-                        .foregroundStyle(person.settled ? Theme.Palette.textTertiary : Theme.Palette.text)
-                    if person.isPayer {
-                        Text(
-                            split.payers.count > 1
-                                ? "paid \((Decimal(string: person.paid ?? "") ?? 0).formatted(.currency(code: split.currency)))"
-                                : "paid"
-                        )
-                            .font(.appCaption)
-                            .foregroundStyle(Theme.Palette.textTertiary)
-                    }
+                        .foregroundStyle(Theme.Palette.text)
+                    Text(status(person))
+                        .font(.appCaption)
+                        .foregroundStyle(person.settled ? Theme.Palette.success : Theme.Palette.textTertiary)
                 }
                 Spacer()
                 Text(person.shareValue, format: .currency(code: split.currency))
                     .font(.appMoney)
-                if !person.isMe, split.isOwner {
-                    if split.groupId == nil {
-                        Button {
-                            Task { await toggleSettled(person) }
-                        } label: {
-                            Image(systemName: person.settled ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 20))
-                                .foregroundStyle(person.settled ? Theme.Palette.success : Theme.Palette.textTertiary)
-                        }
-                        .buttonStyle(.borderless)
-                        .disabled(busy == person.id)
-                        .accessibilityLabel(person.settled ? "Paid. Mark \(person.displayName) as not paid" : "Mark \(person.displayName) as paid")
+                    .strikethrough(person.settled)
+                    .foregroundStyle(person.settled ? Theme.Palette.textTertiary : Theme.Palette.text)
+                if owes, split.canEdit {
+                    Button {
+                        Task { await toggleSettled(person) }
+                    } label: {
+                        Image(systemName: person.settled ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(person.settled ? Theme.Palette.success : Theme.Palette.textTertiary)
                     }
-                    if let url = URL(string: person.shareUrl) {
-                        ShareLink(item: url, message: Text(shareMessage(person))) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 17))
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Send \(person.displayName) their share")
+                    .buttonStyle(.borderless)
+                    .disabled(busy == person.id)
+                    .accessibilityLabel(
+                        person.settled ? "Paid back. Mark \(person.displayName) as not paid" : "Mark \(person.displayName) as paid"
+                    )
+                }
+                if !person.isMe, split.isOwner, !person.settled, let url = URL(string: person.shareUrl) {
+                    ShareLink(item: url, message: Text(shareMessage(person))) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 17))
                     }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Send \(person.displayName) their share")
                 }
             }
         }
+    }
+
+    /// "paid $300.00" for whoever paid; "owes Vipresh" / "paid back" for the rest.
+    private func status(_ person: API.ParticipantDTO) -> String {
+        if person.isPayer {
+            let paid = Decimal(string: person.paid ?? "") ?? split.totalValue
+            return "paid \(paid.formatted(.currency(code: split.currency)))"
+        }
+        if person.settled { return "paid back" }
+        let payers = split.payers
+        if payers.count == 1 { return "owes \(payers[0].isMe ? "you" : payers[0].displayName)" }
+        return "owes the payers"
     }
 
     private func shareMessage(_ person: API.ParticipantDTO) -> String {

@@ -798,7 +798,11 @@ def group_payments(
         return suggest_payments(_net(splits, rows, settlements))
     return direct_debts(
         [
-            [(r.member_id, r.share, _paid(r, s), False) for r in rows[s.id] if r.member_id]
+            [
+                (r.member_id, r.share, _paid(r, s), r.settled_at is not None)
+                for r in rows[s.id]
+                if r.member_id
+            ]
             for s in splits
         ],
         [(x.from_member_id, x.to_member_id, x.amount) for x in settlements],
@@ -820,7 +824,30 @@ def _net(
                 paid=[(r.member_id, _paid(r, s)) for r in rows[s.id] if _paid(r, s)],
             )
         )
-    return balances(ledger, [(x.from_member_id, x.to_member_id, x.amount) for x in settlements])
+    recorded = [(x.from_member_id, x.to_member_id, x.amount) for x in settlements]
+    return balances(ledger, recorded + _ticked_shares(splits, rows))
+
+
+def _ticked_shares(
+    splits: list[Split], rows: dict[uuid.UUID, list[SplitParticipant]]
+) -> list[tuple[uuid.UUID, uuid.UUID, Decimal]]:
+    """A share ticked paid on a group expense counts as that person paying it
+    to whoever paid the bill (split between several payers by what each put in)."""
+    out: list[tuple[uuid.UUID, uuid.UUID, Decimal]] = []
+    for s in splits:
+        payers = [r for r in rows[s.id] if r.member_id and _paid(r, s) > 0]
+        if not payers:
+            continue
+        for r in rows[s.id]:
+            if r.settled_at is None or r.member_id is None or r in payers:
+                continue
+            if len(payers) == 1:
+                out.append((r.member_id, payers[0].member_id, r.share))
+                continue
+            put_in = sum(_paid(p, s) for p in payers)
+            parts = _allocate_cents(r.share, [_paid(p, s) / put_in for p in payers])
+            out += [(r.member_id, p.member_id, a) for p, a in zip(payers, parts, strict=True)]
+    return out
 
 
 async def group_summary(session: AsyncSession, group: Group, user: User) -> GroupSummaryOut:

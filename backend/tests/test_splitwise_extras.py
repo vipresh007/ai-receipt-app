@@ -377,3 +377,32 @@ async def test_changes_wake_the_apps_of_the_people_they_affect(
     finally:
         realtime.unsubscribe(sam.id, sams_app)
         realtime.unsubscribe(stranger.id, strangers_app)
+
+
+async def test_ticking_a_share_paid_in_a_group_settles_it(client):
+    group = (
+        await client.post("/v1/groups", json={"name": "Vegas", "members": ["Mit", "Smit"]})
+    ).json()
+    me, mit, smit = group["members"]
+    split = await _expense(
+        client,
+        "300.00",
+        [{"is_me": True}, {"member_id": mit["id"]}, {"member_id": smit["id"]}],
+        group_id=group["id"],
+        description="Hotel",
+    )
+    mit_row = split["participants"][1]
+    r = await client.post(
+        f"/v1/splits/{split['id']}/participants/{mit_row['id']}/settled", json={"settled": True}
+    )
+    assert r.json()["participants"][1]["settled"] is True
+    detail = (await client.get(f"/v1/groups/{group['id']}")).json()
+    assert [m["balance"] for m in detail["members"]] == ["100.00", "0.00", "-100.00"]
+    assert detail["payments"] == [
+        {"from_member_id": smit["id"], "to_member_id": me["id"], "amount": "100.00"}
+    ]
+    timeline = (await client.get(f"/v1/splits/{split['id']}/timeline")).json()
+    assert timeline[-1]["text"] == "marked Mit's share paid"
+    # Direct (not simplified) agrees.
+    off = (await client.patch(f"/v1/groups/{group['id']}", json={"simplify_debts": False})).json()
+    assert off["payments"] == detail["payments"]

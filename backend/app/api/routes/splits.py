@@ -103,10 +103,10 @@ async def set_settled(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SplitOut:
-    """Tick a person's share paid on a one-off split (groups use settlements)."""
+    """Tick someone's share of an expense paid (they paid back whoever paid
+    the bill). Anyone on it, or in its group, can; it's logged in the
+    expense's history, the others are told, and group balances count it."""
     split = await split_store.require_split(session, split_id, user)
-    if split.owner_user_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the person who added it can do that.")
     row = await session.get(SplitParticipant, participant_id)
     if row is None or row.split_id != split.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found on this split.")
@@ -115,6 +115,18 @@ async def set_settled(
         state = "paid" if data.settled else "not paid"
         await split_store.log_event(
             session, split, user, f"marked {row.display_name}'s share {state}"
+        )
+        people = await session.scalars(
+            select(SplitParticipant.user_id).where(SplitParticipant.split_id == split.id)
+        )
+        await activity.notify(
+            session,
+            set(people),
+            user,
+            "payment",
+            f'marked {row.display_name}\'s share of "{split.description}" {state}',
+            split_id=split.id,
+            group_id=split.group_id,
         )
     await session.commit()
     return await split_store.split_out(session, split, user)

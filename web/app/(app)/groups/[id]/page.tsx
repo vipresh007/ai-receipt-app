@@ -4,21 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Bell,
-  Check,
-  ChevronLeft,
-  Copy,
-  Plus,
-  ReceiptText,
-  Share2,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Banknote, Bell, Check, ChevronDown, ChevronLeft, Copy, Plus, ReceiptText, Share2, Trash2, X } from "lucide-react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { money, shortDate } from "@/lib/format";
-import type { GroupDetail, Split } from "@/lib/types";
+import type { GroupDetail, GroupMember, Settlement, Split } from "@/lib/types";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,15 +27,13 @@ interface PaymentDraft {
   amount: string;
 }
 
+type Entry = { kind: "expense"; date: string; split: Split } | { kind: "payment"; date: string; payment: Settlement };
+
 export default function GroupPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const {
-    data: group,
-    isLoading,
-    error: loadError,
-  } = useQuery({
+  const { data: group, isLoading, error: loadError } = useQuery({
     ...LIVE,
     queryKey: ["group", id],
     queryFn: () => apiGet<GroupDetail>(`v1/groups/${id}`),
@@ -74,24 +61,37 @@ export default function GroupPage() {
       <Card className="space-y-sm">
         <CardTitle>Group not found</CardTitle>
         <p className="text-callout text-text-secondary">
-          {loadError instanceof Error
-            ? loadError.message
-            : "It may have been deleted, or you're not in it."}
+          {loadError instanceof Error ? loadError.message : "It may have been deleted, or you're not in it."}
         </p>
         <Link href="/groups" className="text-callout text-accent">
-          Back to groups
+          Back to Shared
         </Link>
       </Card>
     );
   }
 
   const g = group;
+  const me = g.members.find((m) => m.is_me);
   const nameOf = (memberId: string) => {
     const m = g.members.find((x) => x.id === memberId);
-    return m ? (m.is_me ? "You" : m.display_name) : "Someone";
+    return m ? (m.is_me ? "you" : m.display_name) : "someone";
   };
+  const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-  /** Every change can move balances, your spending and other lists. */
+  /** Between you and one member, as the group settles up: positive = they owe you. */
+  const withMe = (m: GroupMember) =>
+    g.payments.reduce((sum, p) => {
+      if (p.from_member_id === m.id && p.to_member_id === me?.id) return sum + Number(p.amount);
+      if (p.from_member_id === me?.id && p.to_member_id === m.id) return sum - Number(p.amount);
+      return sum;
+    }, 0);
+  const others = g.payments.filter((p) => p.from_member_id !== me?.id && p.to_member_id !== me?.id);
+
+  const entries: Entry[] = [
+    ...g.splits.map((split) => ({ kind: "expense" as const, date: split.date, split })),
+    ...g.settlements.map((payment) => ({ kind: "payment" as const, date: payment.date, payment })),
+  ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.kind === "payment" ? -1 : 1));
+
   async function refresh(next?: GroupDetail) {
     if (next) queryClient.setQueryData(["group", id], next);
     await queryClient.invalidateQueries();
@@ -99,9 +99,9 @@ export default function GroupPage() {
 
   async function run(action: () => Promise<GroupDetail | null | void>) {
     setError(null);
+    setNotice(null);
     try {
-      const next = await action();
-      await refresh(next ?? undefined);
+      await refresh((await action()) ?? undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     }
@@ -110,14 +110,14 @@ export default function GroupPage() {
   function recordPayment(e: React.FormEvent) {
     e.preventDefault();
     if (!payment) return;
-    const { from, to, amount } = payment;
     run(async () => {
       const next = await apiPost<GroupDetail>(`v1/groups/${id}/settlements`, {
-        from_member_id: from,
-        to_member_id: to,
-        amount,
+        from_member_id: payment.from,
+        to_member_id: payment.to,
+        amount: payment.amount,
       });
       setPayment(null);
+      setNotice(`Recorded: ${cap(nameOf(payment.from))} paid ${nameOf(payment.to)} ${money(payment.amount, g.currency)}.`);
       return next;
     });
   }
@@ -126,176 +126,95 @@ export default function GroupPage() {
     e.preventDefault();
     if (!newMember.trim()) return;
     run(async () => {
-      const next = await apiPost<GroupDetail>(`v1/groups/${id}/members`, {
-        name: newMember,
-      });
+      const next = await apiPost<GroupDetail>(`v1/groups/${id}/members`, { name: newMember });
       setNewMember("");
       return next;
     });
   }
 
   async function deleteGroup() {
-    if (
-      !window.confirm(
-        `Delete ${g.name}? Its expenses and payments go too; split receipts count in full again.`,
-      )
-    )
-      return;
+    if (!window.confirm(`Delete ${g.name}? Its expenses and payments go too; split receipts count in full again.`)) return;
     await apiDelete(`v1/groups/${id}`);
     await queryClient.invalidateQueries();
     router.push("/groups");
   }
 
   async function removeSplit(split: Split) {
-    if (!window.confirm(`Remove ${split.description || "this expense"}?`))
-      return;
+    if (!window.confirm(`Remove ${split.description || "this expense"}?`)) return;
     await run(async () => {
       await apiDelete(`v1/splits/${split.id}`);
       setOpen(null);
     });
   }
 
-  const payers = (s: Split) => s.participants.find((p) => p.is_payer);
-
   return (
     <div className="space-y-2xl">
       <div className="space-y-md">
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-xs text-caption text-text-secondary hover:text-text"
-        >
-          <ChevronLeft size={15} /> Groups
+        <Link href="/groups" className="inline-flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+          <ChevronLeft size={15} /> Shared
         </Link>
         <PageHeader
           eyebrow={`${g.members.length} ${g.members.length === 1 ? "person" : "people"} · ${g.currency}`}
           title={g.name}
-          actions={
-            <BalanceTag
-              balance={g.my_balance}
-              currency={g.currency}
-              className="text-callout"
-            />
-          }
+          actions={<BalanceTag balance={g.my_balance} currency={g.currency} className="text-callout" />}
         />
       </div>
 
       {error && (
-        <p
-          role="alert"
-          className="rounded-md bg-danger-muted px-md py-sm text-caption text-danger"
-        >
+        <p role="alert" className="rounded-md bg-danger-muted px-md py-sm text-caption text-danger">
           {error}
         </p>
       )}
       {notice && !error && (
-        <p
-          role="status"
-          className="rounded-md bg-success-muted px-md py-sm text-caption text-success"
-        >
+        <p role="status" className="rounded-md bg-success-muted px-md py-sm text-caption text-success">
           {notice}
         </p>
       )}
 
       <div className="grid gap-2xl lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         <div className="space-y-2xl">
-          {/* ── Settle up ─────────────────────────────── */}
+          {/* ── Balances: one row per person, and what to do about it ── */}
           <Card className="space-y-lg">
-            <div className="flex items-center justify-between gap-md">
-              <CardTitle>Settle up</CardTitle>
-              {!payment && g.members.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setPayment({
-                      from: g.members[0].id,
-                      to: g.members[1].id,
-                      amount: "",
-                    })
-                  }
-                >
-                  Record a payment
-                </Button>
-              )}
-            </div>
-            <label className="flex items-start gap-sm text-callout">
-              <input
-                type="checkbox"
-                checked={g.simplify_debts}
-                onChange={(e) =>
-                  run(() => apiPatch<GroupDetail>(`v1/groups/${id}`, { simplify_debts: e.target.checked }))
-                }
-                className="mt-[3px] h-4 w-4 accent-[var(--c-accent)]"
-              />
-              <span>
-                Simplify debts
-                <span className="block text-caption text-text-tertiary">
-                  {g.simplify_debts
-                    ? "Fewest payments: if you owe Sam and Sam owes Kim, you pay Kim directly."
-                    : "Everyone pays back whoever they owe, expense by expense."}
-                </span>
-              </span>
-            </label>
-            {g.payments.length === 0 ? (
-              <p className="text-callout text-text-secondary">
-                Everyone&apos;s square.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border">
-                {g.payments.map((p) => {
-                  const debtor = g.members.find(
-                    (m) => m.id === p.from_member_id,
-                  );
-                  const creditor = g.members.find(
-                    (m) => m.id === p.to_member_id,
-                  );
+            <CardTitle>Balances</CardTitle>
+            <ul className="divide-y divide-border">
+              {g.members
+                .filter((m) => !m.is_me)
+                .map((m) => {
+                  const owed = withMe(m);
+                  const elsewhere = Number(m.balance) - owed;
                   return (
-                    <li
-                      key={`${p.from_member_id}-${p.to_member_id}`}
-                      className="space-y-sm py-sm"
-                    >
+                    <li key={m.id} className="space-y-sm py-md first:pt-0">
                       <div className="flex flex-wrap items-center gap-md">
-                        <p className="flex min-w-0 flex-1 items-center gap-sm text-callout">
-                          <span className="truncate font-medium">
-                            {nameOf(p.from_member_id)}
-                          </span>
-                          <ArrowRight
-                            size={14}
-                            className="shrink-0 text-text-tertiary"
-                          />
-                          <span className="truncate font-medium">
-                            {nameOf(p.to_member_id)}
-                          </span>
-                        </p>
-                        <span className="font-mono text-callout tabular">
-                          {money(p.amount, g.currency)}
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-callout font-semibold">
+                          {m.display_name.charAt(0).toUpperCase()}
                         </span>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            setPayment({
-                              from: p.from_member_id,
-                              to: p.to_member_id,
-                              amount: p.amount,
-                            })
-                          }
-                        >
-                          <Check size={14} /> Paid
-                        </Button>
-                        {creditor?.is_me && debtor?.has_account && (
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-callout font-medium">{m.display_name}</p>
+                          <p
+                            className={cn(
+                              "text-caption tabular",
+                              owed > 0 ? "text-success" : owed < 0 ? "text-danger" : "text-text-tertiary",
+                            )}
+                          >
+                            {owed > 0
+                              ? `owes you ${money(owed, g.currency)}`
+                              : owed < 0
+                                ? `you owe ${money(-owed, g.currency)}`
+                                : Math.abs(elsewhere) < 0.005
+                                  ? "settled up"
+                                  : elsewhere < 0
+                                    ? `owes others ${money(-elsewhere, g.currency)}`
+                                    : `is owed ${money(elsewhere, g.currency)} by others`}
+                          </p>
+                        </div>
+                        {owed > 0 && m.has_account && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() =>
                               run(async () => {
-                                const next = await apiPost<GroupDetail>(
-                                  `v1/groups/${id}/members/${debtor.id}/remind`,
-                                  {},
-                                );
-                                setNotice(
-                                  `Reminder sent to ${debtor.display_name}.`,
-                                );
+                                const next = await apiPost<GroupDetail>(`v1/groups/${id}/members/${m.id}/remind`, {});
+                                setNotice(`Reminder sent to ${m.display_name}.`);
                                 return next;
                               })
                             }
@@ -303,44 +222,52 @@ export default function GroupPage() {
                             <Bell size={14} /> Remind
                           </Button>
                         )}
+                        {owed !== 0 && me && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                              setPayment(
+                                owed > 0
+                                  ? { from: m.id, to: me.id, amount: owed.toFixed(2) }
+                                  : { from: me.id, to: m.id, amount: (-owed).toFixed(2) },
+                              )
+                            }
+                          >
+                            <Check size={14} /> Record payment
+                          </Button>
+                        )}
                       </div>
-                      {debtor?.is_me && creditor && (
-                        <PayTo
-                          payTo={creditor.pay_to}
-                          amount={p.amount}
-                          currency={g.currency}
-                          name={creditor.display_name}
-                        />
-                      )}
+                      {owed < 0 && <PayTo payTo={m.pay_to} amount={owed} currency={g.currency} name={m.display_name} />}
                     </li>
                   );
                 })}
-              </ul>
+            </ul>
+            {others.length > 0 && (
+              <div className="space-y-xs rounded-lg bg-surface-2 p-md">
+                <p className="text-caption font-medium text-text-secondary">Between others</p>
+                {others.map((p) => (
+                  <p key={`${p.from_member_id}-${p.to_member_id}`} className="flex justify-between gap-md text-caption">
+                    <span>
+                      {cap(nameOf(p.from_member_id))} owes {nameOf(p.to_member_id)}
+                    </span>
+                    <span className="font-mono tabular">{money(p.amount, g.currency)}</span>
+                  </p>
+                ))}
+              </div>
             )}
 
             {payment && (
-              <form
-                onSubmit={recordPayment}
-                className="space-y-md rounded-lg bg-surface-2 p-lg"
-              >
+              <form onSubmit={recordPayment} className="space-y-md rounded-lg bg-surface-2 p-lg">
+                <p className="text-callout font-medium">Record a payment</p>
                 <div className="grid gap-md sm:grid-cols-[1fr_1fr_8rem]">
                   <div className="space-y-xs">
                     <Label htmlFor="pay-from">Who paid</Label>
-                    <MemberSelect
-                      id="pay-from"
-                      group={g}
-                      value={payment.from}
-                      onChange={(from) => setPayment({ ...payment, from })}
-                    />
+                    <MemberSelect id="pay-from" group={g} value={payment.from} onChange={(from) => setPayment({ ...payment, from })} />
                   </div>
                   <div className="space-y-xs">
                     <Label htmlFor="pay-to">To</Label>
-                    <MemberSelect
-                      id="pay-to"
-                      group={g}
-                      value={payment.to}
-                      onChange={(to) => setPayment({ ...payment, to })}
-                    />
+                    <MemberSelect id="pay-to" group={g} value={payment.to} onChange={(to) => setPayment({ ...payment, to })} />
                   </div>
                   <div className="space-y-xs">
                     <Label htmlFor="pay-amount">Amount</Label>
@@ -348,46 +275,60 @@ export default function GroupPage() {
                       id="pay-amount"
                       inputMode="decimal"
                       value={payment.amount}
-                      onChange={(e) =>
-                        setPayment({ ...payment, amount: e.target.value })
-                      }
+                      onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
                       placeholder="0.00"
                       className="tabular"
                     />
                   </div>
                 </div>
                 <p className="text-caption text-text-tertiary">
-                  Tally only keeps track. Send the money however you normally
-                  do.
+                  Tally only keeps track. Send the money however you normally do. Paying one expense back? Tick
+                  &ldquo;Mark paid&rdquo; on it instead.
                 </p>
                 <div className="flex justify-end gap-sm">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPayment(null)}
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setPayment(null)}>
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={
-                      payment.from === payment.to ||
-                      !(Number(payment.amount) > 0)
-                    }
-                  >
+                  <Button type="submit" size="sm" disabled={payment.from === payment.to || !(Number(payment.amount) > 0)}>
                     Record payment
                   </Button>
                 </div>
               </form>
             )}
+
+            <div className="flex flex-wrap items-start justify-between gap-md border-t border-border pt-md">
+              <label className="flex max-w-md items-start gap-sm text-callout">
+                <input
+                  type="checkbox"
+                  checked={g.simplify_debts}
+                  onChange={(e) => run(() => apiPatch<GroupDetail>(`v1/groups/${id}`, { simplify_debts: e.target.checked }))}
+                  className="mt-[3px] h-4 w-4 accent-[var(--c-accent)]"
+                />
+                <span>
+                  Simplify debts
+                  <span className="block text-caption text-text-tertiary">
+                    {g.simplify_debts
+                      ? "Fewest payments: if you owe Sam and Sam owes Kim, you pay Kim directly."
+                      : "Everyone pays back whoever they owe, expense by expense."}
+                  </span>
+                </span>
+              </label>
+              {!payment && me && g.members.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPayment({ from: g.members.find((m) => !m.is_me)!.id, to: me.id, amount: "" })}
+                >
+                  Other payment
+                </Button>
+              )}
+            </div>
           </Card>
 
-          {/* ── Expenses ─────────────────────────────── */}
+          {/* ── Expenses and payments, newest first ── */}
           <Card className="space-y-lg">
             <div className="flex items-center justify-between gap-md">
-              <CardTitle>Expenses</CardTitle>
+              <CardTitle>Expenses &amp; payments</CardTitle>
               {!adding && !editing && (
                 <Button size="sm" onClick={() => setAdding(true)}>
                   <Plus size={15} /> Add expense
@@ -414,120 +355,66 @@ export default function GroupPage() {
               </div>
             )}
 
-            {g.splits.length === 0 && !adding ? (
+            {entries.length === 0 && !adding ? (
               <p className="text-callout text-text-secondary">
-                Nothing yet. Add an expense here, or split a receipt with this
-                group from the receipt itself.
+                Nothing yet. Add an expense here, or split a receipt with this group from the receipt itself.
               </p>
             ) : (
               <ul className="divide-y divide-border">
-                {g.splits.map((s) => {
-                  const payer = payers(s);
-                  const isOpen = open === s.id;
-                  return (
-                    <li key={s.id} className="py-sm">
-                      <button
-                        type="button"
-                        onClick={() => setOpen(isOpen ? null : s.id)}
-                        aria-expanded={isOpen}
-                        className="flex w-full items-center gap-md rounded-md py-xs text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)]"
+                {entries.map((entry) =>
+                  entry.kind === "payment" ? (
+                    <li key={`p-${entry.payment.id}`} className="flex items-center gap-md py-md">
+                      <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
+                        {shortDate(entry.date)}
+                      </span>
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-success-muted text-success">
+                        <Banknote size={15} />
+                      </span>
+                      <p className="min-w-0 flex-1 text-callout">
+                        <span className="font-medium">{cap(nameOf(entry.payment.from_member_id))}</span> paid{" "}
+                        <span className="font-medium">{nameOf(entry.payment.to_member_id)}</span>
+                        {entry.payment.note && <span className="text-text-tertiary"> · {entry.payment.note}</span>}
+                      </p>
+                      <span className="font-mono text-callout text-success tabular">
+                        {money(entry.payment.amount, g.currency)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Delete payment"
+                        onClick={() => {
+                          if (window.confirm("Delete this payment?"))
+                            run(() => apiDelete<GroupDetail>(`v1/groups/${id}/settlements/${entry.payment.id}`));
+                        }}
                       >
-                        <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
-                          {shortDate(s.date)}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-xs truncate text-callout font-medium">
-                            {s.receipt_id && (
-                              <ReceiptText
-                                size={14}
-                                className="shrink-0 text-text-tertiary"
-                              />
-                            )}
-                            {s.description || "Expense"}
-                          </span>
-                          <span className="block truncate text-caption text-text-tertiary">
-                            {payer
-                              ? `${payer.is_me ? "You" : payer.display_name} paid ${money(s.total, s.currency)}`
-                              : money(s.total, s.currency)}
-                          </span>
-                        </span>
-                        <span className="text-right">
-                          <span className="block font-mono text-callout tabular">
-                            {s.my_share != null
-                              ? money(s.my_share, s.currency)
-                              : "—"}
-                          </span>
-                          <span className="block text-[11px] text-text-tertiary">
-                            your share
-                          </span>
-                        </span>
-                      </button>
-                      {isOpen && (
-                        <div className="mt-sm rounded-lg bg-surface-2 p-lg">
-                          <SplitSummary
-                            split={s}
-                            onChange={() => refresh()}
-                            onEdit={
-                              s.receipt_id && s.is_owner
-                                ? () => router.push(`/receipts/${s.receipt_id}`)
-                                : () => {
-                                    setEditing(s);
-                                    setAdding(false);
-                                  }
-                            }
-                            onRemove={() => removeSplit(s)}
-                          />
-                        </div>
-                      )}
+                        <Trash2 size={15} />
+                      </Button>
                     </li>
-                  );
-                })}
+                  ) : (
+                    <ExpenseRow
+                      key={`s-${entry.split.id}`}
+                      split={entry.split}
+                      open={open === entry.split.id}
+                      onToggle={() => setOpen(open === entry.split.id ? null : entry.split.id)}
+                      onChange={() => refresh()}
+                      onEdit={
+                        entry.split.receipt_id && entry.split.is_owner
+                          ? () => router.push(`/receipts/${entry.split.receipt_id}`)
+                          : () => {
+                              setEditing(entry.split);
+                              setAdding(false);
+                            }
+                      }
+                      onRemove={() => removeSplit(entry.split)}
+                    />
+                  ),
+                )}
               </ul>
             )}
           </Card>
-
-          {/* ── Payments ─────────────────────────────── */}
-          {g.settlements.length > 0 && (
-            <Card className="space-y-lg">
-              <CardTitle>Payments</CardTitle>
-              <ul className="divide-y divide-border">
-                {g.settlements.map((st) => (
-                  <li key={st.id} className="flex items-center gap-md py-sm">
-                    <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
-                      {shortDate(st.date)}
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-callout">
-                      {nameOf(st.from_member_id)} paid {nameOf(st.to_member_id)}
-                      {st.note && (
-                        <span className="text-text-tertiary"> · {st.note}</span>
-                      )}
-                    </p>
-                    <span className="font-mono text-callout tabular">
-                      {money(st.amount, g.currency)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Delete payment"
-                      onClick={() => {
-                        if (window.confirm("Delete this payment?"))
-                          run(() =>
-                            apiDelete<GroupDetail>(
-                              `v1/groups/${id}/settlements/${st.id}`,
-                            ),
-                          );
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
         </div>
 
-        {/* ── People ─────────────────────────────── */}
+        {/* ── People ── */}
         <div className="space-y-2xl">
           <Card className="space-y-lg">
             <CardTitle>People</CardTitle>
@@ -535,40 +422,21 @@ export default function GroupPage() {
               {g.members.map((m) => (
                 <li key={m.id} className="flex items-center gap-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-callout font-medium">
-                      {m.is_me ? `${m.display_name} (you)` : m.display_name}
-                    </p>
-                    {!m.has_account && (
-                      <p className="text-[11px] text-text-tertiary">
-                        Hasn&apos;t joined yet
-                      </p>
-                    )}
+                    <p className="truncate text-callout font-medium">{m.is_me ? `${m.display_name} (you)` : m.display_name}</p>
+                    <p className="text-[11px] text-text-tertiary">{m.has_account ? "On Tally" : "Hasn't joined yet"}</p>
                   </div>
-                  <span
-                    className={cn(
-                      "font-mono text-caption tabular",
-                      Number(m.balance) > 0 && "text-success",
-                      Number(m.balance) < 0 && "text-danger",
-                      Number(m.balance) === 0 && "text-text-tertiary",
-                    )}
-                  >
-                    {Number(m.balance) > 0 && "+"}
-                    {money(m.balance, g.currency)}
-                  </span>
                   {!m.has_account && (
                     <Button
                       variant="ghost"
                       size="icon"
                       aria-label={`Remove ${m.display_name}`}
-                      onClick={() =>
-                        run(() =>
-                          apiDelete<GroupDetail>(
-                            `v1/groups/${id}/members/${m.id}`,
-                          ),
-                        )
-                      }
+                      className="h-8 w-8 text-text-tertiary"
+                      onClick={() => {
+                        if (window.confirm(`Remove ${m.display_name} from the group?`))
+                          run(() => apiDelete<GroupDetail>(`v1/groups/${id}/members/${m.id}`));
+                      }}
                     >
-                      <X size={15} />
+                      <X size={14} />
                     </Button>
                   )}
                 </li>
@@ -582,11 +450,7 @@ export default function GroupPage() {
                 maxLength={120}
                 aria-label="New person's name"
               />
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={!newMember.trim()}
-              >
+              <Button type="submit" variant="secondary" disabled={!newMember.trim()}>
                 Add
               </Button>
             </form>
@@ -594,18 +458,70 @@ export default function GroupPage() {
           </Card>
 
           {g.is_owner && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-danger"
-              onClick={deleteGroup}
-            >
+            <Button variant="ghost" size="sm" className="text-danger" onClick={deleteGroup}>
               <Trash2 size={15} /> Delete group
             </Button>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function ExpenseRow({
+  split,
+  open,
+  onToggle,
+  onChange,
+  onEdit,
+  onRemove,
+}: {
+  split: Split;
+  open: boolean;
+  onToggle: () => void;
+  onChange: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const payers = split.participants.filter((p) => p.is_payer);
+  const paidBy =
+    payers.length === 1 ? `${payers[0].is_me ? "You" : payers[0].display_name} paid` : `${payers.length} people paid`;
+  const unpaid = split.participants.filter((p) => !p.is_payer && !p.settled && Number(p.share) > 0).length;
+  return (
+    <li className="py-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-md rounded-md py-xs text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-focus-ring)]"
+      >
+        <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
+          {shortDate(split.date)}
+        </span>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-2 text-text-secondary">
+          <ReceiptText size={15} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-callout font-medium">{split.description || "Expense"}</span>
+          <span className="block truncate text-caption text-text-tertiary">
+            {paidBy} {money(split.total, split.currency)}
+            {unpaid === 0 && " · all paid back"}
+          </span>
+        </span>
+        <span className="text-right">
+          <span className="block font-mono text-callout tabular">
+            {split.my_share != null ? money(split.my_share, split.currency) : "—"}
+          </span>
+          <span className="block text-[11px] text-text-tertiary">your share</span>
+        </span>
+        <ChevronDown size={16} className={cn("shrink-0 text-text-tertiary transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mt-sm rounded-lg bg-surface-2 p-lg">
+          <SplitSummary split={split} onChange={onChange} onEdit={onEdit} onRemove={onRemove} />
+        </div>
+      )}
+    </li>
   );
 }
 
