@@ -199,6 +199,10 @@ export interface GroupMember {
   /** Positive = is owed, negative = owes. */
   balance: string;
   pay_to: PayDetails | null;
+  /** Before they join: where their invite goes. */
+  email: string | null;
+  invited_at: string | null;
+  can_email: boolean;
 }
 
 export interface Payment {

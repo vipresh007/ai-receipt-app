@@ -59,6 +59,12 @@ export default function GroupPage() {
   const [payment, setPayment] = useState<PaymentDraft | null>(null);
   const [newMember, setNewMember] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  // Inviting one person who hasn't joined: their id and the address.
+  const [inviting, setInviting] = useState<{
+    id: string;
+    email: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -144,10 +150,15 @@ export default function GroupPage() {
     e.preventDefault();
     if (!newMember.trim()) return;
     run(async () => {
+      const email = newMemberEmail.trim();
       const next = await apiPost<GroupDetail>(`v1/groups/${id}/members`, {
         name: newMember,
+        email: email || null,
+        send_invite: !!email,
       });
+      if (email) setNotice(`Added ${newMember.trim()} and emailed the invite.`);
       setNewMember("");
+      setNewMemberEmail("");
       setAddingMember(false);
       return next;
     });
@@ -349,6 +360,79 @@ export default function GroupPage() {
                           />
                         </div>
                       )}
+                      {!m.has_account &&
+                        (inviting?.id === m.id ? (
+                          <form
+                            className="flex gap-sm pl-[48px]"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const email = inviting.email.trim();
+                              run(async () => {
+                                if (email !== (m.email ?? "")) {
+                                  await apiPatch<GroupDetail>(
+                                    `v1/groups/${id}/members/${m.id}`,
+                                    { email },
+                                  );
+                                }
+                                const next = await apiPost<GroupDetail>(
+                                  `v1/groups/${id}/members/${m.id}/invite`,
+                                  {},
+                                );
+                                setInviting(null);
+                                setNotice(`Invite emailed to ${email}.`);
+                                return next;
+                              });
+                            }}
+                          >
+                            <Input
+                              type="email"
+                              value={inviting.email}
+                              onChange={(e) =>
+                                setInviting({ id: m.id, email: e.target.value })
+                              }
+                              placeholder={`${m.display_name}'s email`}
+                              aria-label={`${m.display_name}'s email`}
+                              className="h-9"
+                              autoFocus
+                            />
+                            <Button
+                              type="submit"
+                              size="sm"
+                              disabled={!inviting.email.trim()}
+                            >
+                              Send
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setInviting(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </form>
+                        ) : (
+                          <p className="pl-[48px] text-caption text-text-tertiary">
+                            {m.invited_at
+                              ? `Invite emailed to ${m.email} · ${shortDate(m.invited_at.slice(0, 10))}. `
+                              : m.email
+                                ? `${m.email}. `
+                                : ""}
+                            <button
+                              type="button"
+                              className="text-accent"
+                              onClick={() =>
+                                setInviting({ id: m.id, email: m.email ?? "" })
+                              }
+                            >
+                              {m.invited_at
+                                ? "Send again"
+                                : m.email
+                                  ? "Email the invite"
+                                  : "Invite by email"}
+                            </button>
+                          </p>
+                        ))}
                     </li>
                   );
                 })}
@@ -447,7 +531,7 @@ export default function GroupPage() {
             {addingMember ? (
               <form
                 onSubmit={addMember}
-                className="flex gap-sm border-t border-border pt-lg"
+                className="space-y-sm border-t border-border pt-lg"
               >
                 <Input
                   value={newMember}
@@ -457,19 +541,31 @@ export default function GroupPage() {
                   aria-label="New person's name"
                   autoFocus
                 />
-                <Button type="submit" disabled={!newMember.trim()}>
-                  Add
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setAddingMember(false);
-                    setNewMember("");
-                  }}
-                >
-                  Cancel
-                </Button>
+                <Input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="Email (optional): we'll send them the invite"
+                  maxLength={320}
+                  aria-label="Their email"
+                />
+                <div className="flex justify-end gap-sm">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAddingMember(false);
+                      setNewMember("");
+                      setNewMemberEmail("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={!newMember.trim()}>
+                    {newMemberEmail.trim() ? "Add and invite" : "Add"}
+                  </Button>
+                </div>
               </form>
             ) : (
               <div className="border-t border-border pt-lg">

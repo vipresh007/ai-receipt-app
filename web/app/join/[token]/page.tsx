@@ -9,23 +9,38 @@ import { JoinPicker } from "@/components/join-picker";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Join a group", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Join a group",
+  robots: { index: false, follow: false },
+};
 export const dynamic = "force-dynamic";
 
 async function load(token: string): Promise<PublicGroup | null> {
-  const res = await fetch(backendUrl(`v1/public/groups/${encodeURIComponent(token)}`), { cache: "no-store" });
+  const res = await fetch(
+    backendUrl(`v1/public/groups/${encodeURIComponent(token)}`),
+    { cache: "no-store" },
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Couldn't load this invite (${res.status}).`);
   return res.json();
 }
 
-export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function JoinPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ member?: string }>;
+}) {
   const { token } = await params;
+  // An emailed invite names the person it's for: their name is preselected.
+  const { member } = await searchParams;
   const [group, session] = await Promise.all([load(token), auth0.getSession()]);
   if (!group) notFound();
 
   const open = group.members.filter((m) => !m.claimed);
-  const returnTo = `/join/${encodeURIComponent(token)}`;
+  const forMember = open.find((m) => m.id === member)?.id;
+  const returnTo = `/join/${encodeURIComponent(token)}${forMember ? `?member=${forMember}` : ""}`;
 
   return (
     <PublicShell>
@@ -43,11 +58,13 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
 
       <Card className="space-y-lg">
         {session ? (
-          <JoinPicker token={token} open={open} />
+          <JoinPicker token={token} open={open} preselect={forMember} />
         ) : (
           <>
             <CardTitle>In the group</CardTitle>
-            <p className="text-callout">{group.members.map((m) => m.display_name).join(", ")}</p>
+            <p className="text-callout">
+              {group.members.map((m) => m.display_name).join(", ")}
+            </p>
             <a
               href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`}
               className={cn(buttonVariants(), "w-full")}
@@ -55,7 +72,8 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
               Sign in to join
             </a>
             <p className="text-caption text-text-tertiary">
-              Free. Sign in with Google or email, the same account as the Tally iPhone app.
+              Free. Sign in with Google or email, the same account as the Tally
+              iPhone app.
             </p>
           </>
         )}

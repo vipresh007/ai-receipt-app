@@ -348,6 +348,37 @@ async def link_invited_email(session: AsyncSession, user: User) -> None:
     )
     for person in invited:
         await claim(session, person, user)
+    # Group places added with this email become theirs too (unless they're
+    # already in that group).
+    places = list(
+        await session.scalars(
+            select(GroupMember).where(
+                func.lower(GroupMember.email) == user.email, GroupMember.user_id.is_(None)
+            )
+        )
+    )
+    for member in places:
+        already = await session.scalar(
+            select(GroupMember.id).where(
+                GroupMember.group_id == member.group_id, GroupMember.user_id == user.id
+            )
+        )
+        if already is None:
+            member.user_id = user.id
+            others = await session.scalars(
+                select(GroupMember.user_id).where(
+                    GroupMember.group_id == member.group_id, GroupMember.id != member.id
+                )
+            )
+            group = await session.get(Group, member.group_id)
+            await activity.notify(
+                session,
+                set(others),
+                user,
+                "joined",
+                f"joined {group.name if group else 'the group'}",
+                group_id=member.group_id,
+            )
 
 
 async def delete_person(session: AsyncSession, person: Person) -> None:

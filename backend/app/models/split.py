@@ -57,6 +57,10 @@ class GroupMember(Base):
     # Order in the group (members added in one request share a timestamp).
     position: Mapped[int] = mapped_column(default=0)
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Before they join: an address to email their invite to (and to match a
+    # verified sign-up to this name).
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Split(Base):

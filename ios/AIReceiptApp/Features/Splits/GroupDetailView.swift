@@ -28,6 +28,9 @@ struct GroupDetailView: View {
     @State private var confirmingDelete = false
     @State private var notice: String?
     @State private var addingMember = false
+    @State private var newMemberEmail = ""
+    @State private var invitingMember: API.GroupMemberDTO?
+    @State private var inviteEmail = ""
 
     var body: some View {
         Group {
@@ -107,10 +110,27 @@ struct GroupDetailView: View {
         .alert("Add someone", isPresented: $addingMember) {
             TextField("Name", text: $newMember)
                 .textContentType(.name)
+            TextField("Email (optional)", text: $newMemberEmail)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
             Button("Add") { Task { await addMember() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("They can claim their name later from the invite link.")
+            Text("With an email, Tally sends them the invite with their name already picked.")
+        }
+        .alert(
+            "Invite \(invitingMember?.displayName ?? "")",
+            isPresented: Binding(get: { invitingMember != nil }, set: { if !$0 { invitingMember = nil } })
+        ) {
+            TextField("Email", text: $inviteEmail)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+            Button("Send") { Task { await sendInvite() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Tally emails them the invite with their name already picked.")
         }
         .confirmationDialog("Delete \(group?.name ?? "this group")?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete group", role: .destructive) { Task { await deleteGroup() } }
@@ -221,6 +241,22 @@ struct GroupDetailView: View {
                         PayToView(payTo: payTo, amount: -owed, currency: group.currency, name: m.displayName)
                             .padding(.leading, 46)
                     }
+                    if !m.hasAccount {
+                        HStack(spacing: 6) {
+                            if let email = m.email {
+                                Text(m.invitedAt != nil ? "Invite emailed to \(email)" : email)
+                                    .lineLimit(1)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
+                            Button(m.invitedAt != nil ? "Send again" : "Invite by email") {
+                                inviteEmail = m.email ?? ""
+                                invitingMember = m
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .font(.appCaption)
+                        .padding(.leading, 46)
+                    }
                 }
                 .swipeActions {
                     if !m.hasAccount, owed == 0, abs(elsewhere) < 0.005 {
@@ -248,6 +284,7 @@ struct GroupDetailView: View {
             }
             Button {
                 newMember = ""
+                newMemberEmail = ""
                 addingMember = true
             } label: {
                 Label("Add someone", systemImage: "person.badge.plus")
@@ -422,9 +459,22 @@ struct GroupDetailView: View {
 
     private func addMember() async {
         let name = newMember.trimmingCharacters(in: .whitespaces)
+        let email = newMemberEmail.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        await mutate { try await $0.addMember(groupID: groupID, name: name) }
-        if errorMessage == nil { newMember = "" }
+        await mutate { try await $0.addMember(groupID: groupID, name: name, email: email.isEmpty ? nil : email) }
+        if errorMessage == nil {
+            newMember = ""
+            newMemberEmail = ""
+            if !email.isEmpty { notice = "Added \(name) and emailed the invite." }
+        }
+    }
+
+    private func sendInvite() async {
+        guard let member = invitingMember else { return }
+        let email = inviteEmail.trimmingCharacters(in: .whitespaces)
+        guard !email.isEmpty else { return }
+        await mutate { try await $0.inviteMember(groupID: groupID, memberID: member.id, email: email) }
+        if errorMessage == nil { notice = "Invite emailed to \(email)." }
     }
 
     private func removeSplit(_ split: API.SplitDTO) async {

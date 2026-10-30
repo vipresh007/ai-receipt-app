@@ -84,9 +84,9 @@ that person. It never shows your receipt photo or anything else in your account,
 and it stops working when you remove the split. Members of a group you join see
 that group's members, expenses, balances and payments.
 
-**Invites.** Each person you split with has an invite link. If you add their
-email and ask us to, we send that address one email with the invite link and
-where the two of you stand; we don't add it to any mailing list, and we don't
+**Invites.** Each person you split with, and each person in a group you add,
+has an invite link. If you add their email and ask us to, we send that address
+one email with the invite link (and, for a person, where the two of you stand); we don't add it to any mailing list, and we don't
 email it again unless you ask. If they accept, by signing in from the link,
 they see the expenses you share with them and your balance from their side.
 Someone whose email has been verified by their sign-in provider is connected

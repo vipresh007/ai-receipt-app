@@ -1,10 +1,11 @@
 """Groups — people who share expenses, with balances and settle-up (docs/SPLITS.md)."""
 
+import html
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -18,9 +19,11 @@ from app.schemas.split import (
     GroupSummaryOut,
     JoinIn,
     MemberIn,
+    MemberPatch,
     SettlementIn,
 )
-from app.services import activity, split_store
+from app.services import activity, people_store, split_store
+from app.services.mailer import Mailer, get_mailer
 
 router = APIRouter()
 
@@ -136,15 +139,139 @@ async def add_member(
     data: MemberIn,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    mailer: Mailer | None = Depends(get_mailer),
 ) -> GroupDetailOut:
     group, _ = await split_store.require_member(session, group_id, user)
     position = await split_store.next_position(session, group.id)
-    session.add(
-        GroupMember(group_id=group.id, display_name=data.name.strip()[:120], position=position)
+    member = GroupMember(
+        group_id=group.id,
+        display_name=data.name.strip()[:120],
+        position=position,
+        email=people_store.clean_email(data.email),
     )
+    session.add(member)
+    await split_store.publish_group(session, group.id)
+    # Saved even if the invite below can't go out (the link still works).
+    await session.commit()
+    if data.send_invite:
+        await _send_member_invite(session, user, group, member, mailer)
+        await session.commit()
+    return await split_store.group_detail(session, group, user)
+
+
+@router.patch("/{group_id}/members/{member_id}", response_model=GroupDetailOut)
+async def edit_member(
+    group_id: UUID,
+    member_id: UUID,
+    data: MemberPatch,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> GroupDetailOut:
+    """Rename someone who hasn't joined, or set the email their invite goes to."""
+    group, _ = await split_store.require_member(session, group_id, user)
+    member = await session.get(GroupMember, member_id)
+    if member is None or member.group_id != group.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found.")
+    if member.user_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "They've joined; their name is their own.")
+    if data.name is not None:
+        member.display_name = data.name.strip()[:120]
+    if data.email is not None:
+        email = people_store.clean_email(data.email)
+        if email != member.email:
+            member.email = email
+            member.invited_at = None
     await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
+
+
+@router.post("/{group_id}/members/{member_id}/invite", response_model=GroupDetailOut)
+async def invite_member(
+    group_id: UUID,
+    member_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    mailer: Mailer | None = Depends(get_mailer),
+) -> GroupDetailOut:
+    """Email someone the group's invite, with their name already chosen."""
+    group, _ = await split_store.require_member(session, group_id, user)
+    member = await session.get(GroupMember, member_id)
+    if member is None or member.group_id != group.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found.")
+    await _send_member_invite(session, user, group, member, mailer)
+    await session.commit()
+    return await split_store.group_detail(session, group, user)
+
+
+GROUP_DAILY_INVITES = 20
+
+
+async def _send_member_invite(
+    session: AsyncSession, user: User, group: Group, member: GroupMember, mailer: Mailer | None
+) -> None:
+    if mailer is None:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Email invites aren't available right now. Send the invite link instead.",
+        )
+    if not member.email:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Add their email first.")
+    if member.user_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "They've already joined.")
+    now = datetime.now(UTC)
+    last = member.invited_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    if last is not None and now - last < people_store.INVITE_COOLDOWN:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "An invite just went to them. Try again in a few minutes, or send the link.",
+        )
+    sent_today = await session.scalar(
+        select(func.count(GroupMember.id)).where(
+            GroupMember.group_id == group.id, GroupMember.invited_at > now - timedelta(days=1)
+        )
+    )
+    if (sent_today or 0) >= GROUP_DAILY_INVITES:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "That's the most invite emails for this group today. You can still send the link.",
+        )
+    inviter = split_store.display_name_for(user)[:60]
+    url = split_store.member_invite_url(group, member)
+    e = html.escape
+    try:
+        await mailer.send(
+            to=member.email,
+            subject=f"{inviter} invited you to {group.name} on Tally",
+            text=(
+                f"Hi {member.display_name},\n\n{inviter} added you to {group.name} on Tally, "
+                "to keep track of what you spend together and who owes whom.\n\n"
+                f"Join here (your name's already picked):\n{url}\n\n"
+                f"You got this because {inviter} added your email. "
+                "If you don't know them, ignore this email and nothing else will be sent.\n"
+            ),
+            html=(
+                '<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;'
+                'max-width:520px;margin:0 auto;color:#1E2321">'
+                f'<p style="font-size:16px">Hi {e(member.display_name)},</p>'
+                f'<p style="font-size:16px">{e(inviter)} added you to <strong>{e(group.name)}'
+                "</strong> on Tally, to keep track of what you spend together and who owes "
+                "whom.</p>"
+                f'<p style="margin:28px 0"><a href="{e(url)}" style="background:#8A5E0F;'
+                "color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;"
+                f'font-weight:600;display:inline-block">Join {e(group.name)}</a></p>'
+                '<p style="font-size:13px;color:#5B5F59">You got this because '
+                f"{e(inviter)} added your email. If you don't know them, ignore this email "
+                "and nothing else will be sent.</p></div>"
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "Couldn't send the email. Send the invite link instead."
+        ) from exc
+    member.invited_at = now
 
 
 @router.delete("/{group_id}/members/{member_id}", response_model=GroupDetailOut)

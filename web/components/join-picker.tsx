@@ -12,9 +12,19 @@ const NEW = "new";
 
 /** Signed in on an invite: pick the placeholder that's you (so expenses
  * already added under your name become yours), or join as someone new. */
-export function JoinPicker({ token, open }: { token: string; open: { id: string; display_name: string }[] }) {
+export function JoinPicker({
+  token,
+  open,
+  preselect,
+}: {
+  token: string;
+  open: { id: string; display_name: string }[];
+  preselect?: string;
+}) {
   const router = useRouter();
-  const [choice, setChoice] = useState<string>(open.length ? "" : NEW);
+  const [choice, setChoice] = useState<string>(
+    preselect ?? (open.length ? "" : NEW),
+  );
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,9 +32,12 @@ export function JoinPicker({ token, open }: { token: string; open: { id: string;
     setJoining(true);
     setError(null);
     try {
-      const group = await apiPost<GroupDetail>(`v1/groups/join/${encodeURIComponent(token)}`, {
-        member_id: choice === NEW ? null : choice,
-      });
+      const group = await apiPost<GroupDetail>(
+        `v1/groups/join/${encodeURIComponent(token)}`,
+        {
+          member_id: choice === NEW ? null : choice,
+        },
+      );
       router.push(`/groups/${group.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't join the group.");
@@ -32,7 +45,10 @@ export function JoinPicker({ token, open }: { token: string; open: { id: string;
     }
   }
 
-  const options = [...open.map((m) => ({ id: m.id, label: m.display_name })), { id: NEW, label: "I'm not on the list" }];
+  const options = [
+    ...open.map((m) => ({ id: m.id, label: m.display_name })),
+    { id: NEW, label: "I'm not on the list" },
+  ];
 
   return (
     <div className="space-y-lg">

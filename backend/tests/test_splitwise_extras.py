@@ -441,3 +441,43 @@ async def test_csv_export_between_dates(client):
     assert "Sept" in receipts and "Oct" not in receipts
     bad = await client.get("/v1/export/receipts.csv?from=2026-10-31&to=2026-10-01")
     assert bad.status_code == 422
+
+
+async def test_group_member_email_invite_and_verified_signup(client, sessionmaker_, monkeypatch):
+    from app.api import deps
+
+    mailer = FakeMailer()
+    app.dependency_overrides[get_mailer] = lambda: mailer
+    group = (await client.post("/v1/groups", json={"name": "Vegas"})).json()
+    r = await client.post(
+        f"/v1/groups/{group['id']}/members",
+        json={"name": "Mit", "email": "Mit@Example.com", "send_invite": True},
+    )
+    assert r.status_code == 201, r.text
+    mit = next(m for m in r.json()["members"] if m["display_name"] == "Mit")
+    assert (mit["email"], mit["invited_at"] is not None) == ("mit@example.com", True)
+    (message,) = mailer.sent
+    assert message["to"] == "mit@example.com"
+    assert f"?member={mit['id']}" in message["text"]
+    assert "invited you to Vegas" in message["subject"]
+    again = await client.post(f"/v1/groups/{group['id']}/members/{mit['id']}/invite")
+    assert again.status_code == 429
+
+    # Changing the address allows a fresh invite.
+    await client.patch(
+        f"/v1/groups/{group['id']}/members/{mit['id']}", json={"email": "mit2@example.com"}
+    )
+    assert (
+        await client.post(f"/v1/groups/{group['id']}/members/{mit['id']}/invite")
+    ).status_code == 200
+
+    # Mit signs up with that (verified) address: he's in the group as Mit.
+    async def fake_userinfo(_token):
+        return {"email": "mit2@example.com", "email_verified": True, "name": "Mit P"}
+
+    monkeypatch.setattr(deps, "fetch_userinfo", fake_userinfo)
+    async with sessionmaker_() as session:
+        await deps._provision_user(session, "google|mit", "token")
+    detail = (await client.get(f"/v1/groups/{group['id']}")).json()
+    mit_now = next(m for m in detail["members"] if m["id"] == mit["id"])
+    assert mit_now["has_account"] and mit_now["email"] is None

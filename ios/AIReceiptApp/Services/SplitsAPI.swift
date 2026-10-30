@@ -53,8 +53,19 @@ extension ReceiptExtractionAPIClient {
         try await splitsSend("DELETE", "v1/groups/\(id)")
     }
 
-    func addMember(groupID: String, name: String) async throws -> GroupDetailDTO {
-        try await splitsCall("POST", "v1/groups/\(groupID)/members", body: ["name": name])
+    func addMember(groupID: String, name: String, email: String? = nil) async throws -> GroupDetailDTO {
+        try await splitsCall(
+            "POST", "v1/groups/\(groupID)/members",
+            body: MemberWrite(name: name, email: email, sendInvite: email != nil)
+        )
+    }
+
+    /// Set the email a not-yet-joined member's invite goes to, then send it.
+    func inviteMember(groupID: String, memberID: String, email: String) async throws -> GroupDetailDTO {
+        let _: GroupDetailDTO = try await splitsCall(
+            "PATCH", "v1/groups/\(groupID)/members/\(memberID)", body: ["email": email]
+        )
+        return try await splitsCall("POST", "v1/groups/\(groupID)/members/\(memberID)/invite", body: [String: String]())
     }
 
     func removeMember(groupID: String, memberID: String) async throws -> GroupDetailDTO {
@@ -292,6 +303,12 @@ extension ReceiptExtractionAPIClient {
         var `repeat`: String? = nil
     }
 
+    struct MemberWrite: Encodable {
+        let name: String
+        let email: String?
+        let sendInvite: Bool
+    }
+
     struct GroupWrite: Encodable {
         let name: String
         let currency: String
@@ -440,6 +457,8 @@ extension ReceiptExtractionAPIClient {
         /// Positive = is owed, negative = owes.
         let balance: String
         let payTo: PayDetailsDTO?
+        let email: String?
+        let invitedAt: String?
 
         var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
     }

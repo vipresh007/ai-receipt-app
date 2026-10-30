@@ -8,7 +8,7 @@ split, and assembles group views (members, balances, settle-up payments).
 import calendar
 import secrets
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from fastapi import HTTPException, status
@@ -895,6 +895,9 @@ async def group_detail(session: AsyncSession, group: Group, user: User) -> Group
                 has_account=m.user_id is not None,
                 balance=f"{net.get(m.id, Decimal('0')):.2f}",
                 pay_to=_pay_to(accounts.get(m.user_id)),
+                email=m.email if m.user_id is None else None,
+                invited_at=_iso_or_none(m.invited_at),
+                can_email=bool(m.email) and m.user_id is None and get_settings().email_configured,
             )
             for m in members
         ],
@@ -916,6 +919,17 @@ async def group_detail(session: AsyncSession, group: Group, user: User) -> Group
             for x in settlements
         ],
     )
+
+
+def _iso_or_none(moment: datetime | None) -> str | None:
+    if moment is None:
+        return None
+    return (moment if moment.tzinfo else moment.replace(tzinfo=UTC)).isoformat()
+
+
+def member_invite_url(group: Group, member: GroupMember) -> str:
+    """The group's invite with this person's name already chosen."""
+    return f"{invite_url(group.invite_token)}?member={member.id}"
 
 
 def _pay_to(user: User | None) -> PayDetails | None:

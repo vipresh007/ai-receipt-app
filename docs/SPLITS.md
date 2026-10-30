@@ -115,6 +115,12 @@ public `GET /public/people/{token}`.
   (`splits.direct_debts`). Reminders and per-person balances follow the
   group's setting, so every screen agrees. Only within a group: people you
   split with one to one are separate tabs.
+- **Group invites by email.** A member added by name can have an email
+  (`POST /groups/{id}/members` with `email`/`send_invite`, `PATCH
+  /groups/{id}/members/{mid}`, `POST …/invite`). The email links to
+  `/join/<token>?member=<mid>`, so their name is already chosen. Same limits as
+  people invites (10 minutes per person, 20 a day per group). A verified
+  sign-up with that address takes that place in the group automatically.
 - **Percentages.** `mode: percent`, weights must add up to 100.
 - **One balance per person.** A person's balance is what's outside groups
   plus, once they've joined, what's between you two in every group you share

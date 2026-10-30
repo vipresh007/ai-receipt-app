@@ -140,6 +140,14 @@ class GroupPatch(BaseModel):
 
 class MemberIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    email: str | None = Field(default=None, max_length=320)
+    send_invite: bool = False
+
+
+class MemberPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    # "" removes it.
+    email: str | None = Field(default=None, max_length=320)
 
 
 class PayDetails(BaseModel):
@@ -155,6 +163,10 @@ class MemberOut(BaseModel):
     has_account: bool
     balance: str  # positive = is owed, negative = owes
     pay_to: PayDetails | None = None
+    # Before they join: where their invite goes, and when it last went.
+    email: str | None = None
+    invited_at: str | None = None
+    can_email: bool = False
 
 
 class PaymentOut(BaseModel):
