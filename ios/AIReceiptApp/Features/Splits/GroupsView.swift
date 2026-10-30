@@ -43,15 +43,15 @@ struct GroupsView: View {
                 } else {
                     List {
                         Section {
-                            if people.isEmpty {
-                                Text("Split a receipt with someone by name and they show up here.")
-                                    .font(.appCaption)
-                                    .foregroundStyle(Theme.Palette.textSecondary)
-                            }
                             ForEach(people) { person in
                                 NavigationLink(value: Route.person(person.id)) {
                                     PersonRow(person: person)
                                 }
+                            }
+                            Button {
+                                addingPerson = true
+                            } label: {
+                                Label("Add person", systemImage: "person.badge.plus")
                             }
                         } header: {
                             ListHeader("People")
@@ -59,13 +59,15 @@ struct GroupsView: View {
                         .listRowBackground(Theme.Palette.surface)
 
                         Section {
-                            if groups.isEmpty {
-                                Button("New group") { creating = true }
-                            }
                             ForEach(groups) { group in
                                 NavigationLink(value: Route.group(group.id)) {
                                     GroupRow(group: group)
                                 }
+                            }
+                            Button {
+                                creating = true
+                            } label: {
+                                Label("New group", systemImage: "person.3")
                             }
                         } header: {
                             ListHeader("Groups")

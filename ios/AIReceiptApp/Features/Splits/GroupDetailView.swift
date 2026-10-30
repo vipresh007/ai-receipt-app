@@ -337,12 +337,11 @@ struct GroupDetailView: View {
         return elsewhere < 0 ? "owes others \(money(-elsewhere))" : "is owed \(money(elsewhere)) by others"
     }
 
-    /// Expenses, newest first, under month headings.
-    @ViewBuilder
+    /// Expenses in one tile: Add expense first, then newest first with the
+    /// month as a small label where it changes.
     private func expensesSection(_ group: API.GroupDetailDTO) -> some View {
-        let months = Dictionary(grouping: group.splits) { String($0.date.prefix(7)) }
-            .sorted { $0.key > $1.key }
-        Section {
+        let splits = group.splits.sorted { $0.date > $1.date }
+        return Section {
             Menu {
                 Button("Take a photo", systemImage: "camera") { scanning = true }
                 Button("From a receipt", systemImage: "doc.text") { pickingReceipt = true }
@@ -356,39 +355,40 @@ struct GroupDetailView: View {
                     Text(scanStatus).font(.appCaption).foregroundStyle(Theme.Palette.textSecondary)
                 }
             }
-            if group.splits.isEmpty {
-                Text("Add one here, or split a receipt with this group from the receipt itself.")
+            if splits.isEmpty {
+                Text("Nothing yet. Add one here, or split a receipt with this group from the receipt itself.")
                     .font(.appCaption)
                     .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            ForEach(Array(splits.enumerated()), id: \.element.id) { index, split in
+                let month = String(split.date.prefix(7))
+                if index == 0 || String(splits[index - 1].date.prefix(7)) != month {
+                    Text(monthTitle(month))
+                        .font(.appMicro)
+                        .tracking(1.4)
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .padding(.top, index == 0 ? 0 : Theme.Space.xs)
+                }
+                DisclosureGroup {
+                    SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
+                    if split.receiptId != nil && split.isOwner {
+                        Text("Split from your receipt. Edit it from the receipt.")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textTertiary)
+                    } else if split.canEdit {
+                        Button("Edit expense") { editingSplit = split }
+                    }
+                    if split.isOwner {
+                        Button("Remove expense", role: .destructive) { Task { await removeSplit(split) } }
+                    }
+                } label: {
+                    SharedExpenseRow(split: split)
+                }
             }
         } header: {
             Text("EXPENSES").font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
         }
         .listRowBackground(Theme.Palette.surface)
-        ForEach(months, id: \.key) { month, splits in
-            Section {
-                ForEach(splits.sorted { $0.date > $1.date }) { split in
-                    DisclosureGroup {
-                        SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
-                        if split.receiptId != nil && split.isOwner {
-                            Text("Split from your receipt. Edit it from the receipt.")
-                                .font(.appCaption)
-                                .foregroundStyle(Theme.Palette.textTertiary)
-                        } else if split.canEdit {
-                            Button("Edit expense") { editingSplit = split }
-                        }
-                        if split.isOwner {
-                            Button("Remove expense", role: .destructive) { Task { await removeSplit(split) } }
-                        }
-                    } label: {
-                        SharedExpenseRow(split: split)
-                    }
-                }
-            } header: {
-                Text(monthTitle(month)).font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
-            }
-            .listRowBackground(Theme.Palette.surface)
-        }
     }
 
     private func monthTitle(_ yearMonth: String) -> String {
