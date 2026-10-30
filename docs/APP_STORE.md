@@ -53,6 +53,10 @@ in the US rather than adding to it, and is tuned for US searches:
 
 > Snap a receipt and Tally reads the store, total, tax and every item for you, then shows where your month went. No bank linking, no ads, no tracking.
 
+1.1.0 (set on en-US and en-CA, 164):
+
+> Snap a receipt and Tally reads every item. Now split it with friends, by item or evenly, and see who owes whom in your groups. No bank linking, no ads, no tracking.
+
 **Keywords** (100 chars, comma-separated, no spaces). Apple already indexes
 the words in the name and subtitle, so they aren't repeated here (95):
 
