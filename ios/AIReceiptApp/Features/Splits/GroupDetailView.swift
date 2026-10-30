@@ -175,6 +175,8 @@ struct GroupDetailView: View {
             }
         }
         .ledgerBackground()
+        // Lets the month labels be shorter than a normal row.
+        .environment(\.defaultMinListRowHeight, 1)
     }
 
     /// Between you and one member, as the group settles up: positive = they owe you.
@@ -332,11 +334,15 @@ struct GroupDetailView: View {
             ForEach(Array(splits.enumerated()), id: \.element.id) { index, split in
                 let month = String(split.date.prefix(7))
                 if index == 0 || String(splits[index - 1].date.prefix(7)) != month {
+                    // A small label hugging the month's first expense: the line
+                    // above divides months, none below, no full-height row.
                     Text(monthTitle(month))
-                        .font(.appMicro)
-                        .tracking(1.4)
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .tracking(1.2)
                         .foregroundStyle(Theme.Palette.textTertiary)
-                        .padding(.top, index == 0 ? 0 : Theme.Space.xs)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparator(.hidden, edges: .bottom)
                 }
                 DisclosureGroup {
                     SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
