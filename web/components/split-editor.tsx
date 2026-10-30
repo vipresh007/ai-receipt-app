@@ -246,7 +246,8 @@ export function SplitEditor({
         </div>
       )}
 
-      {!fixedGroupId && (
+      {/* Only a choice once there's a group to choose (or this split is in one). */}
+      {!fixedGroupId && ((groups ?? []).length > 0 || groupId) && (
         <div className="space-y-xs">
           <Label htmlFor="split-with">Split with</Label>
           <select
@@ -259,7 +260,7 @@ export function SplitEditor({
             }}
             className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
           >
-            <option value="">People (just this once)</option>
+            <option value="">People</option>
             {(groups ?? []).map((g) => (
               <option key={g.id} value={g.id}>
                 Group: {g.name}

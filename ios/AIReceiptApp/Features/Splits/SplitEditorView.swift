@@ -253,7 +253,8 @@ struct SplitEditorView: View {
     @ViewBuilder
     private var withSection: some View {
         LedgerSection("Split with") {
-            if fixedGroup == nil {
+            // Only a choice once there's a group to choose (or this split is in one).
+            if fixedGroup == nil, !groups.isEmpty || !groupID.isEmpty {
                 Picker("Split with", selection: $groupID) {
                     Text("People").tag("")
                     ForEach(groups) { Text($0.name).tag($0.id) }
