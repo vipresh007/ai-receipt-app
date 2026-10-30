@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, User
+from app.services import realtime
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -50,6 +51,8 @@ async def notify(
     for `EMAILED_KINDS`, email them. `text` reads after the actor's name."""
     actor_name = (actor.display_name or actor.email.split("@")[0]) if actor else "Tally"
     ids = {r for r in recipients if r is not None and (actor is None or r != actor.id)}
+    # Their open apps refresh now (and the actor's other devices).
+    await realtime.publish(session, ids | ({actor.id} if actor else set()))
     if not ids:
         return
     for user_id in ids:

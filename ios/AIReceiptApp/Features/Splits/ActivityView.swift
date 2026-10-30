@@ -71,6 +71,7 @@ struct ActivityView: View {
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .liveRefresh { await load() }
         .refreshable { await load() }
     }
 

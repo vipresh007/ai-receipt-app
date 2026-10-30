@@ -234,16 +234,14 @@ async def test_remind_someone_by_email(client):
 
 
 async def test_payment_details_show_to_people_who_owe_you(client, anon_client, test_user, sam):
-    r = await client.patch(
-        "/v1/auth/me", json={"paypal_me": "https://paypal.me/Jordan", "interac": "T@Example.com"}
-    )
-    assert (r.json()["paypal_me"], r.json()["interac"]) == ("Jordan", "t@example.com")
+    r = await client.patch("/v1/auth/me", json={"interac": "T@Example.com"})
+    assert r.json()["interac"] == "t@example.com" and "paypal_me" not in r.json()
     assert (await client.patch("/v1/auth/me", json={"interac": "not it"})).status_code == 422
 
     _, mirror = await _linked_sam(client, anon_client, test_user, sam)
     act_as(sam)
     me_to_sam = (await anon_client.get(f"/v1/people/{mirror['id']}")).json()
-    assert me_to_sam["pay_to"] == {"paypal_me": "Jordan", "interac": "t@example.com"}
+    assert me_to_sam["pay_to"] == {"interac": "t@example.com"}
 
 
 # ─────────────────────── notifications ───────────────────────
@@ -348,3 +346,34 @@ async def test_simplify_debts_routes_a_chain_through(client, anon_client, test_u
     act_as(sam)
     feed = (await anon_client.get("/v1/activity")).json()
     assert any("turned off simplify debts" in a["text"] for a in feed["items"])
+
+
+# ─────────────────────── live updates ───────────────────────
+
+
+async def test_changes_wake_the_apps_of_the_people_they_affect(
+    client, anon_client, test_user, sam, sessionmaker_
+):
+    from app.services import realtime
+
+    person, _ = await _linked_sam(client, anon_client, test_user, sam)
+    async with sessionmaker_() as session:
+        stranger = User(email="x@example.com", display_name="X", auth0_sub="auth0|x")
+        session.add(stranger)
+        await session.commit()
+        await session.refresh(stranger)
+    sams_app = realtime.subscribe(sam.id)
+    strangers_app = realtime.subscribe(stranger.id)
+    try:
+        split = await _expense(client, "20.00", [{"is_me": True}, {"person_id": person["id"]}])
+        assert sams_app.get_nowait() == "changed"
+        assert strangers_app.empty()
+        # Marking Sam's share paid wakes Sam's app too (no notification email).
+        sam_row = split["participants"][1]
+        await client.post(
+            f"/v1/splits/{split['id']}/participants/{sam_row['id']}/settled", json={"settled": True}
+        )
+        assert sams_app.get_nowait() == "changed"
+    finally:
+        realtime.unsubscribe(sam.id, sams_app)
+        realtime.unsubscribe(stranger.id, strangers_app)

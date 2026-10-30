@@ -259,9 +259,9 @@ async def person_out(
 
 def pay_details(user: User | None) -> PayDetails | None:
     """How to pay this person back, if they've said."""
-    if user is None or not (user.paypal_me or user.interac):
+    if user is None or not user.interac:
         return None
-    return PayDetails(paypal_me=user.paypal_me or None, interac=user.interac or None)
+    return PayDetails(interac=user.interac)
 
 
 # ─────────────────────────── invites ───────────────────────────

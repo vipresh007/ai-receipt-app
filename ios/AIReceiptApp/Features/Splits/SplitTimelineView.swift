@@ -85,6 +85,7 @@ struct SplitTimelineView: View {
             .background(Theme.Palette.bg)
         }
         .task { await load() }
+        .liveRefresh { await load() }
         .refreshable { await load() }
     }
 

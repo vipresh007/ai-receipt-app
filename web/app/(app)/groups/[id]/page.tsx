@@ -30,6 +30,7 @@ import { SplitEditor } from "@/components/split-editor";
 import { SplitSummary, useCanShare } from "@/components/split-summary";
 import { PayTo } from "@/components/pay-to";
 import { cn } from "@/lib/utils";
+import { LIVE } from "@/lib/live";
 
 interface PaymentDraft {
   from: string;
@@ -46,6 +47,7 @@ export default function GroupPage() {
     isLoading,
     error: loadError,
   } = useQuery({
+    ...LIVE,
     queryKey: ["group", id],
     queryFn: () => apiGet<GroupDetail>(`v1/groups/${id}`),
   });

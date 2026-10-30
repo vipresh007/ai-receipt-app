@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
+import { LIVE } from "@/lib/live";
 
 const ICONS: Record<string, typeof Bell> = {
   expense_added: Plus,
@@ -41,6 +42,7 @@ function when(iso: string): string {
 export default function ActivityPage() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
+    ...LIVE,
     queryKey: ["activity"],
     queryFn: () => apiGet<ActivityFeed>("v1/activity"),
   });

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy } from "lucide-react";
+import { money } from "@/lib/format";
 import type { PayDetails } from "@/lib/types";
 
-/** How to pay someone back, when they've said (Account → Get paid back). */
+/** How to pay someone back by Interac e-Transfer, when they've added it. */
 export function PayTo({
   payTo,
   amount,
@@ -17,8 +18,8 @@ export function PayTo({
   name: string;
 }) {
   const [copied, setCopied] = useState(false);
-  if (!payTo || (!payTo.paypal_me && !payTo.interac)) return null;
-  const value = Math.abs(Number(amount)).toFixed(2);
+  if (!payTo?.interac) return null;
+  const value = money(Math.abs(Number(amount)), currency);
 
   async function copy() {
     await navigator.clipboard.writeText(payTo!.interac!);
@@ -28,18 +29,10 @@ export function PayTo({
 
   return (
     <div className="space-y-xs rounded-lg bg-surface-2 p-md">
-      <p className="text-caption font-medium text-text-secondary">Pay {name} back</p>
+      <p className="text-caption font-medium text-text-secondary">
+        Pay {name} back: send {value} by Interac e-Transfer
+      </p>
       <div className="flex flex-wrap gap-sm">
-        {payTo.paypal_me && (
-          <a
-            href={`https://paypal.me/${encodeURIComponent(payTo.paypal_me)}/${value}${currency}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-xs rounded-pill bg-surface px-md py-xs text-caption font-medium ring-1 ring-border hover:bg-surface-sunken"
-          >
-            PayPal <ExternalLink size={12} />
-          </a>
-        )}
         {payTo.interac && (
           <button
             type="button"
@@ -47,7 +40,7 @@ export function PayTo({
             className="inline-flex items-center gap-xs rounded-pill bg-surface px-md py-xs text-caption font-medium ring-1 ring-border hover:bg-surface-sunken"
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? "Copied" : `Interac e-Transfer: ${payTo.interac}`}
+            {copied ? "Copied" : payTo.interac}
           </button>
         )}
       </div>

@@ -28,8 +28,7 @@ class User(Base):
     last_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    # Shown to people who owe you, so they can pay you back.
-    paypal_me: Mapped[str] = mapped_column(String(40), default="")
+    # Interac e-Transfer email or phone, shown to people who owe you.
     interac: Mapped[str] = mapped_column(String(120), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     plan: Mapped[str] = mapped_column(String(20), default="free")  # free | pro

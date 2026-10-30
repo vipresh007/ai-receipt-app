@@ -111,6 +111,7 @@ struct GroupsView: View {
             }
         }
         .task(id: auth.isSignedIn) { await load() }
+        .liveRefresh { await load() }
         .onAppear {
             Task {
                 await load()

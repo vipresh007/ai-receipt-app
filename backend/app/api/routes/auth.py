@@ -47,21 +47,11 @@ async def update_me(
     me = await session.get(User, user.id)
     if data.email_notifications is not None:
         me.email_notifications = data.email_notifications
-    if data.paypal_me is not None:
-        me.paypal_me = _paypal_name(data.paypal_me)
     if data.interac is not None:
         me.interac = _interac(data.interac)
     await session.commit()
     await session.refresh(me)
     return me
-
-
-def _paypal_name(value: str) -> str:
-    name = re.sub(r"^(https?://)?(www\.)?paypal\.me/", "", value.strip(), flags=re.I)
-    name = name.strip("/@ ")
-    if name and not re.fullmatch(r"[A-Za-z0-9]{1,30}", name):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That PayPal.me name looks off.")
-    return name
 
 
 def _interac(value: str) -> str:

@@ -138,9 +138,21 @@ public `GET /public/people/{token}`.
   `POST /groups/{id}/members/{mid}/remind`, once a day each, only when they
   owe you. People who haven't joined are emailed at the address you saved;
   without one, the apps share a text instead.
-- **Getting paid back.** `PATCH /auth/me` sets `paypal_me` and `interac`,
-  shown (as `pay_to`) to people who owe you: on the person page, in groups,
-  and on share links.
+- **Getting paid back.** `PATCH /auth/me` sets `interac` (an e-Transfer
+  email or phone), shown (as `pay_to`) to people who owe you: on the person
+  page, in groups, and on share links. (PayPal.me was tried and dropped in
+  migration 0011.)
+- **Live updates (push, not polling).** Each open app holds one
+  Server-Sent Events stream (`GET /v1/events`, heartbeat every 25s). A change
+  wakes the people it affects (everyone on the expense; a group expense's
+  whole group; the actor's other devices) with a Postgres `NOTIFY` sent inside
+  the change's transaction, so it goes out only on commit; every API replica
+  `LISTEN`s and passes it to the streams it holds (`services/realtime.py`).
+  Apps then refetch what's on screen (web: `components/live-updates.tsx`,
+  through the proxy, which streams; iOS: `LiveEvents` + `.liveRefresh`, only
+  while the app is in front). Coming back to the app refetches too. Open
+  streams count as in-flight requests for the API's default scale rule (2
+  replicas max).
 - **Repeating expenses.** Hand-entered ones can repeat weekly or monthly
   (`repeat`, `next_at`). An hourly job (`services/repeating.py`) adds each
   due copy, claiming it with a conditional update so two replicas can't both

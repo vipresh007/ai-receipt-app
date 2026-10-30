@@ -57,6 +57,7 @@ struct PersonDetailView: View {
             }
         }
         .task { await load() }
+        .liveRefresh { await load() }
         .refreshable { await load() }
         .sheet(isPresented: $addingExpense) {
             if let person {

@@ -11,6 +11,7 @@ from app.api.routes import (
     activity,
     auth,
     budgets,
+    events,
     expenses,
     export,
     groups,
@@ -43,9 +44,14 @@ async def lifespan(app: FastAPI):
         from app.services.repeating import run_forever
 
         repeat_task = asyncio.create_task(run_forever(SessionLocal))
+        from app.db import engine
+        from app.services.realtime import listen_forever
+
+        listen_task = asyncio.create_task(listen_forever(engine))
     yield
     if repeat_task is not None:
         repeat_task.cancel()
+        listen_task.cancel()
 
 
 app = FastAPI(title="AI Receipt API", version="0.1.0", lifespan=lifespan)
@@ -96,6 +102,7 @@ app.include_router(splits.router, prefix="/v1", tags=["splits"])
 app.include_router(groups.router, prefix="/v1/groups", tags=["groups"])
 app.include_router(people.router, prefix="/v1/people", tags=["people"])
 app.include_router(activity.router, prefix="/v1/activity", tags=["activity"])
+app.include_router(events.router, prefix="/v1/events", tags=["events"])
 app.include_router(export.router, prefix="/v1/export", tags=["export"])
 app.include_router(public.router, prefix="/v1/public", tags=["public"])
 

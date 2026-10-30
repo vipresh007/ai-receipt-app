@@ -9,6 +9,7 @@ import type { Participant, Split, TimelineEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { LIVE } from "@/lib/live";
 
 const noSubscribe = () => () => {};
 
@@ -60,6 +61,7 @@ export function SplitSummary({
   onEdit?: () => void;
   onRemove?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const oneOff = !split.group_id;
   const severalPayers = split.participants.filter((p) => p.is_payer).length > 1;
@@ -68,6 +70,8 @@ export function SplitSummary({
     setBusy(p.id);
     try {
       onChange(await apiPost<Split>(`v1/splits/${split.id}/participants/${p.id}/settled`, { settled: !p.settled }));
+      // The history line, balances and lists that show it change too.
+      await queryClient.invalidateQueries();
     } finally {
       setBusy(null);
     }
@@ -139,6 +143,7 @@ export function SplitSummary({
 export function SplitTimeline({ splitId }: { splitId: string }) {
   const queryClient = useQueryClient();
   const { data: entries } = useQuery({
+    ...LIVE,
     queryKey: ["timeline", splitId],
     queryFn: () => apiGet<TimelineEntry[]>(`v1/splits/${splitId}/timeline`),
   });

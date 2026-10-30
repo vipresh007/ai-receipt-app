@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.models import Group, GroupMember, Person, Split, SplitParticipant, User
+from app.models import Group, GroupMember, Person, Receipt, Split, SplitParticipant, User
 from app.schemas.receipt import ExtractionItemOut
 from app.schemas.split import (
     PublicGroupOut,
@@ -55,6 +55,15 @@ async def public_split(
 
     payer = next((r for r in rows if r.is_payer), None)
     payer_user = await session.get(User, payer.user_id) if payer and payer.user_id else None
+    owner = await session.get(User, split.owner_user_id)
+    receipt = await session.get(Receipt, split.receipt_id) if split.receipt_id else None
+    person = await session.get(Person, viewer.person_id) if viewer.person_id else None
+    if person is not None:
+        invite = people_store.invite_url(person.invite_token)
+    elif group is not None:
+        invite = split_store.invite_url(group.invite_token)
+    else:
+        invite = None
     return PublicSplitOut(
         description=split.description,
         date=split.spent_at.isoformat(),
@@ -76,6 +85,10 @@ async def public_split(
         group_name=group.name if group else None,
         your_share=f"{viewer.share:.2f}",
         pay_to=people_store.pay_details(payer_user),
+        mode=split.mode,
+        tax=f"{receipt.tax:.2f}" if receipt is not None else None,
+        owner_name=split_store.display_name_for(owner) if owner else "",
+        invite_url=invite,
     )
 
 

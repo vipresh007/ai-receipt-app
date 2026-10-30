@@ -18,7 +18,8 @@ async function forward(req: NextRequest, path: string[]): Promise<NextResponse> 
   if (contentType) headers.set("content-type", contentType);
   headers.set("authorization", `Bearer ${token}`);
 
-  const init: RequestInit = { method: req.method, headers, cache: "no-store" };
+  // The client hanging up (closing a live-updates stream) cancels upstream too.
+  const init: RequestInit = { method: req.method, headers, cache: "no-store", signal: req.signal };
   if (req.method !== "GET" && req.method !== "HEAD") {
     init.body = await req.text();
   }
@@ -28,6 +29,18 @@ async function forward(req: NextRequest, path: string[]): Promise<NextResponse> 
     upstream = await fetch(url, init);
   } catch {
     return NextResponse.json({ detail: "Can't reach the API." }, { status: 502 });
+  }
+
+  // Live updates (Server-Sent Events): pass the stream through as it comes.
+  if (upstream.headers.get("content-type")?.startsWith("text/event-stream") && upstream.body) {
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform",
+        "x-accel-buffering": "no",
+      },
+    });
   }
 
   // arrayBuffer (not .text()) — a JSON body round-trips through this fine,

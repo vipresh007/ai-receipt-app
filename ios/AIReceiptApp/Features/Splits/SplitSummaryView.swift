@@ -144,6 +144,7 @@ struct ReceiptSplitSection: View {
             }
         }
         .task(id: receipt.splitID) { await load() }
+        .liveRefresh { await reload() }
         .sheet(isPresented: $editing) {
             SplitEditorView(receipt: receipt, existing: split) { saved in
                 split = saved
@@ -169,6 +170,19 @@ struct ReceiptSplitSection: View {
             split = try await Splits.client(auth).split(id: id)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Someone else on it may have changed the amounts: fetch it again, and
+    /// keep this receipt's share (your spending) in step.
+    private func reload() async {
+        guard let id = receipt.splitID, let fresh = try? await Splits.client(auth).split(id: id) else {
+            return
+        }
+        split = fresh
+        if receipt.myShare != fresh.myShareValue {
+            receipt.myShare = fresh.myShareValue
+            try? modelContext.save()
         }
     }
 

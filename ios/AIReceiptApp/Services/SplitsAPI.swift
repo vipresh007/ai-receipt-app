@@ -231,7 +231,6 @@ extension ReceiptExtractionAPIClient {
 
     struct MeSettingsWrite: Encodable {
         var emailNotifications: Bool?
-        var paypalMe: String?
         var interac: String?
     }
 
@@ -240,12 +239,10 @@ extension ReceiptExtractionAPIClient {
         let email: String
         let displayName: String
         let emailNotifications: Bool
-        let paypalMe: String
         let interac: String
     }
 
     struct PayDetailsDTO: Decodable, Hashable {
-        let paypalMe: String?
         let interac: String?
     }
 

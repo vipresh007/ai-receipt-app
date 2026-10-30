@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { apiGet } from "@/lib/api";
+import { LIVE } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
 /** Unread activity, checked every minute while the app is open. */
@@ -11,7 +12,7 @@ export function useUnreadActivity(): number {
   const { data } = useQuery({
     queryKey: ["activity-unread"],
     queryFn: () => apiGet<{ unread: number }>("v1/activity/unread"),
-    refetchInterval: 60_000,
+    ...LIVE,
   });
   return data?.unread ?? 0;
 }

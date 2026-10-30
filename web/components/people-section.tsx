@@ -13,11 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PersonBalanceTag } from "@/components/balance-tag";
+import { LIVE } from "@/lib/live";
 
 /** People you split with outside groups, each with a running balance. */
 export function PeopleSection() {
   const router = useRouter();
   const { data: people, isLoading } = useQuery({
+    ...LIVE,
     queryKey: ["people"],
     queryFn: () => apiGet<PersonSummary[]>("v1/people"),
   });

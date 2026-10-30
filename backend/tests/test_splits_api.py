@@ -80,6 +80,9 @@ async def test_split_receipt_evenly_counts_only_my_share(client, anon_client):
     public = (await anon_client.get(f"/v1/public/splits/{token}")).json()
     assert public["your_share"] == "20.00"
     assert public["payer_name"] == "T"
+    # The whole receipt, and the way into everything shared with T.
+    assert (public["tax"], public["owner_name"]) == ("0.00", "T")
+    assert "/p/" in public["invite_url"]
     assert [p["is_you"] for p in public["participants"]] == [False, True, False]
 
 

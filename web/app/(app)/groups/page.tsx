@@ -15,10 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { BalanceTag } from "@/components/balance-tag";
 import { PeopleSection } from "@/components/people-section";
+import { LIVE } from "@/lib/live";
 
 export default function GroupsPage() {
   const router = useRouter();
   const { data: groups, isLoading } = useQuery({
+    ...LIVE,
     queryKey: ["groups"],
     queryFn: () => apiGet<GroupSummary[]>("v1/groups"),
   });

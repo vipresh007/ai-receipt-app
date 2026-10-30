@@ -64,6 +64,7 @@ async def create_group(
     names = [n.strip()[:120] for n in data.members if n.strip()]
     for position, name in enumerate(names, start=1):
         session.add(GroupMember(group_id=group.id, display_name=name, position=position))
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -105,6 +106,7 @@ async def rename_group(
             f"turned {state} simplify debts in {group.name}",
             group_id=group.id,
         )
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -120,6 +122,7 @@ async def delete_group(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Only the person who made the group can delete it."
         )
+    await split_store.publish_group(session, group.id)
     await split_store.delete_group(session, group)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -139,6 +142,7 @@ async def add_member(
     session.add(
         GroupMember(group_id=group.id, display_name=data.name.strip()[:120], position=position)
     )
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -166,6 +170,7 @@ async def remove_member(
             status.HTTP_403_FORBIDDEN, "People with an account leave the group themselves."
         )
     await session.delete(member)
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -214,6 +219,7 @@ async def add_settlement(
             created_by_user_id=user.id,
         )
     )
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -230,6 +236,7 @@ async def delete_settlement(
     if settlement is None or settlement.group_id != group.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found.")
     await session.delete(settlement)
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)
 
@@ -271,7 +278,8 @@ async def join_group(
         await activity.notify(
             session, set(others), user, "joined", f"joined {group.name}", group_id=group.id
         )
-        await session.commit()
+        await split_store.publish_group(session, group.id)
+    await session.commit()
     return await split_store.group_detail(session, group, user)
 
 
@@ -311,5 +319,6 @@ async def remind_member(
         group_id=group.id,
         link=f"{get_settings().public_web_url}/groups/{group.id}",
     )
+    await split_store.publish_group(session, group.id)
     await session.commit()
     return await split_store.group_detail(session, group, user)

@@ -6,7 +6,6 @@ struct SharingSettingsView: View {
 
     @Environment(AuthManager.self) private var auth
     @State private var me: API.MeDTO?
-    @State private var paypal = ""
     @State private var interac = ""
     @State private var note: String?
     @State private var saving = false
@@ -29,15 +28,12 @@ struct SharingSettingsView: View {
                         .foregroundStyle(Theme.Palette.textSecondary)
                 }
                 Section {
-                    TextField("PayPal.me name", text: $paypal)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
                     TextField("Interac e-Transfer email or phone", text: $interac)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
                     Button(saving ? "Saving…" : "Save") {
-                        Task { await save(.init(paypalMe: paypal, interac: interac)) }
+                        Task { await save(.init(interac: interac)) }
                     }
                     .disabled(saving)
                     if let note {
@@ -46,7 +42,7 @@ struct SharingSettingsView: View {
                 } header: {
                     Text("GET PAID BACK").font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
                 } footer: {
-                    Text("Shown to people who owe you, so paying you is one tap.").font(.appCaption)
+                    Text("Your Interac e-Transfer email or phone, shown to people who owe you.").font(.appCaption)
                 }
                 .listRowBackground(Theme.Palette.surface)
             } else {
@@ -92,7 +88,6 @@ struct SharingSettingsView: View {
     private func load() async {
         guard let loaded = try? await Splits.client(auth).me() else { return }
         me = loaded
-        paypal = loaded.paypalMe
         interac = loaded.interac
     }
 
@@ -102,9 +97,8 @@ struct SharingSettingsView: View {
         do {
             let next = try await Splits.client(auth).updateMe(body)
             me = next
-            paypal = next.paypalMe
             interac = next.interac
-            note = body.paypalMe != nil ? "Saved." : nil
+            note = body.interac != nil ? "Saved." : nil
         } catch {
             note = error.localizedDescription
         }

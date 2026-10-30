@@ -43,7 +43,7 @@ from app.schemas.split import (
     SplitIn,
     SplitOut,
 )
-from app.services import activity
+from app.services import activity, realtime
 from app.services.splits import (
     ShareInput,
     SplitError,
@@ -485,7 +485,32 @@ def _changes(before: dict, after: dict, currency: str) -> list[str]:
     return out
 
 
+async def publish_split(session: AsyncSession, split: Split) -> None:
+    """Wake the apps of everyone who sees this expense: the people on it and,
+    for a group expense, the whole group (their balances move)."""
+    ids = set(
+        await session.scalars(
+            select(SplitParticipant.user_id).where(SplitParticipant.split_id == split.id)
+        )
+    )
+    if split.group_id is not None:
+        await publish_group(session, split.group_id, ids)
+    else:
+        await realtime.publish(session, ids | {split.owner_user_id})
+
+
+async def publish_group(
+    session: AsyncSession, group_id: uuid.UUID, also: set | None = None
+) -> None:
+    members = await session.scalars(
+        select(GroupMember.user_id).where(GroupMember.group_id == group_id)
+    )
+    await realtime.publish(session, set(members) | (also or set()))
+
+
 async def log_event(session: AsyncSession, split: Split, actor: User | None, text: str) -> None:
+    await session.flush()
+    await publish_split(session, split)
     session.add(
         SplitEvent(
             split_id=split.id,
@@ -624,6 +649,7 @@ async def delete_split(session: AsyncSession, split: Split, actor: User | None =
         if receipt is not None:
             await set_receipt_share(session, receipt, None, None)
     rows = await _participants(session, split.id)
+    await publish_split(session, split)
     if actor is not None:
         await activity.notify(
             session,
@@ -866,9 +892,9 @@ async def group_detail(session: AsyncSession, group: Group, user: User) -> Group
 
 
 def _pay_to(user: User | None) -> PayDetails | None:
-    if user is None or not (user.paypal_me or user.interac):
+    if user is None or not user.interac:
         return None
-    return PayDetails(paypal_me=user.paypal_me or None, interac=user.interac or None)
+    return PayDetails(interac=user.interac)
 
 
 async def member_owes(session: AsyncSession, group: Group, debtor_id, creditor_id) -> Decimal:

@@ -67,7 +67,6 @@ export interface Me {
   display_name: string;
   plan: string;
   email_notifications: boolean;
-  paypal_me: string;
   interac: string;
 }
 
@@ -167,7 +166,6 @@ export interface TimelineEntry {
 }
 
 export interface PayDetails {
-  paypal_me: string | null;
   interac: string | null;
 }
 
@@ -249,6 +247,10 @@ export interface PublicSplit {
   group_name: string | null;
   your_share: string;
   pay_to: PayDetails | null;
+  mode: SplitMode;
+  tax: string | null;
+  owner_name: string;
+  invite_url: string | null;
 }
 
 export interface PublicGroup {

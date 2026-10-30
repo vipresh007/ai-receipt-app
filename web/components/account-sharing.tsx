@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 /** Notification emails and how people pay you back. */
 export function SharingSettings({ me }: { me: Me }) {
   const queryClient = useQueryClient();
-  const [paypal, setPaypal] = useState(me.paypal_me);
   const [interac, setInterac] = useState(me.interac);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
@@ -24,7 +23,6 @@ export function SharingSettings({ me }: { me: Me }) {
     try {
       const next = await apiPatch<Me>("v1/auth/me", patch);
       queryClient.setQueryData(["me"], next);
-      setPaypal(next.paypal_me);
       setInterac(next.interac);
       setNote({ ok: true, text: "Saved." });
     } catch (err) {
@@ -52,19 +50,15 @@ export function SharingSettings({ me }: { me: Me }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          save({ paypal_me: paypal, interac });
+          save({ interac });
         }}
         className="space-y-md border-t border-border pt-lg"
       >
         <div>
           <p className="text-callout font-medium">Get paid back</p>
           <p className="text-caption text-text-secondary">
-            Shown to people who owe you, so paying you is one tap.
+            Your Interac e-Transfer email or phone, shown to people who owe you.
           </p>
-        </div>
-        <div className="space-y-xs">
-          <Label htmlFor="paypal-me">PayPal.me name</Label>
-          <Input id="paypal-me" value={paypal} onChange={(e) => setPaypal(e.target.value)} placeholder="yourname" maxLength={80} />
         </div>
         <div className="space-y-xs">
           <Label htmlFor="interac">Interac e-Transfer email or phone</Label>

@@ -28,6 +28,7 @@ import { PersonBalanceTag, personBalanceText } from "@/components/balance-tag";
 import { SplitEditor } from "@/components/split-editor";
 import { SplitSummary, useCanShare } from "@/components/split-summary";
 import { PayTo } from "@/components/pay-to";
+import { LIVE } from "@/lib/live";
 
 export default function PersonPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,7 @@ export default function PersonPage() {
     isLoading,
     error: loadError,
   } = useQuery({
+    ...LIVE,
     queryKey: ["person", id],
     queryFn: () => apiGet<PersonDetail>(`v1/people/${id}`),
   });

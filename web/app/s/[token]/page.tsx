@@ -8,6 +8,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { PublicShell } from "@/components/public-shell";
 import { PayTo } from "@/components/pay-to";
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 
 // Links are private to whoever was sent them: never indexed, never cached.
 export const metadata: Metadata = {
@@ -36,9 +37,7 @@ export default async function SharePage({
   if (!split) notFound();
 
   const you = split.participants.find((p) => p.is_you);
-  const yourItems = you
-    ? split.items.filter((_, i) => you.item_indexes.includes(i))
-    : [];
+  const itemsTotal = split.items.reduce((sum, item) => sum + Number(item.price), 0);
   const payer = split.payer_name;
 
   return (
@@ -80,31 +79,75 @@ export default async function SharePage({
         )}
       </Card>
 
-      {yourItems.length > 0 && (
+      {split.items.length > 0 && (
         <Card className="space-y-md">
-          <CardTitle>What you had</CardTitle>
+          <CardTitle>The receipt</CardTitle>
           <ul className="divide-y divide-border">
-            {yourItems.map((item, i) => (
-              <li
-                key={i}
-                className="flex items-center justify-between gap-md py-sm text-callout"
-              >
-                <span className="min-w-0 truncate">
-                  {item.quantity && item.quantity > 1
-                    ? `${item.quantity} × `
-                    : ""}
-                  {item.name}
-                </span>
-                <span className="font-mono tabular">
-                  {money(item.price, split.currency)}
-                </span>
-              </li>
-            ))}
+            {split.items.map((item, i) => {
+              const had = split.participants.filter((p) => p.item_indexes.includes(i));
+              const yours = !!you && you.item_indexes.includes(i);
+              return (
+                <li key={i} className="space-y-xs py-sm">
+                  <div
+                    className={cn(
+                      "flex items-center justify-between gap-md text-callout",
+                      yours && "font-semibold",
+                    )}
+                  >
+                    <span className="min-w-0 truncate">
+                      {item.quantity && item.quantity > 1 ? `${item.quantity} × ` : ""}
+                      {item.name}
+                    </span>
+                    <span className="font-mono tabular">{money(item.price, split.currency)}</span>
+                  </div>
+                  {had.length > 0 && (
+                    <div className="flex flex-wrap gap-xs">
+                      {had.map((p, k) => (
+                        <span
+                          key={k}
+                          className={cn(
+                            "rounded-pill px-sm py-[1px] text-[12px]",
+                            p.is_you ? "bg-accent-muted font-medium text-accent" : "bg-surface-2 text-text-secondary",
+                          )}
+                        >
+                          {p.is_you ? "You" : p.display_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
-          <p className="text-caption text-text-tertiary">
-            Items shared with others are divided between you. Tax and tip follow
-            what each person had.
-          </p>
+          <dl className="space-y-xs border-t border-border pt-md text-callout">
+            <div className="flex justify-between text-text-secondary">
+              <dt>Items</dt>
+              <dd className="font-mono tabular">{money(itemsTotal, split.currency)}</dd>
+            </div>
+            {split.tax != null && Number(split.tax) > 0 && (
+              <div className="flex justify-between text-text-secondary">
+                <dt>Tax</dt>
+                <dd className="font-mono tabular">{money(split.tax, split.currency)}</dd>
+              </div>
+            )}
+            {Math.abs(Number(split.total) - itemsTotal - Number(split.tax ?? 0)) >= 0.005 && (
+              <div className="flex justify-between text-text-secondary">
+                <dt>Tip, fees and discounts</dt>
+                <dd className="font-mono tabular">
+                  {money(Number(split.total) - itemsTotal - Number(split.tax ?? 0), split.currency)}
+                </dd>
+              </div>
+            )}
+            <div className="flex justify-between font-semibold">
+              <dt>Total</dt>
+              <dd className="font-mono tabular">{money(split.total, split.currency)}</dd>
+            </div>
+          </dl>
+          {split.mode === "items" && (
+            <p className="text-caption text-text-tertiary">
+              Items nobody picked are shared by everyone. Tax and tip follow what each person had.
+            </p>
+          )}
         </Card>
       )}
 
@@ -144,6 +187,19 @@ export default async function SharePage({
           ))}
         </ul>
       </Card>
+      {split.invite_url && split.owner_name && (
+        <Card className="space-y-md">
+          <CardTitle>
+            {split.group_name ? `Everything in ${split.group_name}` : `Everything you share with ${split.owner_name}`}
+          </CardTitle>
+          <p className="text-callout text-text-secondary">
+            Every expense, the running balance between you, and a way to record paying back. Free; sign in once.
+          </p>
+          <a href={split.invite_url} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
+            {split.group_name ? `See everything in ${split.group_name}` : `See everything you share with ${split.owner_name}`}
+          </a>
+        </Card>
+      )}
     </PublicShell>
   );
 }

@@ -115,7 +115,7 @@ final class SplitMathTests: XCTestCase {
             {"id": "p1", "name": "Sam", "email": null, "has_account": false,
              "invite_url": "https://tally.dataeaver.ca/p/xyz", "invited_at": null,
              "balance": "-12.50", "outside_groups": "-12.50", "group_balances": [],
-             "currency": "CAD", "can_email": false, "pay_to": {"paypal_me": "sam", "interac": null},
+             "currency": "CAD", "can_email": false, "pay_to": {"interac": "sam@example.com"},
              "splits": [], "payments": [{"id": "pay1", "you_paid": true, "amount": "5.00",
                "note": "", "date": "2026-10-29", "can_delete": true}]}
             """
@@ -125,7 +125,7 @@ final class SplitMathTests: XCTestCase {
         XCTAssertEqual(person.balanceValue, Decimal(string: "-12.50"))
         XCTAssertEqual(person.inviteUrl, "https://tally.dataeaver.ca/p/xyz")
         XCTAssertEqual(person.payments.first?.youPaid, true)
-        XCTAssertEqual(person.payTo?.paypalMe, "sam")
+        XCTAssertEqual(person.payTo?.interac, "sam@example.com")
         XCTAssertEqual(
             ISO8601DateFormatter.tally("2026-10-30T12:00:00.123456+00:00") != nil
                 && ISO8601DateFormatter.tally("2026-10-30T12:00:00+00:00") != nil,

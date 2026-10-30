@@ -145,7 +145,6 @@ class MemberIn(BaseModel):
 class PayDetails(BaseModel):
     """How someone likes to be paid back (they set it under Account)."""
 
-    paypal_me: str | None
     interac: str | None
 
 
@@ -244,7 +243,7 @@ class PersonOut(BaseModel):
     # Tally can email this person their invite (an address is set and email
     # is configured).
     can_email: bool
-    # Their PayPal.me / Interac details, when they've joined and set them.
+    # Their Interac details, when they've joined and set them.
     pay_to: PayDetails | None
 
 
@@ -292,8 +291,15 @@ class PublicSplitOut(BaseModel):
     payer_name: str | None
     group_name: str | None
     your_share: str
-    # The payer's PayPal.me / Interac, if they've set them.
+    # The payer's Interac details, if they've set them.
     pay_to: PayDetails | None = None
+    mode: Mode = "even"
+    # A split receipt's tax, for showing the whole receipt.
+    tax: str | None = None
+    # Who added it, and the link to everything shared with them (their invite
+    # to you, or the group's).
+    owner_name: str = ""
+    invite_url: str | None = None
 
 
 class PublicMemberOut(BaseModel):

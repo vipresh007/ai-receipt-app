@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/page-header";
 import { fromCents, money, shortDate, toCents } from "@/lib/format";
 import { SplitEditor } from "@/components/split-editor";
 import { SplitSummary } from "@/components/split-summary";
+import { LIVE } from "@/lib/live";
 
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,7 @@ export default function ReceiptDetailPage() {
   });
 
   const { data: split } = useQuery({
+    ...LIVE,
     queryKey: ["split", receipt?.split_id],
     queryFn: () => apiGet<Split>(`v1/splits/${receipt!.split_id}`),
     enabled: !!receipt?.split_id,
