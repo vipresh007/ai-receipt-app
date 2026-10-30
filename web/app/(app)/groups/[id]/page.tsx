@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { money, shortDate } from "@/lib/format";
-import type { GroupDetail, GroupMember, Settlement, Split } from "@/lib/types";
+import type { GroupDetail, GroupMember, Split } from "@/lib/types";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,10 +38,6 @@ interface PaymentDraft {
   to: string;
   amount: string;
 }
-
-type Entry =
-  | { kind: "expense"; date: string; split: Split }
-  | { kind: "payment"; date: string; payment: Settlement };
 
 export default function GroupPage() {
   const { id } = useParams<{ id: string }>();
@@ -108,21 +104,6 @@ export default function GroupPage() {
     }, 0);
   const others = g.payments.filter(
     (p) => p.from_member_id !== me?.id && p.to_member_id !== me?.id,
-  );
-
-  const entries: Entry[] = [
-    ...g.splits.map((split) => ({
-      kind: "expense" as const,
-      date: split.date,
-      split,
-    })),
-    ...g.settlements.map((payment) => ({
-      kind: "payment" as const,
-      date: payment.date,
-      payment,
-    })),
-  ].sort((a, b) =>
-    a.date < b.date ? 1 : a.date > b.date ? -1 : a.kind === "payment" ? -1 : 1,
   );
 
   async function refresh(next?: GroupDetail) {
@@ -229,26 +210,41 @@ export default function GroupPage() {
         </p>
       )}
 
-      <div className="grid gap-2xl lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-        <div className="space-y-2xl">
-          {/* ── Balances: one row per person, and what to do about it ── */}
+      <div className="grid gap-2xl lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        {/* ── People: who's in, where each stands with you, what to do ──
+            First on phones; the side column on wide screens. */}
+        <div className="space-y-2xl lg:order-2">
           <Card className="space-y-lg">
-            <CardTitle>Balances</CardTitle>
+            <CardTitle>People</CardTitle>
             <ul className="divide-y divide-border">
+              {me && (
+                <li className="flex items-center gap-md pb-md">
+                  <Avatar name={me.display_name} accent />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-callout font-medium">You</p>
+                    <p className="text-caption text-text-tertiary">
+                      {balanceLine(Number(me.balance), g.currency)}
+                    </p>
+                  </div>
+                </li>
+              )}
               {g.members
                 .filter((m) => !m.is_me)
                 .map((m) => {
                   const owed = withMe(m);
                   const elsewhere = Number(m.balance) - owed;
                   return (
-                    <li key={m.id} className="space-y-sm py-md first:pt-0">
-                      <div className="flex flex-wrap items-center gap-md">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-callout font-semibold">
-                          {m.display_name.charAt(0).toUpperCase()}
-                        </span>
+                    <li key={m.id} className="space-y-sm py-md last:pb-0">
+                      <div className="flex items-center gap-md">
+                        <Avatar name={m.display_name} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-callout font-medium">
+                          <p className="flex items-center gap-xs truncate text-callout font-medium">
                             {m.display_name}
+                            {!m.has_account && (
+                              <span className="rounded-pill bg-surface-2 px-sm text-[10.5px] font-normal text-text-tertiary">
+                                not joined
+                              </span>
+                            )}
                           </p>
                           <p
                             className={cn(
@@ -271,27 +267,32 @@ export default function GroupPage() {
                                     : `is owed ${money(elsewhere, g.currency)} by others`}
                           </p>
                         </div>
-                        {owed > 0 && m.has_account && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              run(async () => {
-                                const next = await apiPost<GroupDetail>(
-                                  `v1/groups/${id}/members/${m.id}/remind`,
-                                  {},
-                                );
-                                setNotice(
-                                  `Reminder sent to ${m.display_name}.`,
-                                );
-                                return next;
-                              })
-                            }
-                          >
-                            <Bell size={14} /> Remind
-                          </Button>
-                        )}
-                        {owed !== 0 && me && (
+                        {!m.has_account &&
+                          owed === 0 &&
+                          Math.abs(elsewhere) < 0.005 && (
+                            <button
+                              type="button"
+                              aria-label={`Remove ${m.display_name}`}
+                              className="grid h-7 w-7 place-items-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-danger"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Remove ${m.display_name} from the group?`,
+                                  )
+                                )
+                                  run(() =>
+                                    apiDelete<GroupDetail>(
+                                      `v1/groups/${id}/members/${m.id}`,
+                                    ),
+                                  );
+                              }}
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                      </div>
+                      {owed !== 0 && me && (
+                        <div className="flex flex-wrap gap-sm pl-[48px]">
                           <Button
                             variant="secondary"
                             size="sm"
@@ -313,20 +314,43 @@ export default function GroupPage() {
                           >
                             <Check size={14} /> Record payment
                           </Button>
-                        )}
-                      </div>
+                          {owed > 0 && m.has_account && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                run(async () => {
+                                  const next = await apiPost<GroupDetail>(
+                                    `v1/groups/${id}/members/${m.id}/remind`,
+                                    {},
+                                  );
+                                  setNotice(
+                                    `Reminder sent to ${m.display_name}.`,
+                                  );
+                                  return next;
+                                })
+                              }
+                            >
+                              <Bell size={14} /> Remind
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {owed < 0 && (
-                        <PayTo
-                          payTo={m.pay_to}
-                          amount={owed}
-                          currency={g.currency}
-                          name={m.display_name}
-                        />
+                        <div className="pl-[48px]">
+                          <PayTo
+                            payTo={m.pay_to}
+                            amount={owed}
+                            currency={g.currency}
+                            name={m.display_name}
+                          />
+                        </div>
                       )}
                     </li>
                   );
                 })}
             </ul>
+
             {others.length > 0 && (
               <div className="space-y-xs rounded-lg bg-surface-2 p-md">
                 <p className="text-caption font-medium text-text-secondary">
@@ -355,24 +379,26 @@ export default function GroupPage() {
                 className="space-y-md rounded-lg bg-surface-2 p-lg"
               >
                 <p className="text-callout font-medium">Record a payment</p>
-                <div className="grid gap-md sm:grid-cols-[1fr_1fr_8rem]">
-                  <div className="space-y-xs">
-                    <Label htmlFor="pay-from">Who paid</Label>
-                    <MemberSelect
-                      id="pay-from"
-                      group={g}
-                      value={payment.from}
-                      onChange={(from) => setPayment({ ...payment, from })}
-                    />
-                  </div>
-                  <div className="space-y-xs">
-                    <Label htmlFor="pay-to">To</Label>
-                    <MemberSelect
-                      id="pay-to"
-                      group={g}
-                      value={payment.to}
-                      onChange={(to) => setPayment({ ...payment, to })}
-                    />
+                <div className="grid gap-md">
+                  <div className="grid grid-cols-2 gap-md">
+                    <div className="space-y-xs">
+                      <Label htmlFor="pay-from">Who paid</Label>
+                      <MemberSelect
+                        id="pay-from"
+                        group={g}
+                        value={payment.from}
+                        onChange={(from) => setPayment({ ...payment, from })}
+                      />
+                    </div>
+                    <div className="space-y-xs">
+                      <Label htmlFor="pay-to">To</Label>
+                      <MemberSelect
+                        id="pay-to"
+                        group={g}
+                        value={payment.to}
+                        onChange={(to) => setPayment({ ...payment, to })}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-xs">
                     <Label htmlFor="pay-amount">Amount</Label>
@@ -389,9 +415,8 @@ export default function GroupPage() {
                   </div>
                 </div>
                 <p className="text-caption text-text-tertiary">
-                  Tally only keeps track. Send the money however you normally
-                  do. Paying one expense back? Tick &ldquo;Mark paid&rdquo; on
-                  it instead.
+                  Tally only keeps track. Paying back one expense? Tick
+                  &ldquo;Mark paid&rdquo; on it instead.
                 </p>
                 <div className="flex justify-end gap-sm">
                   <Button
@@ -416,8 +441,29 @@ export default function GroupPage() {
               </form>
             )}
 
-            <div className="flex flex-wrap items-start justify-between gap-md border-t border-border pt-md">
-              <label className="flex max-w-md items-start gap-sm text-callout">
+            <form
+              onSubmit={addMember}
+              className="flex gap-sm border-t border-border pt-lg"
+            >
+              <Input
+                value={newMember}
+                onChange={(e) => setNewMember(e.target.value)}
+                placeholder="Add someone"
+                maxLength={120}
+                aria-label="New person's name"
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={!newMember.trim()}
+              >
+                Add
+              </Button>
+            </form>
+            <InviteLink url={g.invite_url} groupName={g.name} />
+
+            <div className="space-y-sm border-t border-border pt-lg">
+              <label className="flex items-start gap-sm text-callout">
                 <input
                   type="checkbox"
                   checked={g.simplify_debts}
@@ -440,9 +486,9 @@ export default function GroupPage() {
                 </span>
               </label>
               {!payment && me && g.members.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  type="button"
+                  className="text-caption text-accent"
                   onClick={() =>
                     setPayment({
                       from: g.members.find((m) => !m.is_me)!.id,
@@ -451,176 +497,10 @@ export default function GroupPage() {
                     })
                   }
                 >
-                  Other payment
-                </Button>
+                  Record some other payment
+                </button>
               )}
             </div>
-          </Card>
-
-          {/* ── Expenses and payments, newest first ── */}
-          <Card className="space-y-lg">
-            <div className="flex flex-wrap items-center justify-between gap-md">
-              <CardTitle>Expenses &amp; payments</CardTitle>
-              {!editing && (
-                <AddExpense
-                  target={{ kind: "group", id: g.id, name: g.name }}
-                  currency={g.currency}
-                  onDone={() => refresh()}
-                />
-              )}
-            </div>
-
-            {editing && (
-              <div className="rounded-lg bg-surface-2 p-lg">
-                <SplitEditor
-                  fixedGroupId={g.id}
-                  existing={editing ?? undefined}
-                  currency={g.currency}
-                  onDone={async () => {
-                    setEditing(null);
-                    await refresh();
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              </div>
-            )}
-
-            {entries.length === 0 ? (
-              <p className="text-callout text-text-secondary">
-                Nothing yet. Add an expense here, or split a receipt with this
-                group from the receipt itself.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border">
-                {entries.map((entry) =>
-                  entry.kind === "payment" ? (
-                    <li
-                      key={`p-${entry.payment.id}`}
-                      className="flex items-center gap-md py-md"
-                    >
-                      <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
-                        {shortDate(entry.date)}
-                      </span>
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-success-muted text-success">
-                        <Banknote size={15} />
-                      </span>
-                      <p className="min-w-0 flex-1 text-callout">
-                        <span className="font-medium">
-                          {cap(nameOf(entry.payment.from_member_id))}
-                        </span>{" "}
-                        paid{" "}
-                        <span className="font-medium">
-                          {nameOf(entry.payment.to_member_id)}
-                        </span>
-                        {entry.payment.note && (
-                          <span className="text-text-tertiary">
-                            {" "}
-                            · {entry.payment.note}
-                          </span>
-                        )}
-                      </p>
-                      <span className="font-mono text-callout text-success tabular">
-                        {money(entry.payment.amount, g.currency)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Delete payment"
-                        onClick={() => {
-                          if (window.confirm("Delete this payment?"))
-                            run(() =>
-                              apiDelete<GroupDetail>(
-                                `v1/groups/${id}/settlements/${entry.payment.id}`,
-                              ),
-                            );
-                        }}
-                      >
-                        <Trash2 size={15} />
-                      </Button>
-                    </li>
-                  ) : (
-                    <ExpenseRow
-                      key={`s-${entry.split.id}`}
-                      split={entry.split}
-                      open={open === entry.split.id}
-                      onToggle={() =>
-                        setOpen(open === entry.split.id ? null : entry.split.id)
-                      }
-                      onChange={() => refresh()}
-                      onEdit={
-                        entry.split.receipt_id && entry.split.is_owner
-                          ? () =>
-                              router.push(`/receipts/${entry.split.receipt_id}`)
-                          : () => {
-                              setEditing(entry.split);
-                            }
-                      }
-                      onRemove={() => removeSplit(entry.split)}
-                    />
-                  ),
-                )}
-              </ul>
-            )}
-          </Card>
-        </div>
-
-        {/* ── People ── */}
-        <div className="space-y-2xl">
-          <Card className="space-y-lg">
-            <CardTitle>People</CardTitle>
-            <ul className="space-y-sm">
-              {g.members.map((m) => (
-                <li key={m.id} className="flex items-center gap-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-callout font-medium">
-                      {m.is_me ? `${m.display_name} (you)` : m.display_name}
-                    </p>
-                    <p className="text-[11px] text-text-tertiary">
-                      {m.has_account ? "On Tally" : "Hasn't joined yet"}
-                    </p>
-                  </div>
-                  {!m.has_account && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${m.display_name}`}
-                      className="h-8 w-8 text-text-tertiary"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Remove ${m.display_name} from the group?`,
-                          )
-                        )
-                          run(() =>
-                            apiDelete<GroupDetail>(
-                              `v1/groups/${id}/members/${m.id}`,
-                            ),
-                          );
-                      }}
-                    >
-                      <X size={14} />
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <form onSubmit={addMember} className="flex gap-sm">
-              <Input
-                value={newMember}
-                onChange={(e) => setNewMember(e.target.value)}
-                placeholder="Add a name"
-                maxLength={120}
-                aria-label="New person's name"
-              />
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={!newMember.trim()}
-              >
-                Add
-              </Button>
-            </form>
-            <InviteLink url={g.invite_url} groupName={g.name} />
           </Card>
 
           {g.is_owner && (
@@ -634,9 +514,150 @@ export default function GroupPage() {
             </Button>
           )}
         </div>
+
+        {/* ── Expenses (by month), then payments ── */}
+        <div className="space-y-2xl lg:order-1">
+          <Card className="space-y-lg">
+            <div className="flex flex-wrap items-center justify-between gap-md">
+              <CardTitle>Expenses</CardTitle>
+              {!editing && (
+                <AddExpense
+                  target={{ kind: "group", id: g.id, name: g.name }}
+                  currency={g.currency}
+                  onDone={() => refresh()}
+                />
+              )}
+            </div>
+
+            {editing && (
+              <div className="rounded-lg bg-surface-2 p-lg">
+                <SplitEditor
+                  fixedGroupId={g.id}
+                  existing={editing}
+                  currency={g.currency}
+                  onDone={async () => {
+                    setEditing(null);
+                    await refresh();
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              </div>
+            )}
+
+            {g.splits.length === 0 ? (
+              <p className="text-callout text-text-secondary">
+                Nothing yet. Add an expense, or split a receipt with this group
+                from the receipt itself.
+              </p>
+            ) : (
+              byMonth(g.splits).map(([month, splits]) => (
+                <section key={month} className="space-y-xs">
+                  <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">
+                    {month}
+                  </h3>
+                  <ul className="divide-y divide-border">
+                    {splits.map((split) => (
+                      <ExpenseRow
+                        key={split.id}
+                        split={split}
+                        open={open === split.id}
+                        onToggle={() =>
+                          setOpen(open === split.id ? null : split.id)
+                        }
+                        onChange={() => refresh()}
+                        onEdit={
+                          split.receipt_id && split.is_owner
+                            ? () => router.push(`/receipts/${split.receipt_id}`)
+                            : () => setEditing(split)
+                        }
+                        onRemove={() => removeSplit(split)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))
+            )}
+          </Card>
+
+          {g.settlements.length > 0 && (
+            <Card className="space-y-md">
+              <CardTitle>Payments</CardTitle>
+              <ul className="divide-y divide-border">
+                {g.settlements.map((s) => (
+                  <li key={s.id} className="flex items-center gap-md py-sm">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-success-muted text-success">
+                      <Banknote size={15} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-callout">
+                        {cap(nameOf(s.from_member_id))} paid{" "}
+                        {nameOf(s.to_member_id)}
+                      </p>
+                      <p className="text-caption text-text-tertiary">
+                        {shortDate(s.date)}
+                        {s.note && ` · ${s.note}`}
+                      </p>
+                    </div>
+                    <span className="font-mono text-callout tabular">
+                      {money(s.amount, g.currency)}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Delete payment"
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-danger"
+                      onClick={() => {
+                        if (window.confirm("Delete this payment?"))
+                          run(() =>
+                            apiDelete<GroupDetail>(
+                              `v1/groups/${id}/settlements/${s.id}`,
+                            ),
+                          );
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
+}
+
+function Avatar({ name, accent }: { name: string; accent?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "grid h-9 w-9 shrink-0 place-items-center rounded-full text-callout font-semibold",
+        accent ? "bg-accent-muted text-accent" : "bg-surface-2",
+      )}
+    >
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+function balanceLine(balance: number, currency: string): string {
+  if (balance > 0.004)
+    return `you're owed ${money(balance, currency)} in total`;
+  if (balance < -0.004) return `you owe ${money(-balance, currency)} in total`;
+  return "you're settled up";
+}
+
+/** Expenses grouped by month, newest first: [["October 2026", [...]], ...]. */
+function byMonth(splits: Split[]): [string, Split[]][] {
+  const groups = new Map<string, Split[]>();
+  for (const split of [...splits].sort((a, b) => (a.date < b.date ? 1 : -1))) {
+    const label = new Date(`${split.date}T00:00:00`).toLocaleDateString(
+      undefined,
+      { month: "long", year: "numeric" },
+    );
+    groups.set(label, [...(groups.get(label) ?? []), split]);
+  }
+  return [...groups.entries()];
 }
 
 function ExpenseRow({
