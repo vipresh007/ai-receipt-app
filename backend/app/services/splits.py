@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from fractions import Fraction
 
-MODES = ("even", "items", "custom")
+MODES = ("even", "items", "shares", "custom")
 
 
 class SplitError(ValueError):
@@ -20,6 +20,8 @@ class SplitError(ValueError):
 class ShareInput:
     item_indexes: list[int] = field(default_factory=list)
     custom_amount: Decimal | None = None
+    # Shares mode: this person's parts (2 and 3 → 2/5 and 3/5); blank = 1.
+    weight: Decimal | None = None
 
 
 def _cents(value: Decimal) -> int:
@@ -60,6 +62,16 @@ def compute_shares(
         if sum(_cents(a) for a in amounts) != total_cents:
             raise SplitError(f"The amounts must add up to {_decimal(total_cents)}.")
         return [_decimal(_cents(a)) for a in amounts]
+
+    if mode == "shares":
+        weights = [Decimal(1) if inp.weight is None else Decimal(inp.weight) for inp in inputs]
+        if any(w < 0 for w in weights):
+            raise SplitError("Shares can't be negative.")
+        whole = sum(weights)
+        if whole == 0:
+            raise SplitError("Give at least one person a share.")
+        exact = [Fraction(total_cents) * Fraction(w) / Fraction(whole) for w in weights]
+        return [_decimal(c) for c in _allocate(total_cents, exact)]
 
     if mode == "even":
         return [_decimal(c) for c in _allocate(total_cents, [Fraction(total_cents, n)] * n)]

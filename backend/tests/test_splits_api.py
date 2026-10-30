@@ -145,6 +145,36 @@ async def test_settle_a_one_off_share(client):
     assert r.json()["participants"][1]["settled"] is True
 
 
+async def test_split_by_shares_and_editing_the_total_keeps_the_ratio(client):
+    rid = await _receipt(client, "30.72")
+    r = await client.post(
+        "/v1/splits",
+        json={
+            "receipt_id": rid,
+            "mode": "shares",
+            "participants": [{"is_me": True, "weight": "2"}, {"name": "Zalak", "weight": "3"}],
+        },
+    )
+    assert r.status_code == 201, r.text
+    split = r.json()
+    assert [(p["weight"], p["share"]) for p in split["participants"]] == [
+        ("2", "12.29"),
+        ("3", "18.43"),
+    ]
+    r = await client.patch(f"/v1/receipts/{rid}", json={"total": "50.00"})
+    assert r.json()["my_share"] == "20.00"
+    bad = await client.post(
+        "/v1/splits",
+        json={
+            "description": "x",
+            "total": "10",
+            "mode": "shares",
+            "participants": [{"is_me": True, "weight": "NaN"}, {"name": "A"}],
+        },
+    )
+    assert bad.status_code == 422
+
+
 async def test_custom_amounts_that_dont_add_up_are_rejected(client):
     rid = await _receipt(client, "50.00")
     r = await client.post(

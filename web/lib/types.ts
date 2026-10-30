@@ -87,7 +87,7 @@ export interface RecurringGroup {
 
 // ─────────────────────────── splits & groups (docs/SPLITS.md) ───────────────────────────
 
-export type SplitMode = "even" | "items" | "custom";
+export type SplitMode = "even" | "items" | "shares" | "custom";
 
 export interface ParticipantIn {
   is_me?: boolean;
@@ -97,6 +97,7 @@ export interface ParticipantIn {
   is_payer?: boolean;
   item_indexes?: number[];
   amount?: string | null;
+  weight?: string | null;
 }
 
 export interface SplitIn {
@@ -120,6 +121,8 @@ export interface Participant {
   is_payer: boolean;
   item_indexes: number[];
   amount: string | null;
+  /** Shares mode: this person's parts. */
+  weight: string | null;
   share: string;
   settled: boolean;
   share_url: string;

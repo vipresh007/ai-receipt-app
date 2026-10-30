@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.receipt import ExtractionItemOut
 
-Mode = Literal["even", "items", "custom"]
+Mode = Literal["even", "items", "shares", "custom"]
 
 
 class ParticipantIn(BaseModel):
@@ -23,6 +23,7 @@ class ParticipantIn(BaseModel):
     is_payer: bool = False
     item_indexes: list[int] = Field(default_factory=list, max_length=500)
     amount: str | None = None  # custom mode
+    weight: str | None = Field(default=None, max_length=12)  # shares mode; blank = 1
 
 
 class SplitIn(BaseModel):
@@ -48,6 +49,7 @@ class ParticipantOut(BaseModel):
     is_payer: bool
     item_indexes: list[int]
     amount: str | None
+    weight: str | None
     share: str
     settled: bool
     share_url: str

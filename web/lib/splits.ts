@@ -6,6 +6,8 @@ import type { SplitMode } from "@/lib/types";
 export interface ShareInput {
   itemIndexes: number[];
   amount: string;
+  /** Shares mode: parts of the total; blank = 1. */
+  weight?: string;
 }
 
 /** Round exact cent amounts so they sum to `totalCents`: floor each, then the
@@ -42,6 +44,14 @@ export function previewShares(
       return { error: `The amounts add up to ${fromCents(sum)}, not ${fromCents(totalCents)}.` };
     }
     return { shares: cents.map(fromCents) };
+  }
+
+  if (mode === "shares") {
+    const weights = inputs.map((p) => (p.weight?.trim() ? Number(p.weight) : 1));
+    if (weights.some((w) => !Number.isFinite(w) || w < 0)) return { error: "Shares can't be negative." };
+    const whole = weights.reduce((a, b) => a + b, 0);
+    if (whole === 0) return { error: "Give at least one person a share." };
+    return { shares: allocate(totalCents, weights.map((w) => (totalCents * w) / whole)).map(fromCents) };
   }
 
   if (mode === "even") {

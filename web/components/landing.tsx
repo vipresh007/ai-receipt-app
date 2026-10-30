@@ -119,10 +119,11 @@ export function Hero() {
             seconds.
           </p>
           <div
-            className="l-rise mt-10 flex flex-col gap-3 sm:flex-row"
+            className="l-rise mt-10 flex flex-wrap items-center gap-3"
             style={vars({ "--d": "240ms" })}
           >
-            <a href={SIGNUP} className="l-btn">
+            {/* Side by side on phones too: the badge is 50px, the button 52px. */}
+            <a href={SIGNUP} className="l-btn grow basis-[150px] !px-5 sm:grow-0 sm:basis-auto sm:!px-[26px]">
               Start free <ArrowRight size={17} />
             </a>
             <AppStoreBadge />
@@ -567,6 +568,123 @@ function MonthPreview() {
   );
 }
 
+/* ─────────────────────────── splitting ─────────────────────────── */
+
+export function SplitIt() {
+  const points = [
+    "Evenly, by item, by shares (2 parts to 3) or exact amounts",
+    "A running tab with each person, or a group for trips and flatmates",
+    "Record it when someone pays you back; Tally never moves money",
+  ];
+  return (
+    <section className="border-t border-[color:var(--rule)] px-6 py-28 lg:py-36">
+      <div className="mx-auto grid max-w-[1180px] items-center gap-16 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
+        <div className="lg:order-2">
+          <p className="l-eyebrow">Split it</p>
+          <h2 className="l-display mt-5 text-[clamp(2.4rem,4.6vw,3.6rem)] font-extrabold leading-[1.02]">
+            Dinner for three. One receipt. No maths.
+          </h2>
+          <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.65] text-[color:var(--cream-2)]">
+            Tap who had what. Shared plates divide themselves, and tax and tip follow what each
+            person ordered. Everyone gets a link with exactly what they owe, no app needed, and
+            only your share counts toward your spending.
+          </p>
+          <ul className="mt-8 space-y-3">
+            {points.map((point) => (
+              <li key={point} className="flex gap-3 text-[16px] leading-[1.5] text-[color:var(--cream-2)]">
+                <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--gold)]" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <SplitPreview />
+      </div>
+    </section>
+  );
+}
+
+function SplitPreview() {
+  // The same dinner the share math is tested against (backend + iOS): items
+  // split by who had them, $15.66 of tax and tip in proportion.
+  const people = {
+    you: { name: "You", color: "#D9AE5C" },
+    priya: { name: "Priya", color: "#35C79A" },
+    sam: { name: "Sam", color: CAT.transport },
+  } as const;
+  type Who = keyof typeof people;
+  const items: { name: string; price: string; who: Who[] }[] = [
+    { name: "Khao Soi", price: "21.00", who: ["you"] },
+    { name: "Pad See Ew", price: "19.00", who: ["priya"] },
+    { name: "Green Curry", price: "20.00", who: ["sam"] },
+    { name: "Thai Iced Tea ×2", price: "6.00", who: ["priya", "sam"] },
+    { name: "Spring Rolls", price: "11.00", who: ["you", "priya", "sam"] },
+  ];
+  const shares: { who: Who; amount: string; paid?: boolean }[] = [
+    { who: "you", amount: "29.68", paid: true },
+    { who: "priya", amount: "30.89" },
+    { who: "sam", amount: "32.09" },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-[28px] bg-[color:var(--ink-3)] ring-1 ring-[color:var(--rule-2)] shadow-[0_40px_80px_rgba(0,0,0,0.45)] lg:order-1">
+      <div className="flex items-end justify-between gap-4 px-6 pt-6 sm:px-7 sm:pt-7">
+        <div>
+          <p className="l-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--cream-3)]">Oct 24 · by item</p>
+          <p className="l-display mt-1 text-[26px] font-extrabold leading-tight tracking-[-0.02em]">Pai Northern Thai</p>
+        </div>
+        <p className="l-mono text-[20px] tabular-nums">$92.66</p>
+      </div>
+
+      <ul className="mt-5 divide-y divide-[color:var(--rule)] border-y border-[color:var(--rule)]">
+        {items.map((item) => (
+          <li key={item.name} className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-6 py-3 sm:px-7">
+            <span className="text-[15px]">{item.name}</span>
+            <span className="l-mono text-right text-[14px] tabular-nums text-[color:var(--cream-2)]">${item.price}</span>
+            <span className="col-span-2 flex flex-wrap gap-1.5">
+              {item.who.map((w) => (
+                <span
+                  key={w}
+                  className="rounded-full px-2.5 py-0.5 text-[12px] font-medium"
+                  style={{ color: people[w].color, background: `color-mix(in srgb, ${people[w].color} 15%, transparent)` }}
+                >
+                  {people[w].name}
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+        <li className="flex items-center justify-between gap-4 px-6 py-3 text-[14px] text-[color:var(--cream-3)] sm:px-7">
+          <span>Tax &amp; tip, by what each had</span>
+          <span className="l-mono tabular-nums">$15.66</span>
+        </li>
+      </ul>
+
+      <div className="grid grid-cols-3 divide-x divide-[color:var(--rule)]">
+        {shares.map((s) => (
+          <div key={s.who} className="px-4 py-5 text-center sm:px-5">
+            <p className="text-[13px]" style={{ color: people[s.who].color }}>
+              {people[s.who].name}
+            </p>
+            <p className="l-mono mt-1 text-[18px] tabular-nums sm:text-[20px]">${s.amount}</p>
+            <p className="l-mono mt-0.5 text-[10.5px] uppercase tracking-[0.1em] text-[color:var(--cream-3)]">
+              {s.paid ? "paid" : "owes you"}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--rule)] px-6 py-4 sm:px-7">
+        <span className="rounded-full bg-[color:var(--teal-soft)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--teal)]">
+          You&apos;re owed $62.98
+        </span>
+        <span className="text-[13px] font-medium text-[color:var(--gold)]">Send each their link &rarr;</span>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────── privacy ─────────────────────────── */
 
 export function Privacy() {
@@ -628,6 +746,14 @@ export const FAQ_ITEMS: { q: string; a: string }[] = [
   {
     q: "What happens to my receipts?",
     a: "They're private to your account. They aren't sold or used to train AI models, and you can delete your account and every receipt from the app at any time.",
+  },
+  {
+    q: "Can I split a receipt with friends?",
+    a: "Yes. Split any receipt evenly, by item, by shares or by exact amounts; tax and tip are shared in proportion to what each person had. Each person gets a link showing what they owe, and only your share counts toward your spending. Tally keeps a running balance with each person, or in a group for trips and flatmates.",
+  },
+  {
+    q: "Do the people I split with need Tally?",
+    a: "No. They can open their link in any browser without an account. If they want to see everything you share and the balance from their side, they can accept your invite and sign in for free.",
   },
   {
     q: "Can it find my subscriptions?",
@@ -693,8 +819,8 @@ export function BottomCTA() {
             Sign in with Google, Apple or email and scan your first receipt in
             the next minute. Free forever tier, no card.
           </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <a href={SIGNUP} className="l-btn">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <a href={SIGNUP} className="l-btn grow basis-[150px] !px-5 sm:grow-0 sm:basis-auto sm:!px-[26px]">
               Start free <ArrowRight size={17} />
             </a>
             <AppStoreBadge />

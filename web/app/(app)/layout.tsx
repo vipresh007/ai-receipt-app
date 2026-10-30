@@ -18,7 +18,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1320px] flex-col gap-lg px-lg py-lg md:flex-row md:gap-3xl md:px-2xl md:py-3xl">
       <AppNav displayName={displayName} />
-      <main className="min-w-0 flex-1 pb-2xl">{children}</main>
+      {/* Room for the phone tab bar at the bottom. */}
+      <main className="min-w-0 flex-1 pb-[calc(96px+env(safe-area-inset-bottom))] md:pb-2xl">{children}</main>
     </div>
   );
 }

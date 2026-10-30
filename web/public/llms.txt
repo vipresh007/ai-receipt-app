@@ -9,6 +9,7 @@
 - Search receipts by store or by item, filter by category, edit any field.
 - Spots recurring charges (likely subscriptions) from your own receipts.
 - Per-category monthly budgets (with a free account).
+- Split a receipt or any expense with other people, evenly, by item, by shares or by exact amounts, with tax and tip shared in proportion. Each person gets a link showing what they owe (no account needed), and only your own share counts toward your spending. Tally keeps a running balance with each person, or within a group (a trip, flatmates), and records payments when you settle up. It never moves money. Splitting needs a free account.
 - Works without an account on iPhone (15 free scans); a free account removes the limit and syncs to the web app.
 
 ## Facts

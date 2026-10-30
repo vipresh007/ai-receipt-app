@@ -41,6 +41,22 @@ def test_discount_reduces_shares_proportionally():
     assert (a, b) == (D("27.00"), D("9.00"))
 
 
+def test_shares_divide_the_total_by_parts():
+    # 2 parts for me, 3 for Zalak: 2/5 and 3/5 of 30.72.
+    a, b = compute_shares(
+        D("30.72"), "shares", [ShareInput(weight=D("2")), ShareInput(weight=D("3"))], []
+    )
+    assert (a, b) == (D("12.29"), D("18.43"))
+    assert a + b == D("30.72")
+    # Blank counts as one part.
+    assert compute_shares(D("9"), "shares", [ShareInput(), ShareInput(weight=D("2"))], []) == [
+        D("3.00"),
+        D("6.00"),
+    ]
+    with pytest.raises(SplitError):
+        compute_shares(D("9"), "shares", [ShareInput(weight=D("0"))], [])
+
+
 def test_custom_amounts_must_add_up():
     with pytest.raises(SplitError, match="add up to 50.00"):
         compute_shares(

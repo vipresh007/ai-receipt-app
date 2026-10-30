@@ -39,6 +39,7 @@ struct SplitEditorView: View {
     @State private var mode: SplitMath.Mode
     @State private var assigned: [String: Set<Int>]
     @State private var amounts: [String: Decimal]
+    @State private var weights: [String: Decimal]
     @State private var saving = false
     @State private var errorMessage: String?
 
@@ -63,6 +64,7 @@ struct SplitEditorView: View {
             : oneOff.compactMap { p in p.personId.map { PickedPerson(id: $0, name: p.displayName) } }
         var assigned: [String: Set<Int>] = [:]
         var amounts: [String: Decimal] = [:]
+        var weights: [String: Decimal] = [:]
         var payer = ""
         var oneOffPayer = NamedPerson.meKey
         var nextOther = 0
@@ -81,6 +83,7 @@ struct SplitEditorView: View {
             }
             assigned[key] = Set(p.itemIndexes)
             if let amount = p.amount.flatMap({ Decimal(string: $0) }) { amounts[key] = amount }
+            if let weight = p.weight.flatMap({ Decimal(string: $0) }) { weights[key] = weight }
             if p.isPayer, let member = p.memberId { payer = member }
             if p.isPayer, p.memberId == nil { oneOffPayer = key }
         }
@@ -103,6 +106,7 @@ struct SplitEditorView: View {
         _mode = State(initialValue: existing?.mode ?? .even)
         _assigned = State(initialValue: assigned)
         _amounts = State(initialValue: amounts)
+        _weights = State(initialValue: weights)
     }
 
     // MARK: - Derived
@@ -158,7 +162,9 @@ struct SplitEditorView: View {
         SplitMath.shares(
             total: total,
             mode: mode,
-            inputs: people.map { .init(itemIndexes: assigned[$0.key] ?? [], amount: amounts[$0.key]) },
+            inputs: people.map {
+                .init(itemIndexes: assigned[$0.key] ?? [], amount: amounts[$0.key], weight: weights[$0.key])
+            },
             itemPrices: items.map(\.price)
         )
     }
@@ -168,6 +174,7 @@ struct SplitEditorView: View {
         case .success: nil
         case .failure(.noPeople): "Add at least one person."
         case .failure(.missingAmount): "Enter an amount for everyone."
+        case .failure(.noShares): "Give at least one person a share."
         case .failure(.amountsDontAddUp(let total, let entered)):
             "Amounts add up to \(money(entered)), not \(money(total))."
         }
@@ -379,7 +386,23 @@ struct SplitEditorView: View {
                 HStack {
                     Text(person.label).font(.appCallout)
                     Spacer()
-                    if mode == .custom {
+                    if mode == .shares {
+                        TextField(
+                            "1",
+                            value: Binding(get: { weights[person.key] }, set: { weights[person.key] = $0 }),
+                            format: .number
+                        )
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.decimalPad)
+                        .font(.appMoney)
+                        .frame(width: 56)
+                        .accessibilityLabel("\(person.label) shares")
+                        Text(index < shares.count ? "= \(shares[index].formatted(.currency(code: currencyCode)))" : "=")
+                            .font(.appCaption)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .frame(minWidth: 84, alignment: .trailing)
+                    } else if mode == .custom {
                         TextField(
                             "0.00",
                             value: Binding(get: { amounts[person.key] }, set: { amounts[person.key] = $0 }),
@@ -397,7 +420,7 @@ struct SplitEditorView: View {
             }
             .listRowBackground(Theme.Palette.surface)
         } header: {
-            sectionHeader("Shares")
+            sectionHeader(mode == .shares ? "Shares (parts each)" : mode == .custom ? "Amounts" : "Each pays")
         } footer: {
             if let previewProblem, !people.isEmpty {
                 Text(previewProblem)
@@ -476,7 +499,8 @@ struct SplitEditorView: View {
                 name: p.memberID == nil && p.personID == nil && !p.isMe ? p.label : nil,
                 isPayer: inGroup ? p.memberID == effectivePayer : p.key == oneOffPayerKey,
                 itemIndexes: mode == .items ? (assigned[p.key] ?? []).sorted() : [],
-                amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil
+                amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil,
+                weight: mode == .shares ? weights[p.key]?.wireString : nil
             )
         }
         var body = API.SplitWrite(

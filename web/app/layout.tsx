@@ -27,6 +27,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Lets the phone tab bar sit above the home indicator (safe-area insets).
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAFAF9" },
     { media: "(prefers-color-scheme: dark)", color: "#0F0F10" },

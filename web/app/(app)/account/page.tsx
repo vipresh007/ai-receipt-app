@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight, Smartphone, Target } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api";
 import type { Me } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
+import { APP_STORE_URL } from "@/lib/site";
 
 export default function AccountPage() {
   const { data, isLoading } = useQuery({
@@ -56,6 +59,25 @@ export default function AccountPage() {
           className="inline-block pt-sm text-caption text-text-secondary hover:text-text"
         >
           Sign out
+        </a>
+      </Card>
+
+      <Card className="divide-y divide-border overflow-hidden !p-0">
+        <Link href="/budgets" className="flex items-center gap-md px-2xl py-lg hover:bg-surface-2">
+          <Target size={18} className="text-accent" />
+          <span className="flex-1">
+            <span className="block text-callout font-medium">Budgets</span>
+            <span className="block text-caption text-text-secondary">Monthly limits per category</span>
+          </span>
+          <ChevronRight size={16} className="text-text-tertiary" />
+        </Link>
+        <a href={APP_STORE_URL} className="flex items-center gap-md px-2xl py-lg hover:bg-surface-2">
+          <Smartphone size={18} className="text-accent" />
+          <span className="flex-1">
+            <span className="block text-callout font-medium">Tally for iPhone</span>
+            <span className="block text-caption text-text-secondary">Scan with your camera; same account</span>
+          </span>
+          <ChevronRight size={16} className="text-text-tertiary" />
         </a>
       </Card>
 

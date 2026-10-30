@@ -47,6 +47,7 @@ import {
   Hero,
   HowItWorks,
   Privacy,
+  SplitIt,
   ReadsReceipts,
   SiteFooter,
   SiteHeader,
@@ -75,6 +76,7 @@ export default async function Home({
         <ReadsReceipts />
         <HowItWorks />
         <Features />
+        <SplitIt />
         <Privacy />
         <FAQ />
         <BottomCTA />

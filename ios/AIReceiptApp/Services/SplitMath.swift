@@ -8,13 +8,14 @@ import Foundation
 /// remainder; earliest person first on ties).
 enum SplitMath {
     enum Mode: String, Codable, CaseIterable, Identifiable {
-        case even, items, custom
+        case even, items, shares, custom
         var id: String { rawValue }
 
         var label: String {
             switch self {
             case .even: "Evenly"
             case .items: "By item"
+            case .shares: "Shares"
             case .custom: "Amounts"
             }
         }
@@ -23,11 +24,14 @@ enum SplitMath {
     struct Input {
         var itemIndexes: Set<Int> = []
         var amount: Decimal?
+        /// Shares mode: parts of the total (2 and 3 → 2/5 and 3/5); nil = 1.
+        var weight: Decimal?
     }
 
     enum Failure: Error, Equatable {
         case noPeople
         case missingAmount
+        case noShares
         case amountsDontAddUp(total: Decimal, entered: Decimal)
     }
 
@@ -53,6 +57,12 @@ enum SplitMath {
                 return .failure(.amountsDontAddUp(total: decimal(totalCents), entered: decimal(entered)))
             }
             return .success(amounts.map(decimal))
+
+        case .shares:
+            let weights = inputs.map { max(0, $0.weight ?? 1) }
+            let whole = weights.reduce(0, +)
+            guard whole > 0 else { return .failure(.noShares) }
+            return .success(allocate(totalCents, weights.map { Decimal(totalCents) * $0 / whole }).map(decimal))
 
         case .even:
             let each = Decimal(totalCents) / Decimal(n)

@@ -50,6 +50,15 @@ final class SplitMathTests: XCTestCase {
         XCTAssertEqual(result, [d("29.68"), d("30.89"), d("32.09")])
     }
 
+    func testSharesDivideTheTotalByParts() {
+        // Same as the server: 2 and 3 parts of 30.72.
+        XCTAssertEqual(shares(d("30.72"), .shares, [.init(weight: 2), .init(weight: 3)]), [d("12.29"), d("18.43")])
+        XCTAssertEqual(shares(9, .shares, [.init(), .init(weight: 2)]), [3, 6])  // blank = 1
+        XCTAssertEqual(
+            SplitMath.shares(total: 9, mode: .shares, inputs: [.init(weight: 0)], itemPrices: []), .failure(.noShares)
+        )
+    }
+
     func testCustomAmountsMustAddUp() {
         let bad = SplitMath.shares(
             total: 50, mode: .custom, inputs: [.init(amount: 20), .init(amount: 20)], itemPrices: []

@@ -68,6 +68,19 @@ def _money(value: str | None, field: str) -> Decimal:
     return amount.quantize(Decimal("0.01"))
 
 
+def _weight(value: str | None) -> Decimal | None:
+    """A shares-mode weight: blank means 1 part (left as None)."""
+    if value is None or not str(value).strip():
+        return None
+    try:
+        weight = Decimal(str(value).strip())
+    except InvalidOperation as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Invalid share.") from exc
+    if not weight.is_finite() or weight < 0 or weight > 1_000_000:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Invalid share.")
+    return weight.quantize(Decimal("0.01"))
+
+
 def _bad(message: str, code: int = status.HTTP_422_UNPROCESSABLE_CONTENT) -> HTTPException:
     return HTTPException(code, message)
 
@@ -220,6 +233,7 @@ async def save_split(
                 user_id = person.user_id
                 name = person.display_name
         custom = _money(p.amount, "amount") if data.mode == "custom" else None
+        weight = _weight(p.weight) if data.mode == "shares" else None
         rows.append(
             SplitParticipant(
                 member_id=member_id,
@@ -230,6 +244,7 @@ async def save_split(
                 is_payer=p.is_payer,
                 item_indexes=sorted(set(p.item_indexes)),
                 custom_amount=custom,
+                weight=weight,
                 share_token=new_token(),
             )
         )
@@ -251,7 +266,7 @@ async def save_split(
         shares = compute_shares(
             total,
             data.mode,
-            [ShareInput(r.item_indexes, r.custom_amount) for r in rows],
+            [ShareInput(r.item_indexes, r.custom_amount, r.weight) for r in rows],
             [Decimal(str(i.get("price", "0"))) for i in items],
         )
     except SplitError as exc:
@@ -325,7 +340,7 @@ async def recompute_receipt_split(session: AsyncSession, receipt: Receipt) -> No
         shares = compute_shares(
             receipt.total,
             mode,
-            [ShareInput(r.item_indexes or [], r.custom_amount) for r in rows],
+            [ShareInput(r.item_indexes or [], r.custom_amount, r.weight) for r in rows],
             [Decimal(str(i.get("price", "0"))) for i in items],
         )
     except SplitError:
@@ -393,6 +408,7 @@ async def split_out(
                 is_payer=r.is_payer,
                 item_indexes=list(r.item_indexes or []),
                 amount=f"{r.custom_amount:.2f}" if r.custom_amount is not None else None,
+                weight=f"{r.weight.normalize():f}" if r.weight is not None else None,
                 share=f"{r.share:.2f}",
                 settled=r.settled_at is not None,
                 share_url=share_url(r.share_token),

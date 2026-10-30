@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 const MODES: { value: SplitMode; label: string }[] = [
   { value: "even", label: "Evenly" },
   { value: "items", label: "By item" },
+  { value: "shares", label: "Shares" },
   { value: "custom", label: "Amounts" },
 ];
 
@@ -112,6 +113,7 @@ export function SplitEditor({
   const [mode, setMode] = useState<SplitMode>(existing?.mode ?? "even");
   const [assigned, setAssigned] = useState<Record<string, number[]>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [weights, setWeights] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -140,6 +142,7 @@ export function SplitEditor({
   if (existing && !seeded && people.length && (!existing.group_id || group)) {
     const nextAssigned: Record<string, number[]> = {};
     const nextAmounts: Record<string, string> = {};
+    const nextWeights: Record<string, string> = {};
     for (const p of existing.participants) {
       const person = people.find((x) =>
         p.member_id
@@ -153,6 +156,7 @@ export function SplitEditor({
       if (!person) continue;
       nextAssigned[person.key] = p.item_indexes;
       if (p.amount) nextAmounts[person.key] = p.amount;
+      if (p.weight) nextWeights[person.key] = p.weight;
       if (p.is_payer && p.member_id) setPayerId(p.member_id);
     }
     if (existing.group_id && group) {
@@ -161,6 +165,7 @@ export function SplitEditor({
     }
     setAssigned(nextAssigned);
     setAmounts(nextAmounts);
+    setWeights(nextWeights);
     setSeeded(true);
   }
 
@@ -171,7 +176,7 @@ export function SplitEditor({
   const preview = previewShares(
     splitTotal,
     mode,
-    people.map((p) => ({ itemIndexes: assigned[p.key] ?? [], amount: amounts[p.key] ?? "" })),
+    people.map((p) => ({ itemIndexes: assigned[p.key] ?? [], amount: amounts[p.key] ?? "", weight: weights[p.key] ?? "" })),
     items.map((i) => i.price),
   );
 
@@ -200,6 +205,7 @@ export function SplitEditor({
       is_payer: groupId ? p.memberId === effectivePayer : p.key === oneOffPayerKey,
       item_indexes: mode === "items" ? assigned[p.key] ?? [] : [],
       amount: mode === "custom" ? amounts[p.key] ?? "0" : null,
+      weight: mode === "shares" ? weights[p.key]?.trim() || null : null,
     }));
     const body: SplitIn = {
       receipt_id: receipt?.id ?? null,
@@ -451,27 +457,43 @@ export function SplitEditor({
       )}
 
       <div className="space-y-sm">
-        <p className="text-caption text-text-secondary">Shares</p>
-        <ul className="divide-y divide-border rounded-lg bg-surface-2/60">
-          {people.map((p, i) => (
-            <li key={p.key} className="flex items-center justify-between gap-md px-md py-sm text-callout">
-              <span className="min-w-0 truncate">{p.label}</span>
-              {mode === "custom" ? (
-                <Input
-                  aria-label={`${p.label} amount`}
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  className="h-9 w-28 text-right"
-                  value={amounts[p.key] ?? ""}
-                  onChange={(e) => setAmounts((prev) => ({ ...prev, [p.key]: e.target.value }))}
-                />
-              ) : (
-                <span className="font-mono tabular">{"shares" in preview ? money(preview.shares[i], currency) : "—"}</span>
-              )}
-            </li>
-          ))}
+        <p className="text-caption text-text-secondary">
+          {mode === "shares"
+            ? "Parts each person pays (2 and 3 split the total into fifths)"
+            : mode === "custom"
+              ? "Exact amount for each person"
+              : "Each person pays"}
+        </p>
+        <ul className="divide-y divide-border rounded-lg bg-surface-2">
+          {people.map((p, i) => {
+            const share = "shares" in preview ? money(preview.shares[i], currency) : "—";
+            const typed = mode === "shares" || mode === "custom";
+            return (
+              <li key={p.key} className="flex items-center gap-md px-md py-sm text-callout">
+                <span className="min-w-0 flex-1 truncate">{p.label}</span>
+                {typed && (
+                  <Input
+                    aria-label={mode === "shares" ? `${p.label} shares` : `${p.label} amount`}
+                    type="number"
+                    inputMode="decimal"
+                    step={mode === "shares" ? "any" : "0.01"}
+                    min="0"
+                    placeholder={mode === "shares" ? "1" : "0.00"}
+                    className="h-9 w-20 text-right"
+                    value={(mode === "shares" ? weights : amounts)[p.key] ?? ""}
+                    onChange={(e) =>
+                      (mode === "shares" ? setWeights : setAmounts)((prev) => ({ ...prev, [p.key]: e.target.value }))
+                    }
+                  />
+                )}
+                {mode === "shares" ? (
+                  <span className="w-24 text-right font-mono text-caption text-text-secondary tabular">= {share}</span>
+                ) : (
+                  mode !== "custom" && <span className="font-mono tabular">{share}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
         <p className="text-right text-caption text-text-tertiary tabular">Total {money(splitTotal, currency)}</p>
       </div>

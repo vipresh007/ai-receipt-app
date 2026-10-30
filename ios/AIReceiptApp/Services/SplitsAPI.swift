@@ -148,6 +148,7 @@ extension ReceiptExtractionAPIClient {
         var isPayer: Bool?
         var itemIndexes: [Int]
         var amount: String?
+        var weight: String? = nil
     }
 
     struct SplitWrite: Encodable {
@@ -189,6 +190,7 @@ extension ReceiptExtractionAPIClient {
         let isPayer: Bool
         let itemIndexes: [Int]
         let amount: String?
+        let weight: String?
         let share: String
         let settled: Bool
         let shareUrl: String

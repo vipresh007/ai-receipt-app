@@ -105,6 +105,8 @@ class SplitParticipant(Base):
     # Inputs: line-item indexes (items mode) or a fixed amount (custom mode).
     item_indexes: Mapped[list[int]] = mapped_column(JSON, default=list)
     custom_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Shares mode: parts of the total (2 and 3 → 2/5 and 3/5).
+    weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     # Output, computed by services/splits.py.
     share: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
     # One-off splits: when this person's share was marked paid.
