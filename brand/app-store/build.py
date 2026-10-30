@@ -2,7 +2,8 @@
 phone frame, on the ledger ink (dark) or paper (light) ground.
 
 Raw captures: iPhone 17 Pro Max simulator, status bar overridden to 9:41,
-app launched with -seedSampleReceipts (see ios/AIReceiptApp/App/SampleData.swift).
+app launched with -seedSampleReceipts (see ios/AIReceiptApp/App/SampleData.swift);
+the Shared shots add -demoAccount against a local demo API with made-up people.
 
     python3 brand/app-store/build.py   # needs Google Chrome; writes out/<size>/
 
@@ -21,10 +22,13 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 # (output name, raw capture, theme, eyebrow, headline) — in App Store order.
 SLIDES = [
     ("01-scan", "scan.png", "dark", "Scan", "Snap a receipt.<br>It reads itself."),
-    ("02-dashboard", "dashboard.png", "dark", "This month", "Know where your<br>month stands."),
-    ("03-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
-    ("04-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),
-    ("05-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
+    ("02-split", "split-items.png", "light", "Split it", "Split the bill,<br>item by item."),
+    ("03-group", "group.png", "dark", "Groups", "Who owes whom,<br>always up to date."),
+    ("04-dashboard", "dashboard.png", "light", "This month", "Know where your<br>month stands."),
+    ("05-shared", "shared.png", "dark", "Shared", "Trips, roommates,<br>friends. One balance."),
+    ("06-insights", "insights.png", "light", "Insights", "See where it went<br>and what changed."),
+    ("07-receipts", "receipts.png", "dark", "Receipts", "Every receipt,<br>one search away."),
+    ("08-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
 ]
 
 # App Store Connect slot → (width, height) in pixels.

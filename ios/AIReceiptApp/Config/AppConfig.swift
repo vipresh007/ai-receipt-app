@@ -10,6 +10,9 @@ enum AppConfig {
     /// except `localhost` / `127.0.0.1` / `*.local`, which use HTTP for local dev
     /// (paired with `NSAllowsLocalNetworking` in Info.plist).
     static var extractionAPIBaseURL: URL? {
+        #if DEBUG
+            if SampleData.demoAccount { return SampleData.demoAPI }
+        #endif
         guard let raw = infoString("ExtractionAPIHost"), !raw.isEmpty else { return nil }
 
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") {

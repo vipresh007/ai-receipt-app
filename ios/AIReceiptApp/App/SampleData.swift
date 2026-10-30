@@ -8,6 +8,11 @@ import SwiftData
 enum SampleData {
     static let launchArgument = "-seedSampleReceipts"
 
+    /// `-demoAccount`: act signed in as "Alex" against a local demo API on
+    /// 127.0.0.1:8765 (made-up people and groups), for Shared screenshots.
+    static let demoAccount = ProcessInfo.processInfo.arguments.contains("-demoAccount")
+    static let demoAPI = URL(string: "http://127.0.0.1:8765")!
+
     @MainActor
     static func seedIfRequested(_ context: ModelContext) {
         guard ProcessInfo.processInfo.arguments.contains(launchArgument) else { return }

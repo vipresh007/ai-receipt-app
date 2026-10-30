@@ -133,15 +133,22 @@ is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-onl
 | # | File | Shows |
 |---|---|---|
 | 1 | `out/<size>/01-scan.png` | A receipt read into its fields (the core loop) |
-| 2 | `out/<size>/02-dashboard.png` | This month's total + trend |
-| 3 | `out/<size>/03-insights.png` | Where it went + insights |
-| 4 | `out/<size>/04-receipts.png` | Receipts list, light mode |
-| 5 | `out/<size>/05-history.png` | Month history, light mode |
+| 2 | `out/<size>/02-split.png` | Splitting a receipt item by item |
+| 3 | `out/<size>/03-group.png` | A group: who owes whom |
+| 4 | `out/<size>/04-dashboard.png` | This month's total + trend |
+| 5 | `out/<size>/05-shared.png` | The Shared tab: people and groups |
+| 6 | `out/<size>/06-insights.png` | Where it went + insights |
+| 7 | `out/<size>/07-receipts.png` | Receipts list, light mode |
+| 8 | `out/<size>/08-history.png` | Month history, light mode |
 
 The raw captures are in `brand/app-store/raw/`: iPhone 17 Pro Max simulator,
-status bar overridden to 9:41, and sample data from the debug-only
-`-seedSampleReceipts` launch argument. The scanned receipt is a made-up store
-(Northfield Market) run through the real extraction backend.
+status bar overridden to 9:41, launched with the debug-only
+`-seedSampleReceipts -demoAccount` arguments. `-demoAccount` signs the app in
+as "Alex" against `brand/app-store/demo_server.py`, a local API on
+127.0.0.1:8765 with made-up people (Sam, Priya, Jordan, Maya, Noah, Emma) and
+a fake extractor, so no real account or names appear. Run it from `backend/`:
+`PYTHONPATH=. .venv/bin/python ../brand/app-store/demo_server.py`. The scanned
+receipt is a made-up store (Northfield Market).
 
 ## App Privacy ("nutrition label")
 

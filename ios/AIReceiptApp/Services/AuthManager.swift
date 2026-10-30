@@ -67,6 +67,12 @@ final class AuthManager {
 
     /// Restore a previous session on launch (no network unless a refresh is due).
     func bootstrap() {
+        #if DEBUG
+            if SampleData.demoAccount {
+                state = .signedIn(name: "Alex", email: "alex@example.com")
+                return
+            }
+        #endif
         guard let manager = credentialsManager, manager.hasValid() || manager.canRenew() else {
             state = .anonymous
             return
@@ -79,6 +85,9 @@ final class AuthManager {
 
     /// A valid API access token, refreshed if needed. `nil` when signed out.
     func accessToken() async -> String? {
+        #if DEBUG
+            if SampleData.demoAccount { return "demo" }
+        #endif
         guard let manager = credentialsManager, manager.hasValid() || manager.canRenew() else {
             return nil
         }
