@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { fromCents, money, shortDate, toCents } from "@/lib/format";
 import { SplitEditor } from "@/components/split-editor";
+import { parseWith, type SplitWith } from "@/components/add-expense";
 import { SplitSummary } from "@/components/split-summary";
 import { LIVE } from "@/lib/live";
 
@@ -35,6 +36,15 @@ export default function ReceiptDetailPage() {
     enabled: !!receipt?.split_id,
   });
   const [splitting, setSplitting] = useState(false);
+  // From a fresh scan ("Split with Akash"): open the editor with them picked.
+  const [splitWith, setSplitWith] = useState<SplitWith | null>(null);
+  useEffect(() => {
+    const target = parseWith(new URLSearchParams(window.location.search).get("split"));
+    if (target) {
+      setSplitWith(target);
+      setSplitting(true);
+    }
+  }, []);
 
   async function afterSplitChange() {
     setSplitting(false);
@@ -282,6 +292,8 @@ export default function ReceiptDetailPage() {
         {splitting ? (
           <SplitEditor
             receipt={receipt}
+            fixedGroupId={!split && splitWith?.kind === "group" ? splitWith.id : undefined}
+            withPeople={!split && splitWith?.kind === "person" ? [{ id: splitWith.id, name: splitWith.name }] : undefined}
             existing={split}
             currency={receipt.currency}
             onDone={afterSplitChange}

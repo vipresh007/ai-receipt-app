@@ -245,6 +245,8 @@ class PersonOut(BaseModel):
     can_email: bool
     # Their Interac details, when they've joined and set them.
     pay_to: PayDetails | None
+    # The most recent expense you share outside groups (for "recent" picks).
+    last_shared: str | None = None
 
 
 class PersonPaymentIn(BaseModel):

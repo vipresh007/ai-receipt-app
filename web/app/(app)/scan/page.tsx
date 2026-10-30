@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Users } from "lucide-react";
+import { parseWith, withParam, type SplitWith } from "@/components/add-expense";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, PencilLine, RotateCcw, UploadCloud } from "lucide-react";
 import { apiPost } from "@/lib/api";
@@ -31,6 +34,12 @@ export default function ScanPage() {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const router = useRouter();
+  // Came from "Add expense → Scan a receipt": offer to split it straight away.
+  const [splitWith, setSplitWith] = useState<SplitWith | null>(null);
+  useEffect(() => {
+    setSplitWith(parseWith(new URLSearchParams(window.location.search).get("with")));
+  }, []);
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -165,6 +174,12 @@ export default function ScanPage() {
             </ul>
           )}
 
+          {splitWith && stage.result.id && (
+            <Button onClick={() => router.push(`/receipts/${stage.result.id}?split=${withParam(splitWith)}`)}>
+              <Users size={16} />
+              Split with {splitWith.name}
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setStage({ name: "idle" })}>
             <RotateCcw size={16} />
             Scan another

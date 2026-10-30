@@ -16,6 +16,8 @@ export interface ExtractionItem {
 }
 
 export interface Extraction {
+  /** Set when signed in: the receipt was saved. */
+  id?: string | null;
   merchant: string;
   date: string | null;
   total: string;
@@ -68,6 +70,9 @@ export interface Me {
   plan: string;
   email_notifications: boolean;
   interac: string;
+  /** Home currency (set, or from your receipts); null = guess from the device. */
+  currency: string | null;
+  currency_is_set: boolean;
 }
 
 export interface Budget {
@@ -273,6 +278,8 @@ export interface PersonSummary {
   currency: string;
   can_email: boolean;
   pay_to: PayDetails | null;
+  /** The latest expense you share outside groups (for "recent" picks). */
+  last_shared: string | null;
 }
 
 export interface PersonPayment {

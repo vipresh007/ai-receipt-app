@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/** Notification emails and how people pay you back. */
+const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "INR", "AUD", "NZD", "JPY", "MXN", "CHF", "SEK", "NOK", "DKK", "SGD", "HKD", "AED", "ZAR", "PHP", "BRL"];
+
+/** Notification emails, how people pay you back, and your home currency. */
 export function SharingSettings({ me }: { me: Me }) {
   const queryClient = useQueryClient();
   const [interac, setInterac] = useState(me.interac);
@@ -47,6 +49,23 @@ export function SharingSettings({ me }: { me: Me }) {
           <span className="block text-caption text-text-tertiary">Everything also shows under Activity.</span>
         </span>
       </label>
+      <div className="space-y-xs border-t border-border pt-lg">
+        <Label htmlFor="home-currency">Currency</Label>
+        <select
+          id="home-currency"
+          value={me.currency_is_set ? me.currency ?? "" : ""}
+          onChange={(e) => save({ currency: e.target.value } as Partial<Me>)}
+          className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
+        >
+          <option value="">Automatic{me.currency && !me.currency_is_set ? ` (${me.currency}, from your receipts)` : ""}</option>
+          {CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
+        <p className="text-caption text-text-tertiary">Totals and new expenses use it.</p>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();

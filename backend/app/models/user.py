@@ -28,6 +28,8 @@ class User(Base):
     last_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Home currency for totals; empty = the one your receipts use most.
+    currency: Mapped[str] = mapped_column(String(3), default="")
     # Interac e-Transfer email or phone, shown to people who owe you.
     interac: Mapped[str] = mapped_column(String(120), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

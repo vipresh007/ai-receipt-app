@@ -2,7 +2,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -30,11 +30,30 @@ from app.services.blob_storage import BlobStorage
 router = APIRouter()
 
 
+async def _me_out(session: AsyncSession, user: User) -> MeOut:
+    out = MeOut.model_validate(user)
+    if user.currency:
+        out.currency, out.currency_is_set = user.currency, True
+    else:
+        # The currency your receipts use most.
+        out.currency = await session.scalar(
+            select(Receipt.currency)
+            .where(Receipt.user_id == user.id, Receipt.currency != "")
+            .group_by(Receipt.currency)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+    return out
+
+
 @router.get("/me", response_model=MeOut)
-async def me(user: User = Depends(get_current_user)) -> User:
+async def me(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> MeOut:
     """Return (and lazily provision) the current user. The web/iOS clients call
     this right after login to confirm the session and get the profile."""
-    return user
+    return await _me_out(session, user)
 
 
 @router.patch("/me", response_model=MeOut)
@@ -42,16 +61,23 @@ async def update_me(
     data: MeSettingsIn,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-) -> User:
-    """Notification emails and how people pay you back."""
+) -> MeOut:
+    """Notification emails, how people pay you back, and your home currency."""
     me = await session.get(User, user.id)
     if data.email_notifications is not None:
         me.email_notifications = data.email_notifications
     if data.interac is not None:
         me.interac = _interac(data.interac)
+    if data.currency is not None:
+        code = data.currency.strip().upper()
+        if code and not re.fullmatch(r"[A-Z]{3}", code):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "Use a currency code like CAD."
+            )
+        me.currency = code
     await session.commit()
     await session.refresh(me)
-    return me
+    return await _me_out(session, me)
 
 
 def _interac(value: str) -> str:

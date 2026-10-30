@@ -4,7 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Bell, Check, ChevronDown, ChevronLeft, Copy, Plus, ReceiptText, Share2, Trash2, X } from "lucide-react";
+import {
+  Banknote,
+  Bell,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  Copy,
+  ReceiptText,
+  Share2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { money, shortDate } from "@/lib/format";
 import type { GroupDetail, GroupMember, Settlement, Split } from "@/lib/types";
@@ -17,6 +28,7 @@ import { PageHeader } from "@/components/page-header";
 import { BalanceTag } from "@/components/balance-tag";
 import { SplitEditor } from "@/components/split-editor";
 import { SplitSummary, useCanShare } from "@/components/split-summary";
+import { AddExpense } from "@/components/add-expense";
 import { PayTo } from "@/components/pay-to";
 import { cn } from "@/lib/utils";
 import { LIVE } from "@/lib/live";
@@ -27,19 +39,24 @@ interface PaymentDraft {
   amount: string;
 }
 
-type Entry = { kind: "expense"; date: string; split: Split } | { kind: "payment"; date: string; payment: Settlement };
+type Entry =
+  | { kind: "expense"; date: string; split: Split }
+  | { kind: "payment"; date: string; payment: Settlement };
 
 export default function GroupPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: group, isLoading, error: loadError } = useQuery({
+  const {
+    data: group,
+    isLoading,
+    error: loadError,
+  } = useQuery({
     ...LIVE,
     queryKey: ["group", id],
     queryFn: () => apiGet<GroupDetail>(`v1/groups/${id}`),
   });
 
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Split | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentDraft | null>(null);
@@ -61,7 +78,9 @@ export default function GroupPage() {
       <Card className="space-y-sm">
         <CardTitle>Group not found</CardTitle>
         <p className="text-callout text-text-secondary">
-          {loadError instanceof Error ? loadError.message : "It may have been deleted, or you're not in it."}
+          {loadError instanceof Error
+            ? loadError.message
+            : "It may have been deleted, or you're not in it."}
         </p>
         <Link href="/groups" className="text-callout text-accent">
           Back to Shared
@@ -81,16 +100,30 @@ export default function GroupPage() {
   /** Between you and one member, as the group settles up: positive = they owe you. */
   const withMe = (m: GroupMember) =>
     g.payments.reduce((sum, p) => {
-      if (p.from_member_id === m.id && p.to_member_id === me?.id) return sum + Number(p.amount);
-      if (p.from_member_id === me?.id && p.to_member_id === m.id) return sum - Number(p.amount);
+      if (p.from_member_id === m.id && p.to_member_id === me?.id)
+        return sum + Number(p.amount);
+      if (p.from_member_id === me?.id && p.to_member_id === m.id)
+        return sum - Number(p.amount);
       return sum;
     }, 0);
-  const others = g.payments.filter((p) => p.from_member_id !== me?.id && p.to_member_id !== me?.id);
+  const others = g.payments.filter(
+    (p) => p.from_member_id !== me?.id && p.to_member_id !== me?.id,
+  );
 
   const entries: Entry[] = [
-    ...g.splits.map((split) => ({ kind: "expense" as const, date: split.date, split })),
-    ...g.settlements.map((payment) => ({ kind: "payment" as const, date: payment.date, payment })),
-  ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.kind === "payment" ? -1 : 1));
+    ...g.splits.map((split) => ({
+      kind: "expense" as const,
+      date: split.date,
+      split,
+    })),
+    ...g.settlements.map((payment) => ({
+      kind: "payment" as const,
+      date: payment.date,
+      payment,
+    })),
+  ].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : a.kind === "payment" ? -1 : 1,
+  );
 
   async function refresh(next?: GroupDetail) {
     if (next) queryClient.setQueryData(["group", id], next);
@@ -117,7 +150,9 @@ export default function GroupPage() {
         amount: payment.amount,
       });
       setPayment(null);
-      setNotice(`Recorded: ${cap(nameOf(payment.from))} paid ${nameOf(payment.to)} ${money(payment.amount, g.currency)}.`);
+      setNotice(
+        `Recorded: ${cap(nameOf(payment.from))} paid ${nameOf(payment.to)} ${money(payment.amount, g.currency)}.`,
+      );
       return next;
     });
   }
@@ -126,21 +161,29 @@ export default function GroupPage() {
     e.preventDefault();
     if (!newMember.trim()) return;
     run(async () => {
-      const next = await apiPost<GroupDetail>(`v1/groups/${id}/members`, { name: newMember });
+      const next = await apiPost<GroupDetail>(`v1/groups/${id}/members`, {
+        name: newMember,
+      });
       setNewMember("");
       return next;
     });
   }
 
   async function deleteGroup() {
-    if (!window.confirm(`Delete ${g.name}? Its expenses and payments go too; split receipts count in full again.`)) return;
+    if (
+      !window.confirm(
+        `Delete ${g.name}? Its expenses and payments go too; split receipts count in full again.`,
+      )
+    )
+      return;
     await apiDelete(`v1/groups/${id}`);
     await queryClient.invalidateQueries();
     router.push("/groups");
   }
 
   async function removeSplit(split: Split) {
-    if (!window.confirm(`Remove ${split.description || "this expense"}?`)) return;
+    if (!window.confirm(`Remove ${split.description || "this expense"}?`))
+      return;
     await run(async () => {
       await apiDelete(`v1/splits/${split.id}`);
       setOpen(null);
@@ -150,23 +193,38 @@ export default function GroupPage() {
   return (
     <div className="space-y-2xl">
       <div className="space-y-md">
-        <Link href="/groups" className="inline-flex items-center gap-xs text-caption text-text-secondary hover:text-text">
+        <Link
+          href="/groups"
+          className="inline-flex items-center gap-xs text-caption text-text-secondary hover:text-text"
+        >
           <ChevronLeft size={15} /> Shared
         </Link>
         <PageHeader
           eyebrow={`${g.members.length} ${g.members.length === 1 ? "person" : "people"} · ${g.currency}`}
           title={g.name}
-          actions={<BalanceTag balance={g.my_balance} currency={g.currency} className="text-callout" />}
+          actions={
+            <BalanceTag
+              balance={g.my_balance}
+              currency={g.currency}
+              className="text-callout"
+            />
+          }
         />
       </div>
 
       {error && (
-        <p role="alert" className="rounded-md bg-danger-muted px-md py-sm text-caption text-danger">
+        <p
+          role="alert"
+          className="rounded-md bg-danger-muted px-md py-sm text-caption text-danger"
+        >
           {error}
         </p>
       )}
       {notice && !error && (
-        <p role="status" className="rounded-md bg-success-muted px-md py-sm text-caption text-success">
+        <p
+          role="status"
+          className="rounded-md bg-success-muted px-md py-sm text-caption text-success"
+        >
           {notice}
         </p>
       )}
@@ -189,11 +247,17 @@ export default function GroupPage() {
                           {m.display_name.charAt(0).toUpperCase()}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-callout font-medium">{m.display_name}</p>
+                          <p className="truncate text-callout font-medium">
+                            {m.display_name}
+                          </p>
                           <p
                             className={cn(
                               "text-caption tabular",
-                              owed > 0 ? "text-success" : owed < 0 ? "text-danger" : "text-text-tertiary",
+                              owed > 0
+                                ? "text-success"
+                                : owed < 0
+                                  ? "text-danger"
+                                  : "text-text-tertiary",
                             )}
                           >
                             {owed > 0
@@ -213,8 +277,13 @@ export default function GroupPage() {
                             size="sm"
                             onClick={() =>
                               run(async () => {
-                                const next = await apiPost<GroupDetail>(`v1/groups/${id}/members/${m.id}/remind`, {});
-                                setNotice(`Reminder sent to ${m.display_name}.`);
+                                const next = await apiPost<GroupDetail>(
+                                  `v1/groups/${id}/members/${m.id}/remind`,
+                                  {},
+                                );
+                                setNotice(
+                                  `Reminder sent to ${m.display_name}.`,
+                                );
                                 return next;
                               })
                             }
@@ -229,8 +298,16 @@ export default function GroupPage() {
                             onClick={() =>
                               setPayment(
                                 owed > 0
-                                  ? { from: m.id, to: me.id, amount: owed.toFixed(2) }
-                                  : { from: me.id, to: m.id, amount: (-owed).toFixed(2) },
+                                  ? {
+                                      from: m.id,
+                                      to: me.id,
+                                      amount: owed.toFixed(2),
+                                    }
+                                  : {
+                                      from: me.id,
+                                      to: m.id,
+                                      amount: (-owed).toFixed(2),
+                                    },
                               )
                             }
                           >
@@ -238,36 +315,64 @@ export default function GroupPage() {
                           </Button>
                         )}
                       </div>
-                      {owed < 0 && <PayTo payTo={m.pay_to} amount={owed} currency={g.currency} name={m.display_name} />}
+                      {owed < 0 && (
+                        <PayTo
+                          payTo={m.pay_to}
+                          amount={owed}
+                          currency={g.currency}
+                          name={m.display_name}
+                        />
+                      )}
                     </li>
                   );
                 })}
             </ul>
             {others.length > 0 && (
               <div className="space-y-xs rounded-lg bg-surface-2 p-md">
-                <p className="text-caption font-medium text-text-secondary">Between others</p>
+                <p className="text-caption font-medium text-text-secondary">
+                  Between others
+                </p>
                 {others.map((p) => (
-                  <p key={`${p.from_member_id}-${p.to_member_id}`} className="flex justify-between gap-md text-caption">
+                  <p
+                    key={`${p.from_member_id}-${p.to_member_id}`}
+                    className="flex justify-between gap-md text-caption"
+                  >
                     <span>
-                      {cap(nameOf(p.from_member_id))} owes {nameOf(p.to_member_id)}
+                      {cap(nameOf(p.from_member_id))} owes{" "}
+                      {nameOf(p.to_member_id)}
                     </span>
-                    <span className="font-mono tabular">{money(p.amount, g.currency)}</span>
+                    <span className="font-mono tabular">
+                      {money(p.amount, g.currency)}
+                    </span>
                   </p>
                 ))}
               </div>
             )}
 
             {payment && (
-              <form onSubmit={recordPayment} className="space-y-md rounded-lg bg-surface-2 p-lg">
+              <form
+                onSubmit={recordPayment}
+                className="space-y-md rounded-lg bg-surface-2 p-lg"
+              >
                 <p className="text-callout font-medium">Record a payment</p>
                 <div className="grid gap-md sm:grid-cols-[1fr_1fr_8rem]">
                   <div className="space-y-xs">
                     <Label htmlFor="pay-from">Who paid</Label>
-                    <MemberSelect id="pay-from" group={g} value={payment.from} onChange={(from) => setPayment({ ...payment, from })} />
+                    <MemberSelect
+                      id="pay-from"
+                      group={g}
+                      value={payment.from}
+                      onChange={(from) => setPayment({ ...payment, from })}
+                    />
                   </div>
                   <div className="space-y-xs">
                     <Label htmlFor="pay-to">To</Label>
-                    <MemberSelect id="pay-to" group={g} value={payment.to} onChange={(to) => setPayment({ ...payment, to })} />
+                    <MemberSelect
+                      id="pay-to"
+                      group={g}
+                      value={payment.to}
+                      onChange={(to) => setPayment({ ...payment, to })}
+                    />
                   </div>
                   <div className="space-y-xs">
                     <Label htmlFor="pay-amount">Amount</Label>
@@ -275,21 +380,36 @@ export default function GroupPage() {
                       id="pay-amount"
                       inputMode="decimal"
                       value={payment.amount}
-                      onChange={(e) => setPayment({ ...payment, amount: e.target.value })}
+                      onChange={(e) =>
+                        setPayment({ ...payment, amount: e.target.value })
+                      }
                       placeholder="0.00"
                       className="tabular"
                     />
                   </div>
                 </div>
                 <p className="text-caption text-text-tertiary">
-                  Tally only keeps track. Send the money however you normally do. Paying one expense back? Tick
-                  &ldquo;Mark paid&rdquo; on it instead.
+                  Tally only keeps track. Send the money however you normally
+                  do. Paying one expense back? Tick &ldquo;Mark paid&rdquo; on
+                  it instead.
                 </p>
                 <div className="flex justify-end gap-sm">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setPayment(null)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPayment(null)}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" size="sm" disabled={payment.from === payment.to || !(Number(payment.amount) > 0)}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={
+                      payment.from === payment.to ||
+                      !(Number(payment.amount) > 0)
+                    }
+                  >
                     Record payment
                   </Button>
                 </div>
@@ -301,7 +421,13 @@ export default function GroupPage() {
                 <input
                   type="checkbox"
                   checked={g.simplify_debts}
-                  onChange={(e) => run(() => apiPatch<GroupDetail>(`v1/groups/${id}`, { simplify_debts: e.target.checked }))}
+                  onChange={(e) =>
+                    run(() =>
+                      apiPatch<GroupDetail>(`v1/groups/${id}`, {
+                        simplify_debts: e.target.checked,
+                      }),
+                    )
+                  }
                   className="mt-[3px] h-4 w-4 accent-[var(--c-accent)]"
                 />
                 <span>
@@ -317,7 +443,13 @@ export default function GroupPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setPayment({ from: g.members.find((m) => !m.is_me)!.id, to: me.id, amount: "" })}
+                  onClick={() =>
+                    setPayment({
+                      from: g.members.find((m) => !m.is_me)!.id,
+                      to: me.id,
+                      amount: "",
+                    })
+                  }
                 >
                   Other payment
                 </Button>
@@ -327,43 +459,45 @@ export default function GroupPage() {
 
           {/* ── Expenses and payments, newest first ── */}
           <Card className="space-y-lg">
-            <div className="flex items-center justify-between gap-md">
+            <div className="flex flex-wrap items-center justify-between gap-md">
               <CardTitle>Expenses &amp; payments</CardTitle>
-              {!adding && !editing && (
-                <Button size="sm" onClick={() => setAdding(true)}>
-                  <Plus size={15} /> Add expense
-                </Button>
+              {!editing && (
+                <AddExpense
+                  target={{ kind: "group", id: g.id, name: g.name }}
+                  currency={g.currency}
+                  onDone={() => refresh()}
+                />
               )}
             </div>
 
-            {(adding || editing) && (
+            {editing && (
               <div className="rounded-lg bg-surface-2 p-lg">
                 <SplitEditor
                   fixedGroupId={g.id}
                   existing={editing ?? undefined}
                   currency={g.currency}
                   onDone={async () => {
-                    setAdding(false);
                     setEditing(null);
                     await refresh();
                   }}
-                  onCancel={() => {
-                    setAdding(false);
-                    setEditing(null);
-                  }}
+                  onCancel={() => setEditing(null)}
                 />
               </div>
             )}
 
-            {entries.length === 0 && !adding ? (
+            {entries.length === 0 ? (
               <p className="text-callout text-text-secondary">
-                Nothing yet. Add an expense here, or split a receipt with this group from the receipt itself.
+                Nothing yet. Add an expense here, or split a receipt with this
+                group from the receipt itself.
               </p>
             ) : (
               <ul className="divide-y divide-border">
                 {entries.map((entry) =>
                   entry.kind === "payment" ? (
-                    <li key={`p-${entry.payment.id}`} className="flex items-center gap-md py-md">
+                    <li
+                      key={`p-${entry.payment.id}`}
+                      className="flex items-center gap-md py-md"
+                    >
                       <span className="w-14 shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-text-tertiary">
                         {shortDate(entry.date)}
                       </span>
@@ -371,9 +505,19 @@ export default function GroupPage() {
                         <Banknote size={15} />
                       </span>
                       <p className="min-w-0 flex-1 text-callout">
-                        <span className="font-medium">{cap(nameOf(entry.payment.from_member_id))}</span> paid{" "}
-                        <span className="font-medium">{nameOf(entry.payment.to_member_id)}</span>
-                        {entry.payment.note && <span className="text-text-tertiary"> · {entry.payment.note}</span>}
+                        <span className="font-medium">
+                          {cap(nameOf(entry.payment.from_member_id))}
+                        </span>{" "}
+                        paid{" "}
+                        <span className="font-medium">
+                          {nameOf(entry.payment.to_member_id)}
+                        </span>
+                        {entry.payment.note && (
+                          <span className="text-text-tertiary">
+                            {" "}
+                            · {entry.payment.note}
+                          </span>
+                        )}
                       </p>
                       <span className="font-mono text-callout text-success tabular">
                         {money(entry.payment.amount, g.currency)}
@@ -384,7 +528,11 @@ export default function GroupPage() {
                         aria-label="Delete payment"
                         onClick={() => {
                           if (window.confirm("Delete this payment?"))
-                            run(() => apiDelete<GroupDetail>(`v1/groups/${id}/settlements/${entry.payment.id}`));
+                            run(() =>
+                              apiDelete<GroupDetail>(
+                                `v1/groups/${id}/settlements/${entry.payment.id}`,
+                              ),
+                            );
                         }}
                       >
                         <Trash2 size={15} />
@@ -395,14 +543,16 @@ export default function GroupPage() {
                       key={`s-${entry.split.id}`}
                       split={entry.split}
                       open={open === entry.split.id}
-                      onToggle={() => setOpen(open === entry.split.id ? null : entry.split.id)}
+                      onToggle={() =>
+                        setOpen(open === entry.split.id ? null : entry.split.id)
+                      }
                       onChange={() => refresh()}
                       onEdit={
                         entry.split.receipt_id && entry.split.is_owner
-                          ? () => router.push(`/receipts/${entry.split.receipt_id}`)
+                          ? () =>
+                              router.push(`/receipts/${entry.split.receipt_id}`)
                           : () => {
                               setEditing(entry.split);
-                              setAdding(false);
                             }
                       }
                       onRemove={() => removeSplit(entry.split)}
@@ -422,8 +572,12 @@ export default function GroupPage() {
               {g.members.map((m) => (
                 <li key={m.id} className="flex items-center gap-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-callout font-medium">{m.is_me ? `${m.display_name} (you)` : m.display_name}</p>
-                    <p className="text-[11px] text-text-tertiary">{m.has_account ? "On Tally" : "Hasn't joined yet"}</p>
+                    <p className="truncate text-callout font-medium">
+                      {m.is_me ? `${m.display_name} (you)` : m.display_name}
+                    </p>
+                    <p className="text-[11px] text-text-tertiary">
+                      {m.has_account ? "On Tally" : "Hasn't joined yet"}
+                    </p>
                   </div>
                   {!m.has_account && (
                     <Button
@@ -432,8 +586,16 @@ export default function GroupPage() {
                       aria-label={`Remove ${m.display_name}`}
                       className="h-8 w-8 text-text-tertiary"
                       onClick={() => {
-                        if (window.confirm(`Remove ${m.display_name} from the group?`))
-                          run(() => apiDelete<GroupDetail>(`v1/groups/${id}/members/${m.id}`));
+                        if (
+                          window.confirm(
+                            `Remove ${m.display_name} from the group?`,
+                          )
+                        )
+                          run(() =>
+                            apiDelete<GroupDetail>(
+                              `v1/groups/${id}/members/${m.id}`,
+                            ),
+                          );
                       }}
                     >
                       <X size={14} />
@@ -450,7 +612,11 @@ export default function GroupPage() {
                 maxLength={120}
                 aria-label="New person's name"
               />
-              <Button type="submit" variant="secondary" disabled={!newMember.trim()}>
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={!newMember.trim()}
+              >
                 Add
               </Button>
             </form>
@@ -458,7 +624,12 @@ export default function GroupPage() {
           </Card>
 
           {g.is_owner && (
-            <Button variant="ghost" size="sm" className="text-danger" onClick={deleteGroup}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-danger"
+              onClick={deleteGroup}
+            >
               <Trash2 size={15} /> Delete group
             </Button>
           )}
@@ -485,8 +656,12 @@ function ExpenseRow({
 }) {
   const payers = split.participants.filter((p) => p.is_payer);
   const paidBy =
-    payers.length === 1 ? `${payers[0].is_me ? "You" : payers[0].display_name} paid` : `${payers.length} people paid`;
-  const unpaid = split.participants.filter((p) => !p.is_payer && !p.settled && Number(p.share) > 0).length;
+    payers.length === 1
+      ? `${payers[0].is_me ? "You" : payers[0].display_name} paid`
+      : `${payers.length} people paid`;
+  const unpaid = split.participants.filter(
+    (p) => !p.is_payer && !p.settled && Number(p.share) > 0,
+  ).length;
   return (
     <li className="py-sm">
       <button
@@ -502,7 +677,9 @@ function ExpenseRow({
           <ReceiptText size={15} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-callout font-medium">{split.description || "Expense"}</span>
+          <span className="block truncate text-callout font-medium">
+            {split.description || "Expense"}
+          </span>
           <span className="block truncate text-caption text-text-tertiary">
             {paidBy} {money(split.total, split.currency)}
             {unpaid === 0 && " · all paid back"}
@@ -510,15 +687,30 @@ function ExpenseRow({
         </span>
         <span className="text-right">
           <span className="block font-mono text-callout tabular">
-            {split.my_share != null ? money(split.my_share, split.currency) : "—"}
+            {split.my_share != null
+              ? money(split.my_share, split.currency)
+              : "—"}
           </span>
-          <span className="block text-[11px] text-text-tertiary">your share</span>
+          <span className="block text-[11px] text-text-tertiary">
+            your share
+          </span>
         </span>
-        <ChevronDown size={16} className={cn("shrink-0 text-text-tertiary transition-transform", open && "rotate-180")} />
+        <ChevronDown
+          size={16}
+          className={cn(
+            "shrink-0 text-text-tertiary transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </button>
       {open && (
         <div className="mt-sm rounded-lg bg-surface-2 p-lg">
-          <SplitSummary split={split} onChange={onChange} onEdit={onEdit} onRemove={onRemove} />
+          <SplitSummary
+            split={split}
+            onChange={onChange}
+            onEdit={onEdit}
+            onRemove={onRemove}
+          />
         </div>
       )}
     </li>

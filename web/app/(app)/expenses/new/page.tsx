@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api";
+import { getHomeCurrency } from "@/lib/format";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in your time zone (not UTC)
 }
 
 export default function NewExpensePage() {
@@ -36,6 +37,7 @@ export default function NewExpensePage() {
     setError(null);
     try {
       await apiPost("v1/receipts", {
+        currency: getHomeCurrency(),
         merchant: merchant.trim(),
         date,
         total: amount,

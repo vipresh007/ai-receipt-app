@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   Copy,
   Mail,
-  Plus,
   ReceiptText,
   Share2,
   Trash2,
@@ -27,6 +26,7 @@ import { PageHeader } from "@/components/page-header";
 import { PersonBalanceTag, personBalanceText } from "@/components/balance-tag";
 import { SplitEditor } from "@/components/split-editor";
 import { SplitSummary, useCanShare } from "@/components/split-summary";
+import { AddExpense } from "@/components/add-expense";
 import { PayTo } from "@/components/pay-to";
 import { LIVE } from "@/lib/live";
 
@@ -44,7 +44,6 @@ export default function PersonPage() {
     queryFn: () => apiGet<PersonDetail>(`v1/people/${id}`),
   });
 
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Split | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [payment, setPayment] = useState<{
@@ -275,33 +274,31 @@ export default function PersonPage() {
 
           {/* ── Expenses ─────────────────────────────── */}
           <Card className="space-y-lg">
-            <div className="flex items-center justify-between gap-md">
+            <div className="flex flex-wrap items-center justify-between gap-md">
               <CardTitle>Expenses</CardTitle>
-              {!adding && !editing && (
-                <Button size="sm" onClick={() => setAdding(true)}>
-                  <Plus size={15} /> Add expense
-                </Button>
+              {!editing && (
+                <AddExpense
+                  target={{ kind: "person", id: p.id, name: p.name }}
+                  currency={p.currency}
+                  onDone={() => refresh()}
+                />
               )}
             </div>
-            {(adding || editing) && (
+            {editing && (
               <div className="rounded-lg bg-surface-2 p-lg">
                 <SplitEditor
                   withPeople={[{ id: p.id, name: p.name }]}
                   existing={editing ?? undefined}
                   currency={editing?.currency ?? p.currency}
                   onDone={async () => {
-                    setAdding(false);
                     setEditing(null);
                     await refresh();
                   }}
-                  onCancel={() => {
-                    setAdding(false);
-                    setEditing(null);
-                  }}
+                  onCancel={() => setEditing(null)}
                 />
               </div>
             )}
-            {p.splits.length === 0 && !adding ? (
+            {p.splits.length === 0 ? (
               <p className="text-callout text-text-secondary">
                 Nothing shared yet. Add an expense, or split a receipt with{" "}
                 {p.name} from the receipt.
@@ -357,10 +354,7 @@ export default function PersonPage() {
                             onEdit={
                               s.receipt_id && s.is_owner
                                 ? () => router.push(`/receipts/${s.receipt_id}`)
-                                : () => {
-                                    setEditing(s);
-                                    setAdding(false);
-                                  }
+                                : () => setEditing(s)
                             }
                             onRemove={() => removeSplit(s)}
                           />

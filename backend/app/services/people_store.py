@@ -237,6 +237,7 @@ async def person_out(
         "currency": currency,
         "can_email": bool(person.email) and get_settings().email_configured,
         "pay_to": pay_details(them),
+        "last_shared": splits[0].spent_at.isoformat() if splits else None,
     }
     if not detail:
         return PersonOut(**fields)

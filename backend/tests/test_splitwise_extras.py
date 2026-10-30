@@ -406,3 +406,21 @@ async def test_ticking_a_share_paid_in_a_group_settles_it(client):
     # Direct (not simplified) agrees.
     off = (await client.patch(f"/v1/groups/{group['id']}", json={"simplify_debts": False})).json()
     assert off["payments"] == detail["payments"]
+
+
+async def test_home_currency_follows_your_receipts_until_you_set_it(client):
+    assert (await client.get("/v1/auth/me")).json()["currency"] is None
+    for _ in range(2):
+        await client.post(
+            "/v1/receipts",
+            json={"merchant": "Loblaws", "total": "10", "currency": "CAD", "items": []},
+        )
+    await client.post(
+        "/v1/receipts", json={"merchant": "Target", "total": "5", "currency": "USD", "items": []}
+    )
+    me = (await client.get("/v1/auth/me")).json()
+    assert (me["currency"], me["currency_is_set"]) == ("CAD", False)
+    me = (await client.patch("/v1/auth/me", json={"currency": "eur"})).json()
+    assert (me["currency"], me["currency_is_set"]) == ("EUR", True)
+    assert (await client.patch("/v1/auth/me", json={"currency": "E1"})).status_code == 422
+    assert (await client.patch("/v1/auth/me", json={"currency": ""})).json()["currency"] == "CAD"

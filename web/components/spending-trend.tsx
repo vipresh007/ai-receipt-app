@@ -11,11 +11,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { money } from "@/lib/format";
+import { getHomeCurrency, money } from "@/lib/format";
 
 /** "$287", "$1,284" — the chart callout, same currency format as elsewhere. */
 function wholeDollars(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: getHomeCurrency(),
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0,
+  });
 }
 
 function compact(n: number): string {
