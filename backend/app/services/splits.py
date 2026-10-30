@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from fractions import Fraction
 
-MODES = ("even", "items", "shares", "custom")
+MODES = ("even", "items", "shares", "percent", "custom")
 
 
 class SplitError(ValueError):
@@ -73,6 +73,15 @@ def compute_shares(
         exact = [Fraction(total_cents) * Fraction(w) / Fraction(whole) for w in weights]
         return [_decimal(c) for c in _allocate(total_cents, exact)]
 
+    if mode == "percent":
+        weights = [Decimal(0) if inp.weight is None else Decimal(inp.weight) for inp in inputs]
+        if any(w < 0 for w in weights):
+            raise SplitError("Percentages can't be negative.")
+        if sum(weights) != 100:
+            raise SplitError(f"The percentages add up to {sum(weights).normalize():f}%, not 100%.")
+        exact = [Fraction(total_cents) * Fraction(w) / 100 for w in weights]
+        return [_decimal(c) for c in _allocate(total_cents, exact)]
+
     if mode == "even":
         return [_decimal(c) for c in _allocate(total_cents, [Fraction(total_cents, n)] * n)]
 
@@ -102,10 +111,13 @@ def compute_shares(
 
 @dataclass
 class SplitLedger:
-    """One split's effect on a group: who paid, and each member's share."""
+    """One split's effect on a group: who paid, and each member's share.
+    `paid` (what each member put in) covers several payers; without it the
+    payer put in the whole total."""
 
     payer_member_id: uuid.UUID | None
     shares: list[tuple[uuid.UUID | None, Decimal]]
+    paid: list[tuple[uuid.UUID | None, Decimal]] | None = None
 
 
 def balances(
@@ -119,6 +131,15 @@ def balances(
     """
     net: dict[uuid.UUID, int] = {}
     for s in splits:
+        if s.paid is not None:
+            # Everyone is owed what they put in, less their own share.
+            for member_id, amount in s.paid:
+                if member_id is not None:
+                    net[member_id] = net.get(member_id, 0) + _cents(amount)
+            for member_id, share in s.shares:
+                if member_id is not None:
+                    net[member_id] = net.get(member_id, 0) - _cents(share)
+            continue
         if s.payer_member_id is None:
             continue
         for member_id, share in s.shares:
@@ -154,3 +175,80 @@ def settle_up(net: dict[uuid.UUID, Decimal]) -> list[tuple[uuid.UUID, uuid.UUID,
         if credit[c][0] == 0:
             c += 1
     return payments
+
+
+def owed_between(
+    entries: list[tuple[object, Decimal, Decimal, bool]], me: object, them: object
+) -> Fraction:
+    """What `them` owes `me` on one expense (negative: what you owe them).
+
+    `entries` is (who, share, paid, ticked paid) per person. Each person's net
+    is paid − share; whoever is short owes the people who are over, in
+    proportion to how much each is over. A share ticked as paid is treated as
+    already handed over.
+    """
+    nets = {
+        who: Fraction(_cents(paid)) - Fraction(_cents(share)) for who, share, paid, _ in entries
+    }
+    credit = sum((v for v in nets.values() if v > 0), Fraction(0))
+    for who, _share, _paid, settled in entries:
+        if settled and nets[who] < 0 and credit > 0:
+            debt = -nets[who]
+            for other, value in list(nets.items()):
+                if value > 0:
+                    nets[other] = value - debt * value / credit
+            credit -= debt
+            nets[who] = Fraction(0)
+    if credit <= 0:
+        return Fraction(0)
+
+    def part(debtor: object, creditor: object) -> Fraction:
+        owes, owed = nets.get(debtor, Fraction(0)), nets.get(creditor, Fraction(0))
+        if owes >= 0 or owed <= 0:
+            return Fraction(0)
+        return -owes * owed / credit
+
+    return (part(them, me) - part(me, them)) / 100  # cents → dollars
+
+
+def direct_debts(
+    expenses: list[list[tuple[object, Decimal, Decimal, bool]]],
+    settlements: list[tuple[object, object, Decimal]],
+) -> list[tuple[object, object, Decimal]]:
+    """Who owes whom directly, from the expenses themselves (no simplifying):
+    (debtor, creditor, amount) per pair, netted both ways, largest first.
+
+    Each expense is (who, share, paid, ticked paid) per person, as in
+    `owed_between`; a settlement (from paid to) reduces what `from` owes `to`.
+    """
+    owed: dict[tuple[object, object], Fraction] = {}
+
+    def add(debtor: object, creditor: object, amount: Fraction) -> None:
+        owed[(debtor, creditor)] = owed.get((debtor, creditor), Fraction(0)) + amount
+
+    for entries in expenses:
+        people = [who for who, *_ in entries]
+        for i, a in enumerate(people):
+            for b in people[i + 1 :]:
+                amount = owed_between(entries, a, b)  # what b owes a
+                if amount > 0:
+                    add(b, a, amount)
+                elif amount < 0:
+                    add(a, b, -amount)
+    for from_id, to_id, amount in settlements:
+        add(to_id, from_id, Fraction(_cents(amount), 100))
+
+    out: list[tuple[object, object, Decimal]] = []
+    seen: set[frozenset] = set()
+    for a, b in list(owed):
+        pair = frozenset((a, b))
+        if pair in seen or a == b:
+            continue
+        seen.add(pair)
+        net = owed.get((a, b), Fraction(0)) - owed.get((b, a), Fraction(0))
+        cents = round(net * 100)
+        if cents > 0:
+            out.append((a, b, _decimal(cents)))
+        elif cents < 0:
+            out.append((b, a, _decimal(-cents)))
+    return sorted(out, key=lambda x: -x[2])

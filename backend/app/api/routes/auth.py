@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Response, status
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from app.api.deps import get_current_user
 from app.config import get_settings
 from app.db import get_session
 from app.models import (
+    Activity,
     Budget,
     Expense,
     Group,
@@ -16,10 +19,12 @@ from app.models import (
     Receipt,
     Settlement,
     Split,
+    SplitComment,
+    SplitEvent,
     SplitParticipant,
     User,
 )
-from app.schemas.auth import MeOut
+from app.schemas.auth import MeOut, MeSettingsIn
 from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
@@ -30,6 +35,47 @@ async def me(user: User = Depends(get_current_user)) -> User:
     """Return (and lazily provision) the current user. The web/iOS clients call
     this right after login to confirm the session and get the profile."""
     return user
+
+
+@router.patch("/me", response_model=MeOut)
+async def update_me(
+    data: MeSettingsIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    """Notification emails and how people pay you back."""
+    me = await session.get(User, user.id)
+    if data.email_notifications is not None:
+        me.email_notifications = data.email_notifications
+    if data.paypal_me is not None:
+        me.paypal_me = _paypal_name(data.paypal_me)
+    if data.interac is not None:
+        me.interac = _interac(data.interac)
+    await session.commit()
+    await session.refresh(me)
+    return me
+
+
+def _paypal_name(value: str) -> str:
+    name = re.sub(r"^(https?://)?(www\.)?paypal\.me/", "", value.strip(), flags=re.I)
+    name = name.strip("/@ ")
+    if name and not re.fullmatch(r"[A-Za-z0-9]{1,30}", name):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That PayPal.me name looks off.")
+    return name
+
+
+def _interac(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return ""
+    if re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+        return value.lower()
+    digits = re.sub(r"[\s().-]", "", value)
+    if re.fullmatch(r"\+?\d{10,15}", digits):
+        return digits
+    raise HTTPException(
+        status.HTTP_422_UNPROCESSABLE_CONTENT, "Use the email or phone number your bank sends to."
+    )
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -58,6 +104,19 @@ async def delete_me(
     # Splits and groups (docs/SPLITS.md): your splits go; your memberships stay
     # as placeholders under your name so other people's balances survive.
     owned = list(await session.scalars(select(Split.id).where(Split.owner_user_id == user.id)))
+    await session.execute(sa_delete(Activity).where(Activity.user_id == user.id))
+    await session.execute(
+        sa_delete(SplitComment).where(
+            (SplitComment.user_id == user.id) | SplitComment.split_id.in_(owned)
+        )
+    )
+    await session.execute(sa_delete(SplitEvent).where(SplitEvent.split_id.in_(owned)))
+    # Their edits on other people's expenses stay in the history, unnamed.
+    await session.execute(
+        update(SplitEvent)
+        .where(SplitEvent.user_id == user.id)
+        .values(user_id=None, actor_name="Someone")
+    )
     if owned:
         await session.execute(
             sa_delete(SplitParticipant).where(SplitParticipant.split_id.in_(owned))

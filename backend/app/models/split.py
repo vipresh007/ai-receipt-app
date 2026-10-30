@@ -35,6 +35,9 @@ class Group(Base):
     )
     currency: Mapped[str] = mapped_column(String(3), default="CAD")
     invite_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # Settle up with the fewest payments (A owes B, B owes C → A pays C), or
+    # show who owes whom directly from the expenses.
+    simplify_debts: Mapped[bool] = mapped_column(default=True)
 
 
 class GroupMember(Base):
@@ -53,6 +56,7 @@ class GroupMember(Base):
     display_name: Mapped[str] = mapped_column(String(120))
     # Order in the group (members added in one request share a timestamp).
     position: Mapped[int] = mapped_column(default=0)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Split(Base):
@@ -75,6 +79,10 @@ class Split(Base):
     currency: Mapped[str] = mapped_column(String(3), default="CAD")
     spent_at: Mapped[date] = mapped_column(Date)
     mode: Mapped[str] = mapped_column(String(10), default="even")
+    # Repeating expenses (rent, a subscription): "" | weekly | monthly. Each
+    # time `next_at` comes round a copy is added and `next_at` moves on.
+    repeat: Mapped[str] = mapped_column(String(10), default="")
+    next_at: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     # Line items the split was computed from (a receipt's, or entered with a
     # manual split): [{"name": str, "price": "12.34", "quantity": 1}, ...]
     line_items: Mapped[list[dict]] = mapped_column(JSON, default=list)
@@ -105,8 +113,10 @@ class SplitParticipant(Base):
     # Inputs: line-item indexes (items mode) or a fixed amount (custom mode).
     item_indexes: Mapped[list[int]] = mapped_column(JSON, default=list)
     custom_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    # Shares mode: parts of the total (2 and 3 → 2/5 and 3/5).
+    # Shares mode: parts of the total (2 and 3 → 2/5 and 3/5); percent mode: %.
     weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # What this person paid toward the total (one payer: the whole total).
+    paid: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     # Output, computed by services/splits.py.
     share: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
     # One-off splits: when this person's share was marked paid.
@@ -156,6 +166,7 @@ class Person(Base):
     # Their invite link (/p/<token>); shared by you, or emailed by Tally.
     invite_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class PersonPayment(Base):
@@ -173,3 +184,52 @@ class PersonPayment(Base):
     from_owner: Mapped[bool] = mapped_column(default=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     note: Mapped[str] = mapped_column(String(200), default="")
+
+
+class SplitComment(Base):
+    """A note on an expense, visible to everyone who can see it."""
+
+    __tablename__ = "split_comments"
+
+    split_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("splits.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    author_name: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(String(1000))
+
+
+class SplitEvent(Base):
+    """One line of an expense's history: added, or what an edit changed."""
+
+    __tablename__ = "split_events"
+
+    split_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("splits.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(120))
+    text: Mapped[str] = mapped_column(String(1000))
+
+
+class Activity(Base):
+    """Something that happened that concerns `user_id` ("Sam added Dinner")."""
+
+    __tablename__ = "activities"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(120))
+    # expense_added | expense_edited | expense_deleted | comment | payment |
+    # reminder | joined | repeated
+    kind: Mapped[str] = mapped_column(String(30))
+    text: Mapped[str] = mapped_column(String(300))
+    split_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    group_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    person_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -59,6 +59,14 @@ final class SplitMathTests: XCTestCase {
         )
     }
 
+    func testPercentagesMustMake100() {
+        XCTAssertEqual(shares(50, .percent, [.init(weight: 40), .init(weight: 60)]), [20, 30])
+        XCTAssertEqual(
+            SplitMath.shares(total: 10, mode: .percent, inputs: [.init(weight: 40), .init(weight: 50)], itemPrices: []),
+            .failure(.percentNot100(90))
+        )
+    }
+
     func testCustomAmountsMustAddUp() {
         let bad = SplitMath.shares(
             total: 50, mode: .custom, inputs: [.init(amount: 20), .init(amount: 20)], itemPrices: []
@@ -89,9 +97,9 @@ final class SplitMathTests: XCTestCase {
              "total": "60.00", "currency": "CAD", "date": "2026-06-15", "mode": "items",
              "items": [{"name": "Pizza", "price": "60.00", "quantity": 1}],
              "participants": [{"id": "p1", "display_name": "Jordan", "member_id": null, "is_me": true,
-               "is_payer": true, "item_indexes": [0], "amount": null, "share": "30.00", "settled": false,
+               "is_payer": true, "item_indexes": [0], "amount": null, "share": "30.00", "paid": "60.00", "settled": false,
                "share_url": "https://tally.dataeaver.ca/s/abc"}],
-             "my_share": "30.00", "is_owner": true}
+             "my_share": "30.00", "is_owner": true, "can_edit": true, "repeat": "", "next_at": null}
             """
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -106,7 +114,8 @@ final class SplitMathTests: XCTestCase {
         let json = """
             {"id": "p1", "name": "Sam", "email": null, "has_account": false,
              "invite_url": "https://tally.dataeaver.ca/p/xyz", "invited_at": null,
-             "balance": "-12.50", "currency": "CAD", "can_email": false,
+             "balance": "-12.50", "outside_groups": "-12.50", "group_balances": [],
+             "currency": "CAD", "can_email": false, "pay_to": {"paypal_me": "sam", "interac": null},
              "splits": [], "payments": [{"id": "pay1", "you_paid": true, "amount": "5.00",
                "note": "", "date": "2026-10-29", "can_delete": true}]}
             """
@@ -116,6 +125,12 @@ final class SplitMathTests: XCTestCase {
         XCTAssertEqual(person.balanceValue, Decimal(string: "-12.50"))
         XCTAssertEqual(person.inviteUrl, "https://tally.dataeaver.ca/p/xyz")
         XCTAssertEqual(person.payments.first?.youPaid, true)
+        XCTAssertEqual(person.payTo?.paypalMe, "sam")
+        XCTAssertEqual(
+            ISO8601DateFormatter.tally("2026-10-30T12:00:00.123456+00:00") != nil
+                && ISO8601DateFormatter.tally("2026-10-30T12:00:00+00:00") != nil,
+            true
+        )
         XCTAssertEqual(PersonBalanceBadge.text(person.balanceValue, currency: "CAD", name: "Sam").hasPrefix("You owe"), true)
     }
 }

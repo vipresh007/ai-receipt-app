@@ -101,6 +101,53 @@ API: `GET/POST /people`, `GET/PATCH/DELETE /people/{id}`,
 `DELETE /people/{id}/payments/{pid}`, `POST /people/claim/{token}`;
 public `GET /public/people/{token}`.
 
+## Splitwise-style extras
+
+- **Several payers.** Each participant has `paid` (one payer: the whole
+  total). Balances use paid − share per person: in groups that's each
+  member's net; between two people on one expense, whoever's short owes
+  whoever's over in proportion to how much each is over
+  (`splits.owed_between`). Several payers' amounts must add up to the total.
+- **Simplify debts** (per group, on by default; any member can switch it,
+  and the others are told). On: settle up with the fewest payments from
+  everyone's net balance (A owes B $10, B owes C $10 → A pays C $10). Off:
+  who owes whom directly, expense by expense, netted per pair
+  (`splits.direct_debts`). Reminders and per-person balances follow the
+  group's setting, so every screen agrees. Only within a group: people you
+  split with one to one are separate tabs.
+- **Percentages.** `mode: percent`, weights must add up to 100.
+- **One balance per person.** A person's balance is what's outside groups
+  plus, once they've joined, what's between you two in every group you share
+  (`people_store.group_balances`), with a per-group breakdown.
+- **Anyone on it can edit** (`PATCH /splits/{id}`): amounts, who paid, how
+  it's divided, and a hand-entered expense's description/amount/date. Who's on
+  it and deleting stay with whoever added it.
+- **History and comments.** Every add and edit is logged in words
+  (`split_events`: "changed the total from $30.00 to $40.00; T's share
+  $15.00 → $25.00"), as are "marked paid" toggles and receipt edits.
+  `GET /splits/{id}/timeline` returns history and comments together, to
+  everyone who can see the expense. `POST/DELETE /splits/{id}/comments`.
+- **Activity and emails.** `activities` rows per person for expenses added,
+  changed and deleted, comments, payments, reminders, joins and repeats
+  (`GET /activity`, `/activity/unread`, `POST /activity/read`). Expenses
+  added, payments and reminders are also emailed: only to verified
+  addresses, only if `email_notifications` is on, at most one per person per
+  10 minutes. Older accounts' verification is re-checked with the sign-in
+  provider at most once a day.
+- **Reminders.** `POST /people/{id}/remind` and
+  `POST /groups/{id}/members/{mid}/remind`, once a day each, only when they
+  owe you. People who haven't joined are emailed at the address you saved;
+  without one, the apps share a text instead.
+- **Getting paid back.** `PATCH /auth/me` sets `paypal_me` and `interac`,
+  shown (as `pay_to`) to people who owe you: on the person page, in groups,
+  and on share links.
+- **Repeating expenses.** Hand-entered ones can repeat weekly or monthly
+  (`repeat`, `next_at`). An hourly job (`services/repeating.py`) adds each
+  due copy, claiming it with a conditional update so two replicas can't both
+  add it, and catches up at most 12 missed copies.
+- **Export.** `GET /export/receipts.csv` and `/export/shared.csv` (cells
+  starting with = + - @ are prefixed so spreadsheets don't run them).
+
 ## Account deletion
 
 Your memberships become placeholders under your name (so others' balances

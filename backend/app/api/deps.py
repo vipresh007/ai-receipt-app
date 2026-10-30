@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
 from fastapi import Depends, HTTPException, status
@@ -43,6 +44,8 @@ async def _user_from_token(session: AsyncSession, token: str) -> User:
     user = await session.scalar(select(User).where(User.auth0_sub == sub))
     if user is None:
         user = await _provision_user(session, sub, token)
+    elif not user.email_verified:
+        await _recheck_email(session, user, token)
     if not user.is_active:
         raise _CREDS_ERROR
     return user
@@ -64,6 +67,29 @@ async def get_current_user_optional(
     if credentials is None:
         return None
     return await _user_from_token(session, credentials.credentials)
+
+
+async def _recheck_email(session: AsyncSession, user: User, access_token: str) -> None:
+    """Accounts from before verification was recorded: ask the provider once a
+    day until it says the address is verified (for notification emails and
+    accepting invites sent to it)."""
+    now = datetime.now(UTC)
+    last = user.email_checked_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    if last is not None and now - last < timedelta(days=1):
+        return
+    user.email_checked_at = now
+    try:
+        info = await fetch_userinfo(access_token)
+    except Exception:  # noqa: BLE001 - try again tomorrow
+        await session.commit()
+        return
+    email = (info.get("email") or "").strip().lower()
+    if email and email == user.email and info.get("email_verified") is True:
+        user.email_verified = True
+        await people_store.link_invited_email(session, user)
+    await session.commit()
 
 
 async def _provision_user(session: AsyncSession, sub: str, access_token: str) -> User:

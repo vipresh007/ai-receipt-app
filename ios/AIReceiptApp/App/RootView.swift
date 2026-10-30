@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var router = TabRouter()
+    @State private var activityBadge = ActivityBadge()
 
     var body: some View {
         TabView(selection: $router.selection) {
@@ -23,6 +24,7 @@ struct RootView: View {
 
             GroupsView()
                 .tabItem { Label("Shared", systemImage: "person.2.fill") }
+                .badge(activityBadge.unread)
                 .tag(AppTab.groups)
 
             AccountView()
@@ -31,15 +33,20 @@ struct RootView: View {
         }
         .tint(Theme.Palette.accent)
         .environment(router)
+        .environment(activityBadge)
         .task {
             #if DEBUG
             SampleData.seedIfRequested(modelContext)
             #endif
             await AccountSync.pull(auth: auth, context: modelContext)
+            await activityBadge.refresh(auth)
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            Task { await AccountSync.pull(auth: auth, context: modelContext) }
+            Task {
+                await AccountSync.pull(auth: auth, context: modelContext)
+                await activityBadge.refresh(auth)
+            }
         }
     }
 }
@@ -48,4 +55,5 @@ struct RootView: View {
     RootView()
         .modelContainer(for: Receipt.self, inMemory: true)
         .environment(AuthManager())
+        .environment(ActivityBadge())
 }

@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -6,9 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import (
+    activity,
     auth,
     budgets,
     expenses,
+    export,
     groups,
     health,
     people,
@@ -33,7 +37,15 @@ async def lifespan(app: FastAPI):
             await bootstrap_schema()
         except Exception:  # noqa: BLE001 - don't crash if the DB isn't up yet
             logger.warning("schema bootstrap failed on startup", exc_info=True)
+    repeat_task = None
+    if not os.environ.get("AI_RECEIPT_TEST"):
+        from app.db import SessionLocal
+        from app.services.repeating import run_forever
+
+        repeat_task = asyncio.create_task(run_forever(SessionLocal))
     yield
+    if repeat_task is not None:
+        repeat_task.cancel()
 
 
 app = FastAPI(title="AI Receipt API", version="0.1.0", lifespan=lifespan)
@@ -83,6 +95,8 @@ app.include_router(budgets.router, prefix="/v1/budgets", tags=["budgets"])
 app.include_router(splits.router, prefix="/v1", tags=["splits"])
 app.include_router(groups.router, prefix="/v1/groups", tags=["groups"])
 app.include_router(people.router, prefix="/v1/people", tags=["people"])
+app.include_router(activity.router, prefix="/v1/activity", tags=["activity"])
+app.include_router(export.router, prefix="/v1/export", tags=["export"])
 app.include_router(public.router, prefix="/v1/public", tags=["public"])
 
 

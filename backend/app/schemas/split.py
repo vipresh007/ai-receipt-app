@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 from app.schemas.receipt import ExtractionItemOut
 
-Mode = Literal["even", "items", "shares", "custom"]
+Mode = Literal["even", "items", "shares", "percent", "custom"]
+Repeat = Literal["", "weekly", "monthly"]
 
 
 class ParticipantIn(BaseModel):
@@ -23,7 +24,9 @@ class ParticipantIn(BaseModel):
     is_payer: bool = False
     item_indexes: list[int] = Field(default_factory=list, max_length=500)
     amount: str | None = None  # custom mode
-    weight: str | None = Field(default=None, max_length=12)  # shares mode; blank = 1
+    weight: str | None = Field(default=None, max_length=12)  # shares (blank = 1) / percent
+    # Several payers: what this person put in (all must add up to the total).
+    paid: str | None = Field(default=None, max_length=20)
 
 
 class SplitIn(BaseModel):
@@ -38,6 +41,31 @@ class SplitIn(BaseModel):
     mode: Mode = "even"
     items: list[ExtractionItemOut] = Field(default_factory=list, max_length=500)
     participants: list[ParticipantIn] = Field(min_length=1, max_length=50)
+    # Hand-entered expenses only: add it again every week / month.
+    repeat: Repeat = ""
+
+
+class ParticipantAdjust(BaseModel):
+    """An existing person on the split (by id): their part, not who they are."""
+
+    id: UUID
+    is_payer: bool = False
+    paid: str | None = Field(default=None, max_length=20)
+    item_indexes: list[int] = Field(default_factory=list, max_length=500)
+    amount: str | None = Field(default=None, max_length=20)
+    weight: str | None = Field(default=None, max_length=12)
+
+
+class SplitAdjustIn(BaseModel):
+    """An edit by anyone on the expense: how it's divided and who paid, plus
+    the description, amount and date of a hand-entered one. Who's on it stays
+    with whoever added it."""
+
+    description: str | None = Field(default=None, max_length=200)
+    total: str | None = Field(default=None, max_length=20)
+    date: str | None = None
+    mode: Mode
+    participants: list[ParticipantAdjust] = Field(min_length=1, max_length=50)
 
 
 class ParticipantOut(BaseModel):
@@ -50,6 +78,7 @@ class ParticipantOut(BaseModel):
     item_indexes: list[int]
     amount: str | None
     weight: str | None
+    paid: str | None
     share: str
     settled: bool
     share_url: str
@@ -68,6 +97,26 @@ class SplitOut(BaseModel):
     participants: list[ParticipantOut]
     my_share: str | None
     is_owner: bool
+    # Anyone on it (or in its group) can change the amounts; only the owner
+    # changes who's on it or deletes it.
+    can_edit: bool
+    repeat: Repeat
+    next_at: str | None
+
+
+class CommentIn(BaseModel):
+    body: str = Field(min_length=1, max_length=1000)
+
+
+class TimelineEntry(BaseModel):
+    """An expense's history and comments, oldest first."""
+
+    id: UUID
+    kind: Literal["event", "comment"]
+    author_name: str
+    text: str
+    at: str  # ISO datetime
+    can_delete: bool
 
 
 class SettledIn(BaseModel):
@@ -85,11 +134,19 @@ class GroupIn(BaseModel):
 
 
 class GroupPatch(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    simplify_debts: bool | None = None
 
 
 class MemberIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+
+
+class PayDetails(BaseModel):
+    """How someone likes to be paid back (they set it under Account)."""
+
+    paypal_me: str | None
+    interac: str | None
 
 
 class MemberOut(BaseModel):
@@ -98,6 +155,7 @@ class MemberOut(BaseModel):
     is_me: bool
     has_account: bool
     balance: str  # positive = is owed, negative = owes
+    pay_to: PayDetails | None = None
 
 
 class PaymentOut(BaseModel):
@@ -132,6 +190,8 @@ class GroupSummaryOut(BaseModel):
     my_balance: str
     invite_url: str
     is_owner: bool
+    # Settle up with the fewest payments, or who owes whom directly.
+    simplify_debts: bool
 
 
 class GroupDetailOut(GroupSummaryOut):
@@ -161,6 +221,12 @@ class PersonPatch(BaseModel):
     email: str | None = Field(default=None, max_length=320)
 
 
+class PersonGroupBalance(BaseModel):
+    group_id: UUID
+    name: str
+    balance: str
+
+
 class PersonOut(BaseModel):
     id: UUID
     name: str
@@ -169,12 +235,17 @@ class PersonOut(BaseModel):
     has_account: bool
     invite_url: str
     invited_at: str | None
-    # Positive = they owe you; negative = you owe them.
+    # Positive = they owe you; negative = you owe them. Overall: outside
+    # groups plus every group you're both in (once they've joined).
     balance: str
+    outside_groups: str
+    group_balances: list[PersonGroupBalance]
     currency: str
     # Tally can email this person their invite (an address is set and email
     # is configured).
     can_email: bool
+    # Their PayPal.me / Interac details, when they've joined and set them.
+    pay_to: PayDetails | None
 
 
 class PersonPaymentIn(BaseModel):
@@ -221,6 +292,8 @@ class PublicSplitOut(BaseModel):
     payer_name: str | None
     group_name: str | None
     your_share: str
+    # The payer's PayPal.me / Interac, if they've set them.
+    pay_to: PayDetails | None = None
 
 
 class PublicMemberOut(BaseModel):

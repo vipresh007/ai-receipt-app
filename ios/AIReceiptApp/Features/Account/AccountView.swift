@@ -103,6 +103,29 @@ struct AccountView: View {
         }
         .buttonStyle(.plain)
 
+        NavigationLink {
+            SharingSettingsView()
+        } label: {
+            AppCard {
+                HStack(spacing: Theme.Space.md) {
+                    Image(systemName: "person.2").foregroundStyle(Theme.Palette.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sharing & export")
+                            .font(.appCallout.weight(.medium))
+                            .foregroundStyle(Theme.Palette.text)
+                        Text("Notifications, getting paid back, CSV files")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.appCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+
         AppCard {
             Label {
                 Text("Your receipts sync to the web app and any other device you sign in on.")

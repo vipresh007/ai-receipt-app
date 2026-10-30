@@ -40,6 +40,12 @@ struct SplitEditorView: View {
     @State private var assigned: [String: Set<Int>]
     @State private var amounts: [String: Decimal]
     @State private var weights: [String: Decimal]
+    // Who paid: one person (the pickers above), or several with amounts.
+    @State private var severalPayers: Bool
+    @State private var paidAmounts: [String: Decimal]
+    /// Someone else's expense: the payer among its existing participants.
+    @State private var adjustPayer: String
+    @State private var repeatEvery: String
     @State private var saving = false
     @State private var errorMessage: String?
 
@@ -65,12 +71,16 @@ struct SplitEditorView: View {
         var assigned: [String: Set<Int>] = [:]
         var amounts: [String: Decimal] = [:]
         var weights: [String: Decimal] = [:]
+        var paidAmounts: [String: Decimal] = [:]
+        let adjust = existing.map { !$0.isOwner } ?? false
         var payer = ""
         var oneOffPayer = NamedPerson.meKey
         var nextOther = 0
         for p in existing?.participants ?? [] {
             let key: String
-            if let member = p.memberId {
+            if adjust {
+                key = "part:\(p.id)"
+            } else if let member = p.memberId {
                 key = member
             } else if p.isMe {
                 key = NamedPerson.meKey
@@ -84,6 +94,7 @@ struct SplitEditorView: View {
             assigned[key] = Set(p.itemIndexes)
             if let amount = p.amount.flatMap({ Decimal(string: $0) }) { amounts[key] = amount }
             if let weight = p.weight.flatMap({ Decimal(string: $0) }) { weights[key] = weight }
+            if let paid = p.paid.flatMap({ Decimal(string: $0) }) { paidAmounts[key] = paid }
             if p.isPayer, let member = p.memberId { payer = member }
             if p.isPayer, p.memberId == nil { oneOffPayer = key }
         }
@@ -107,7 +118,14 @@ struct SplitEditorView: View {
         _assigned = State(initialValue: assigned)
         _amounts = State(initialValue: amounts)
         _weights = State(initialValue: weights)
+        _paidAmounts = State(initialValue: paidAmounts)
+        _severalPayers = State(initialValue: (existing?.payers.count ?? 0) > 1)
+        _adjustPayer = State(initialValue: existing?.payer?.id ?? "")
+        _repeatEvery = State(initialValue: existing?.repeat ?? "")
     }
+
+    /// Someone else's expense: change the amounts, not who's on it.
+    private var adjustOnly: Bool { existing.map { !$0.isOwner } ?? false }
 
     // MARK: - Derived
 
@@ -117,10 +135,19 @@ struct SplitEditorView: View {
         let isMe: Bool
         let memberID: String?
         var personID: String? = nil
+        var participantID: String? = nil
         var id: String { key }
     }
 
     private var people: [Person] {
+        if adjustOnly, let existing {
+            return existing.participants.map {
+                Person(
+                    key: "part:\($0.id)", label: $0.isMe ? "You" : $0.displayName, isMe: $0.isMe,
+                    memberID: nil, participantID: $0.id
+                )
+            }
+        }
         if !groupID.isEmpty {
             guard let group else { return [] }
             return group.members
@@ -175,13 +202,27 @@ struct SplitEditorView: View {
         case .failure(.noPeople): "Add at least one person."
         case .failure(.missingAmount): "Enter an amount for everyone."
         case .failure(.noShares): "Give at least one person a share."
+        case .failure(.percentNot100(let sum)): "The percentages add up to \(sum)%, not 100%."
         case .failure(.amountsDontAddUp(let total, let entered)):
             "Amounts add up to \(money(entered)), not \(money(total))."
         }
     }
 
+    /// The single payer's key across the three ways of picking one.
+    private var payerKey: String {
+        if adjustOnly { return "part:\(adjustPayer)" }
+        if !groupID.isEmpty { return people.first(where: { $0.memberID == effectivePayer })?.key ?? "" }
+        return oneOffPayerKey
+    }
+
+    private var paidSum: Decimal { people.reduce(0) { $0 + (paidAmounts[$1.key] ?? 0) } }
+
     private var canSave: Bool {
-        guard !saving, case .success = preview, people.count > 1 || !groupID.isEmpty else { return false }
+        guard !saving, case .success = preview, people.count > 1 || !groupID.isEmpty || adjustOnly else {
+            return false
+        }
+        if severalPayers, paidSum != total { return false }
+        if adjustOnly, existing?.receiptId != nil { return true }
         if receipt == nil {
             return !description.trimmingCharacters(in: .whitespaces).isEmpty && (amount ?? 0) > 0
         }
@@ -194,7 +235,17 @@ struct SplitEditorView: View {
         NavigationStack {
             Form {
                 expenseSection
-                withSection
+                if adjustOnly {
+                    Section {
+                        Text("You can change the amounts, who paid and how it's divided. Who's on it is up to whoever added it. Everyone on it sees what you changed.")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    .listRowBackground(Theme.Palette.surface)
+                } else {
+                    withSection
+                }
+                if people.count > 1 { paidBySection }
                 modeSection
                 if mode == .items { itemsSection }
                 sharesSection
@@ -230,7 +281,13 @@ struct SplitEditorView: View {
 
     @ViewBuilder
     private var expenseSection: some View {
-        if let receipt {
+        if adjustOnly, let existing, existing.receiptId != nil {
+            LedgerSection("Receipt") {
+                LabeledContent(existing.description.isEmpty ? "Receipt" : existing.description) {
+                    Text(existing.totalValue, format: .currency(code: currencyCode)).font(.appMoney)
+                }
+            }
+        } else if let receipt {
             LedgerSection("Receipt") {
                 LabeledContent(receipt.merchant.isEmpty ? "Receipt" : receipt.merchant) {
                     Text(receipt.total, format: .currency(code: currencyCode))
@@ -246,7 +303,64 @@ struct SplitEditorView: View {
                         .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: $date, displayedComponents: .date)
+                if !adjustOnly {
+                    Picker("Repeats", selection: $repeatEvery) {
+                        Text("Never").tag("")
+                        Text("Every week").tag("weekly")
+                        Text("Every month").tag("monthly")
+                    }
+                }
             }
+        }
+    }
+
+    private var paidBySection: some View {
+        LedgerSection("Paid by") {
+            Picker(
+                "Paid by",
+                selection: Binding(
+                    get: { severalPayers ? Self.several : payerKey },
+                    set: { choosePayer($0) }
+                )
+            ) {
+                ForEach(people) { Text($0.label).tag($0.key) }
+                Text("Several people…").tag(Self.several)
+            }
+            if severalPayers {
+                ForEach(people) { person in
+                    LabeledContent("\(person.label) paid") {
+                        TextField(
+                            "0.00",
+                            value: Binding(get: { paidAmounts[person.key] }, set: { paidAmounts[person.key] = $0 }),
+                            format: .currency(code: currencyCode)
+                        )
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.decimalPad)
+                        .font(.appMoney)
+                    }
+                }
+                Text("Paid \(money(paidSum)) of \(money(total))")
+                    .font(.appCaption)
+                    .foregroundStyle(paidSum == total ? Theme.Palette.textTertiary : Theme.Palette.warning)
+            }
+        }
+    }
+
+    private static let several = "__several"
+
+    private func choosePayer(_ key: String) {
+        if key == Self.several {
+            severalPayers = true
+            return
+        }
+        severalPayers = false
+        let person = people.first(where: { $0.key == key })
+        if adjustOnly {
+            adjustPayer = person?.participantID ?? ""
+        } else if !groupID.isEmpty {
+            payerID = person?.memberID ?? ""
+        } else {
+            oneOffPayer = key
         }
     }
 
@@ -305,17 +419,9 @@ struct SplitEditorView: View {
                 } label: {
                     Label("Someone new", systemImage: "plus")
                 }
-                if people.count > 1 {
-                    Picker("Paid by", selection: Binding(get: { oneOffPayerKey }, set: { oneOffPayer = $0 })) {
-                        ForEach(people) { Text($0.label).tag($0.key) }
-                    }
-                }
             } else if let group {
                 ForEach(group.members) { member in
                     Toggle(member.isMe ? "\(member.displayName) (you)" : member.displayName, isOn: memberIncluded(member.id))
-                }
-                Picker("Paid by", selection: Binding(get: { effectivePayer }, set: { payerID = $0 })) {
-                    ForEach(people) { Text($0.label).tag($0.memberID ?? "") }
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity)
@@ -387,9 +493,9 @@ struct SplitEditorView: View {
                 HStack {
                     Text(person.label).font(.appCallout)
                     Spacer()
-                    if mode == .shares {
+                    if mode == .shares || mode == .percent {
                         TextField(
-                            "1",
+                            mode == .shares ? "1" : "0",
                             value: Binding(get: { weights[person.key] }, set: { weights[person.key] = $0 }),
                             format: .number
                         )
@@ -397,7 +503,7 @@ struct SplitEditorView: View {
                         .keyboardType(.decimalPad)
                         .font(.appMoney)
                         .frame(width: 56)
-                        .accessibilityLabel("\(person.label) shares")
+                        .accessibilityLabel("\(person.label) \(mode == .shares ? "shares" : "percent")")
                         Text(index < shares.count ? "= \(shares[index].formatted(.currency(code: currencyCode)))" : "=")
                             .font(.appCaption)
                             .monospacedDigit()
@@ -421,7 +527,10 @@ struct SplitEditorView: View {
             }
             .listRowBackground(Theme.Palette.surface)
         } header: {
-            sectionHeader(mode == .shares ? "Shares (parts each)" : mode == .custom ? "Amounts" : "Each pays")
+            sectionHeader(
+                mode == .shares ? "Shares (parts each)" : mode == .percent ? "Percent each (to 100)"
+                    : mode == .custom ? "Amounts" : "Each pays"
+            )
         } footer: {
             if let previewProblem, !people.isEmpty {
                 Text(previewProblem)
@@ -492,40 +601,67 @@ struct SplitEditorView: View {
     private func save() async {
         errorMessage = nil
         let inGroup = !groupID.isEmpty
-        let participants = people.map { p in
-            API.ParticipantWrite(
-                isMe: p.isMe,
-                memberId: p.memberID,
-                personId: p.personID,
-                name: p.memberID == nil && p.personID == nil && !p.isMe ? p.label : nil,
-                isPayer: inGroup ? p.memberID == effectivePayer : p.key == oneOffPayerKey,
-                itemIndexes: mode == .items ? (assigned[p.key] ?? []).sorted() : [],
-                amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil,
-                weight: mode == .shares ? weights[p.key]?.wireString : nil
-            )
-        }
-        var body = API.SplitWrite(
-            receiptId: receipt?.remoteID,
-            groupId: inGroup ? groupID : nil,
-            mode: mode,
-            participants: participants
-        )
-        if receipt == nil {
-            body.description = description.trimmingCharacters(in: .whitespaces)
-            body.total = (amount ?? 0).wireString
-            body.currency = currencyCode
-            body.date = API.isoDayString(date)
-        }
+        let weighted = mode == .shares || mode == .percent
+        let paid: (Person) -> String? = { severalPayers ? (paidAmounts[$0.key] ?? 0).wireString : nil }
 
         saving = true
         defer { saving = false }
         do {
             let client = try await Splits.client(auth)
             let split: API.SplitDTO
-            if let existing {
-                split = try await client.updateSplit(id: existing.id, body)
+            if adjustOnly, let existing {
+                let manual = existing.receiptId == nil
+                split = try await client.adjustSplit(
+                    id: existing.id,
+                    API.SplitAdjustWrite(
+                        description: manual ? description.trimmingCharacters(in: .whitespaces) : nil,
+                        total: manual ? (amount ?? 0).wireString : nil,
+                        date: manual ? API.isoDayString(date) : nil,
+                        mode: mode,
+                        participants: people.map { p in
+                            API.ParticipantAdjustWrite(
+                                id: p.participantID ?? "",
+                                isPayer: !severalPayers && p.participantID == adjustPayer,
+                                paid: paid(p),
+                                itemIndexes: mode == .items ? (assigned[p.key] ?? []).sorted() : [],
+                                amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil,
+                                weight: weighted ? weights[p.key]?.wireString : nil
+                            )
+                        }
+                    )
+                )
             } else {
-                split = try await client.createSplit(body)
+                let participants = people.map { p in
+                    API.ParticipantWrite(
+                        isMe: p.isMe,
+                        memberId: p.memberID,
+                        personId: p.personID,
+                        name: p.memberID == nil && p.personID == nil && !p.isMe ? p.label : nil,
+                        isPayer: !severalPayers && p.key == payerKey,
+                        itemIndexes: mode == .items ? (assigned[p.key] ?? []).sorted() : [],
+                        amount: mode == .custom ? (amounts[p.key] ?? 0).wireString : nil,
+                        weight: weighted ? weights[p.key]?.wireString : nil,
+                        paid: paid(p)
+                    )
+                }
+                var body = API.SplitWrite(
+                    receiptId: receipt?.remoteID,
+                    groupId: inGroup ? groupID : nil,
+                    mode: mode,
+                    participants: participants
+                )
+                if receipt == nil {
+                    body.description = description.trimmingCharacters(in: .whitespaces)
+                    body.total = (amount ?? 0).wireString
+                    body.currency = currencyCode
+                    body.date = API.isoDayString(date)
+                    body.repeat = repeatEvery
+                }
+                if let existing {
+                    split = try await client.updateSplit(id: existing.id, body)
+                } else {
+                    split = try await client.createSplit(body)
+                }
             }
             onDone(split)
             dismiss()

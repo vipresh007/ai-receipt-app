@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: October 29, 2026._
+_Last updated: October 30, 2026._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
 operated by **DATA EAVER INC.**, collects when you use the Tally app and
@@ -21,7 +21,10 @@ choices you have. Questions: **contact@dataeaver.ca**.
   people you split with, each person's share, the payments you record with
   them, and their email address if you choose to add it. In a group, its name,
   its members' names, the expenses added and the payments recorded between
-  members.
+  members. Comments on shared expenses, and a history of who added or changed
+  each one.
+- **Payment details you choose to add** — a PayPal.me name and an Interac
+  e-Transfer email or phone number, so people who owe you can pay you back.
 
 **Created as you use Tally**
 
@@ -88,6 +91,14 @@ email it again unless you ask. If they accept, by signing in from the link,
 they see the expenses you share with them and your balance from their side.
 Someone whose email has been verified by their sign-in provider is connected
 to invites sent to that address automatically.
+
+**Shared expenses.** Everyone on an expense (or in its group) sees it, its
+comments and its history, including who changed what. If you add PayPal.me or
+Interac details, they're shown to people who owe you, in the app and on their
+share links. We email you when someone adds an expense with you, records a
+payment or sends you a reminder; you can turn these emails off under Account,
+and everything also appears in the app's activity. When you send a reminder to
+someone who hasn't joined, we email it to the address you saved for them.
 
 We may also disclose data if required by law, or to protect our rights, users,
 or the public.

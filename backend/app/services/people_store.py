@@ -13,6 +13,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from fractions import Fraction
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete as sa_delete
@@ -20,9 +21,17 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models import Person, PersonPayment, Split, SplitParticipant, User
-from app.schemas.split import PersonDetailOut, PersonOut, PersonPaymentOut
+from app.models import Group, GroupMember, Person, PersonPayment, Split, SplitParticipant, User
+from app.schemas.split import (
+    PayDetails,
+    PersonDetailOut,
+    PersonGroupBalance,
+    PersonOut,
+    PersonPaymentOut,
+)
+from app.services import activity, split_store
 from app.services.split_store import display_name_for, new_token, split_out
+from app.services.splits import owed_between
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -136,21 +145,72 @@ def net_balance(
     rows: dict[uuid.UUID, list[SplitParticipant]],
     paid: list[tuple[PersonPayment, bool, bool]],
 ) -> Decimal:
-    """What they owe you (negative: what you owe them). Whoever paid a split
-    is owed the other's share, unless that share was ticked off as paid."""
-    total = Decimal("0")
+    """What they owe you outside groups (negative: what you owe them): on
+    each expense you're both on, whoever's short owes whoever's over (see
+    `splits.owed_between`), less shares ticked paid, plus payments between you."""
+    total = Fraction(0)
     for split in splits:
         me = next((r for r in rows[split.id] if r.user_id == viewer.id), None)
         them = next((r for r in rows[split.id] if r is not me and _is_them(r, person)), None)
         if me is None or them is None:
             continue
-        if me.is_payer and them.settled_at is None:
-            total += them.share
-        elif them.is_payer and me.settled_at is None:
-            total -= me.share
+        entries = [
+            (r.id, r.share, split_store._paid(r, split), r.settled_at is not None)
+            for r in rows[split.id]
+        ]
+        total += owed_between(entries, me.id, them.id)
     for payment, you_paid, _ in paid:
-        total += payment.amount if you_paid else -payment.amount
-    return total.quantize(Decimal("0.01"))
+        total += Fraction(payment.amount) if you_paid else -Fraction(payment.amount)
+    return _round(total)
+
+
+def _round(value: Fraction) -> Decimal:
+    return (Decimal(value.numerator) / Decimal(value.denominator)).quantize(Decimal("0.01"))
+
+
+async def group_balances(
+    session: AsyncSession, viewer: User, person: Person
+) -> list[tuple[Group, Decimal]]:
+    """Once they have an account: what they owe you in each group you're both
+    in, as that group settles up (simplified or direct, its setting)."""
+    if person.user_id is None:
+        return []
+    mine = {
+        m.group_id: m.id
+        for m in await session.scalars(select(GroupMember).where(GroupMember.user_id == viewer.id))
+    }
+    theirs = {
+        m.group_id: m.id
+        for m in await session.scalars(
+            select(GroupMember).where(GroupMember.user_id == person.user_id)
+        )
+    }
+    out: list[tuple[Group, Decimal]] = []
+    for group_id in sorted(mine.keys() & theirs.keys(), key=str):
+        group = await session.get(Group, group_id)
+        if group is None:
+            continue
+        me, them = mine[group_id], theirs[group_id]
+        splits, rows, settlements = await split_store.group_ledger(session, group_id)
+        # Follow the group's own settle-up, so both screens agree.
+        payments = split_store.group_payments(group, splits, rows, settlements)
+        between = sum(
+            (amount for a, b, amount in payments if a == them and b == me), Decimal("0")
+        ) - sum((amount for a, b, amount in payments if a == me and b == them), Decimal("0"))
+        out.append((group, between))
+    return out
+
+
+async def balance(
+    session: AsyncSession, viewer: User, person: Person
+) -> tuple[Decimal, Decimal, list[tuple[Group, Decimal]], str]:
+    """(overall, outside groups, per group, currency) between you two."""
+    splits, rows = await shared_splits(session, viewer, person)
+    paid = await payments(session, viewer, person)
+    outside = net_balance(viewer, person, splits, rows, paid)
+    groups = await group_balances(session, viewer, person)
+    currency = splits[0].currency if splits else (groups[0][0].currency if groups else "CAD")
+    return outside + sum((b for _, b in groups), Decimal("0")), outside, groups, currency
 
 
 async def person_out(
@@ -158,6 +218,10 @@ async def person_out(
 ) -> PersonOut | PersonDetailOut:
     splits, rows = await shared_splits(session, viewer, person)
     paid = await payments(session, viewer, person)
+    outside = net_balance(viewer, person, splits, rows, paid)
+    groups = await group_balances(session, viewer, person)
+    them = await session.get(User, person.user_id) if person.user_id else None
+    currency = splits[0].currency if splits else (groups[0][0].currency if groups else "CAD")
     fields = {
         "id": person.id,
         "name": person.display_name,
@@ -165,9 +229,14 @@ async def person_out(
         "has_account": person.user_id is not None,
         "invite_url": invite_url(person.invite_token),
         "invited_at": _aware(person.invited_at).isoformat() if person.invited_at else None,
-        "balance": f"{net_balance(viewer, person, splits, rows, paid):.2f}",
-        "currency": splits[0].currency if splits else "CAD",
+        "balance": f"{outside + sum((b for _, b in groups), Decimal('0')):.2f}",
+        "outside_groups": f"{outside:.2f}",
+        "group_balances": [
+            PersonGroupBalance(group_id=g.id, name=g.name, balance=f"{b:.2f}") for g, b in groups
+        ],
+        "currency": currency,
         "can_email": bool(person.email) and get_settings().email_configured,
+        "pay_to": pay_details(them),
     }
     if not detail:
         return PersonOut(**fields)
@@ -186,6 +255,13 @@ async def person_out(
             for p, you_paid, mine in paid
         ],
     )
+
+
+def pay_details(user: User | None) -> PayDetails | None:
+    """How to pay this person back, if they've said."""
+    if user is None or not (user.paypal_me or user.interac):
+        return None
+    return PayDetails(paypal_me=user.paypal_me or None, interac=user.interac or None)
 
 
 # ─────────────────────────── invites ───────────────────────────
@@ -250,6 +326,9 @@ async def claim(session: AsyncSession, person: Person, user: User) -> Person:
         )
         session.add(mirror)
     await session.flush()
+    await activity.notify(
+        session, [person.owner_user_id], user, "joined", "accepted your invite", person_id=person.id
+    )
     return mirror
 
 

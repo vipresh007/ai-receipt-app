@@ -6,17 +6,21 @@ from app.models.category import DEFAULT_CATEGORY_SLUGS, Category
 from app.models.expense import Expense
 from app.models.receipt import Receipt
 from app.models.split import (
+    Activity,
     Group,
     GroupMember,
     Person,
     PersonPayment,
     Settlement,
     Split,
+    SplitComment,
+    SplitEvent,
     SplitParticipant,
 )
 from app.models.user import User
 
 __all__ = [
+    "Activity",
     "AnonDevice",
     "AnonRateLimit",
     "Base",
@@ -31,6 +35,8 @@ __all__ = [
     "Receipt",
     "Settlement",
     "Split",
+    "SplitComment",
+    "SplitEvent",
     "SplitParticipant",
     "User",
 ]

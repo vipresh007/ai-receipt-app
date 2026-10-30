@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
-import { apiGet, apiPost, apiPut } from "@/lib/api";
-import { money } from "@/lib/format";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { money, toCents } from "@/lib/format";
 import { previewShares } from "@/lib/splits";
 import type {
   ExtractionItem,
@@ -26,6 +26,7 @@ const MODES: { value: SplitMode; label: string }[] = [
   { value: "even", label: "Evenly" },
   { value: "items", label: "By item" },
   { value: "shares", label: "Shares" },
+  { value: "percent", label: "%" },
   { value: "custom", label: "Amounts" },
 ];
 
@@ -37,7 +38,11 @@ interface Person {
   isMe: boolean;
   memberId?: string;
   personId?: string;
+  /** Editing someone else's expense: the existing person on it. */
+  participantId?: string;
 }
+
+const SEVERAL = "__several";
 
 function today(): string {
   return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
@@ -110,6 +115,17 @@ export function SplitEditor({
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [payerId, setPayerId] = useState<string>("");
 
+  // Someone else's expense: change the amounts, not who's on it.
+  const adjustOnly = !!existing && !existing.is_owner;
+  const [severalPayers, setSeveralPayers] = useState(
+    () => (existing?.participants.filter((p) => p.is_payer).length ?? 0) > 1,
+  );
+  const [paidAmounts, setPaidAmounts] = useState<Record<string, string>>({});
+  const [repeat, setRepeat] = useState<"" | "weekly" | "monthly">(existing?.repeat ?? "");
+  const [adjustPayer, setAdjustPayer] = useState<string>(
+    () => existing?.participants.find((p) => p.is_payer)?.id ?? "",
+  );
+
   const [mode, setMode] = useState<SplitMode>(existing?.mode ?? "even");
   const [assigned, setAssigned] = useState<Record<string, number[]>>({});
   const [amounts, setAmounts] = useState<Record<string, string>>({});
@@ -118,6 +134,14 @@ export function SplitEditor({
   const [error, setError] = useState<string | null>(null);
 
   const people: Person[] = useMemo(() => {
+    if (adjustOnly && existing) {
+      return existing.participants.map((p) => ({
+        key: `part:${p.id}`,
+        label: p.is_me ? "You" : p.display_name,
+        isMe: p.is_me,
+        participantId: p.id,
+      }));
+    }
     if (groupId && group) {
       return group.members
         .filter((m) => !excluded.has(m.id))
@@ -129,7 +153,7 @@ export function SplitEditor({
       if (name.trim()) list.push({ key: `p${i}`, label: name.trim(), isMe: false });
     });
     return list;
-  }, [groupId, group, excluded, includeMe, picked, names]);
+  }, [adjustOnly, existing, groupId, group, excluded, includeMe, picked, names]);
 
   function togglePicked(person: PersonSummary) {
     setPicked((prev) =>
@@ -139,13 +163,16 @@ export function SplitEditor({
 
   // Seed item assignments/amounts from an existing split, once people exist.
   const [seeded, setSeeded] = useState(false);
-  if (existing && !seeded && people.length && (!existing.group_id || group)) {
+  if (existing && !seeded && people.length && (adjustOnly || !existing.group_id || group)) {
     const nextAssigned: Record<string, number[]> = {};
     const nextAmounts: Record<string, string> = {};
     const nextWeights: Record<string, string> = {};
+    const nextPaid: Record<string, string> = {};
     for (const p of existing.participants) {
       const person = people.find((x) =>
-        p.member_id
+        adjustOnly
+          ? x.participantId === p.id
+          : p.member_id
           ? x.memberId === p.member_id
           : p.is_me
             ? x.isMe
@@ -157,6 +184,7 @@ export function SplitEditor({
       nextAssigned[person.key] = p.item_indexes;
       if (p.amount) nextAmounts[person.key] = p.amount;
       if (p.weight) nextWeights[person.key] = p.weight;
+      if (p.paid) nextPaid[person.key] = p.paid;
       if (p.is_payer && p.member_id) setPayerId(p.member_id);
     }
     if (existing.group_id && group) {
@@ -166,12 +194,33 @@ export function SplitEditor({
     setAssigned(nextAssigned);
     setAmounts(nextAmounts);
     setWeights(nextWeights);
+    setPaidAmounts(nextPaid);
     setSeeded(true);
   }
 
   const effectivePayer = groupId ? payerId || group?.members.find((m) => m.is_me)?.id || "" : "";
   // One-off: you by default; falls back to the first person if you're not in it.
   const oneOffPayerKey = people.some((p) => p.key === oneOffPayer) ? oneOffPayer : people[0]?.key;
+  const adjustPayerKey = `part:${adjustPayer}`;
+  const payerSelectValue = severalPayers
+    ? SEVERAL
+    : adjustOnly
+      ? adjustPayerKey
+      : groupId
+        ? people.find((p) => p.memberId === effectivePayer)?.key ?? ""
+        : oneOffPayerKey;
+  function choosePayer(key: string) {
+    if (key === SEVERAL) {
+      setSeveralPayers(true);
+      return;
+    }
+    setSeveralPayers(false);
+    const person = people.find((p) => p.key === key);
+    if (adjustOnly) setAdjustPayer(person?.participantId ?? "");
+    else if (groupId) setPayerId(person?.memberId ?? "");
+    else setOneOffPayer(key);
+  }
+  const paidSum = people.reduce((sum, p) => sum + toCents(paidAmounts[p.key] ?? ""), 0);
 
   const preview = previewShares(
     splitTotal,
@@ -197,22 +246,54 @@ export function SplitEditor({
       setError(preview.error);
       return;
     }
+    if (severalPayers && paidSum !== toCents(splitTotal)) {
+      setError(`What everyone paid must add up to ${money(splitTotal, currency)}.`);
+      return;
+    }
+    const weightFor = (key: string) =>
+      mode === "shares" || mode === "percent" ? weights[key]?.trim() || null : null;
+    const paidFor = (key: string) => (severalPayers ? paidAmounts[key]?.trim() || "0" : null);
+    if (adjustOnly && existing) {
+      setSaving(true);
+      try {
+        onDone(
+          await apiPatch<Split>(`v1/splits/${existing.id}`, {
+            ...(existing.receipt_id ? {} : { description: description.trim(), total, date }),
+            mode,
+            participants: people.map((p) => ({
+              id: p.participantId,
+              is_payer: !severalPayers && p.participantId === adjustPayer,
+              paid: paidFor(p.key),
+              item_indexes: mode === "items" ? assigned[p.key] ?? [] : [],
+              amount: mode === "custom" ? amounts[p.key] ?? "0" : null,
+              weight: weightFor(p.key),
+            })),
+          }),
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't save the changes.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const participants: ParticipantIn[] = people.map((p) => ({
       is_me: p.isMe,
       member_id: p.memberId ?? null,
       person_id: p.personId ?? null,
       name: p.memberId || p.personId || p.isMe ? undefined : p.label,
-      is_payer: groupId ? p.memberId === effectivePayer : p.key === oneOffPayerKey,
+      is_payer: !severalPayers && (groupId ? p.memberId === effectivePayer : p.key === oneOffPayerKey),
+      paid: paidFor(p.key),
       item_indexes: mode === "items" ? assigned[p.key] ?? [] : [],
       amount: mode === "custom" ? amounts[p.key] ?? "0" : null,
-      weight: mode === "shares" ? weights[p.key]?.trim() || null : null,
+      weight: weightFor(p.key),
     }));
     const body: SplitIn = {
       receipt_id: receipt?.id ?? null,
       group_id: groupId || null,
       mode,
       participants,
-      ...(receipt ? {} : { description: description.trim(), total, currency, date, items: [] }),
+      ...(receipt ? {} : { description: description.trim(), total, currency, date, items: [], repeat }),
     };
     setSaving(true);
     try {
@@ -229,7 +310,7 @@ export function SplitEditor({
 
   return (
     <div className="space-y-xl">
-      {!receipt && (
+      {!receipt && !(adjustOnly && existing?.receipt_id) && (
         <div className="grid gap-md sm:grid-cols-[1fr_9rem_10rem]">
           <div className="space-y-xs">
             <Label htmlFor="split-desc">What for</Label>
@@ -246,8 +327,31 @@ export function SplitEditor({
         </div>
       )}
 
+      {!receipt && !adjustOnly && (
+        <div className="space-y-xs">
+          <Label htmlFor="split-repeat">Repeats</Label>
+          <select
+            id="split-repeat"
+            value={repeat}
+            onChange={(e) => setRepeat(e.target.value as "" | "weekly" | "monthly")}
+            className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout sm:w-56"
+          >
+            <option value="">Doesn&apos;t repeat</option>
+            <option value="weekly">Every week</option>
+            <option value="monthly">Every month</option>
+          </select>
+        </div>
+      )}
+
+      {adjustOnly && (
+        <p className="rounded-md bg-surface-2 px-md py-sm text-caption text-text-secondary">
+          You can change the amounts, who paid and how it&apos;s divided. Who&apos;s on it is up to
+          whoever added it. Everyone on it sees what you changed.
+        </p>
+      )}
+
       {/* Only a choice once there's a group to choose (or this split is in one). */}
-      {!fixedGroupId && ((groups ?? []).length > 0 || groupId) && (
+      {!adjustOnly && !fixedGroupId && ((groups ?? []).length > 0 || groupId) && (
         <div className="space-y-xs">
           <Label htmlFor="split-with">Split with</Label>
           <select
@@ -270,7 +374,7 @@ export function SplitEditor({
         </div>
       )}
 
-      {groupId ? (
+      {adjustOnly ? null : groupId ? (
         group && (
           <div className="space-y-md">
             <div className="space-y-xs">
@@ -301,21 +405,6 @@ export function SplitEditor({
                   );
                 })}
               </div>
-            </div>
-            <div className="space-y-xs">
-              <Label htmlFor="split-payer">Paid by</Label>
-              <select
-                id="split-payer"
-                value={effectivePayer}
-                onChange={(e) => setPayerId(e.target.value)}
-                className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
-              >
-                {people.map((p) => (
-                  <option key={p.key} value={p.memberId}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
         )
@@ -379,29 +468,61 @@ export function SplitEditor({
               New names are saved to your people. Add their email later to invite them.
             </p>
           </div>
-          {people.length > 1 && (
-            <div className="space-y-xs">
-              <Label htmlFor="split-oneoff-payer">Paid by</Label>
-              <select
-                id="split-oneoff-payer"
-                value={oneOffPayerKey}
-                onChange={(e) => setOneOffPayer(e.target.value)}
-                className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
+        </div>
+      )}
+
+      {people.length > 1 && (
+        <div className="space-y-sm">
+          <div className="space-y-xs">
+            <Label htmlFor="split-payer">Paid by</Label>
+            <select
+              id="split-payer"
+              value={payerSelectValue}
+              onChange={(e) => choosePayer(e.target.value)}
+              className="h-11 w-full rounded-md border border-border bg-surface px-md text-callout"
+            >
+              {people.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+              <option value={SEVERAL}>Several people…</option>
+            </select>
+          </div>
+          {severalPayers && (
+            <ul className="divide-y divide-border rounded-lg bg-surface-2">
+              {people.map((p) => (
+                <li key={p.key} className="flex items-center gap-md px-md py-sm text-callout">
+                  <span className="min-w-0 flex-1 truncate">{p.label} paid</span>
+                  <Input
+                    aria-label={`${p.label} paid`}
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    className="h-9 w-28 text-right"
+                    value={paidAmounts[p.key] ?? ""}
+                    onChange={(e) => setPaidAmounts((prev) => ({ ...prev, [p.key]: e.target.value }))}
+                  />
+                </li>
+              ))}
+              <li
+                className={cn(
+                  "px-md py-sm text-right text-caption tabular",
+                  paidSum === toCents(splitTotal) ? "text-text-tertiary" : "text-warning",
+                )}
               >
-                {people.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+                Paid {money(paidSum / 100, currency)} of {money(splitTotal, currency)}
+              </li>
+            </ul>
           )}
         </div>
       )}
 
       <div className="space-y-sm">
         <p className="text-caption text-text-secondary">How</p>
-        <div role="radiogroup" aria-label="How to split" className="inline-flex rounded-pill bg-surface-2 p-[3px]">
+        <div role="radiogroup" aria-label="How to split" className="inline-flex max-w-full overflow-x-auto rounded-pill bg-surface-2 p-[3px]">
           {MODES.filter((m) => m.value !== "items" || items.length > 0).map((m) => (
             <button
               key={m.value}
@@ -461,33 +582,38 @@ export function SplitEditor({
         <p className="text-caption text-text-secondary">
           {mode === "shares"
             ? "Parts each person pays (2 and 3 split the total into fifths)"
-            : mode === "custom"
+            : mode === "percent"
+              ? "Percent each person pays (adds up to 100)"
+              : mode === "custom"
               ? "Exact amount for each person"
               : "Each person pays"}
         </p>
         <ul className="divide-y divide-border rounded-lg bg-surface-2">
           {people.map((p, i) => {
             const share = "shares" in preview ? money(preview.shares[i], currency) : "—";
-            const typed = mode === "shares" || mode === "custom";
+            const weighted = mode === "shares" || mode === "percent";
+            const typed = weighted || mode === "custom";
             return (
               <li key={p.key} className="flex items-center gap-md px-md py-sm text-callout">
                 <span className="min-w-0 flex-1 truncate">{p.label}</span>
                 {typed && (
                   <Input
-                    aria-label={mode === "shares" ? `${p.label} shares` : `${p.label} amount`}
+                    aria-label={
+                      mode === "shares" ? `${p.label} shares` : mode === "percent" ? `${p.label} percent` : `${p.label} amount`
+                    }
                     type="number"
                     inputMode="decimal"
-                    step={mode === "shares" ? "any" : "0.01"}
+                    step={weighted ? "any" : "0.01"}
                     min="0"
-                    placeholder={mode === "shares" ? "1" : "0.00"}
+                    placeholder={mode === "shares" ? "1" : mode === "percent" ? "0" : "0.00"}
                     className="h-9 w-20 text-right"
-                    value={(mode === "shares" ? weights : amounts)[p.key] ?? ""}
+                    value={(weighted ? weights : amounts)[p.key] ?? ""}
                     onChange={(e) =>
-                      (mode === "shares" ? setWeights : setAmounts)((prev) => ({ ...prev, [p.key]: e.target.value }))
+                      (weighted ? setWeights : setAmounts)((prev) => ({ ...prev, [p.key]: e.target.value }))
                     }
                   />
                 )}
-                {mode === "shares" ? (
+                {weighted ? (
                   <span className="w-24 text-right font-mono text-caption text-text-secondary tabular">= {share}</span>
                 ) : (
                   mode !== "custom" && <span className="font-mono tabular">{share}</span>

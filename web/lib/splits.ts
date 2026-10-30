@@ -54,6 +54,14 @@ export function previewShares(
     return { shares: allocate(totalCents, weights.map((w) => (totalCents * w) / whole)).map(fromCents) };
   }
 
+  if (mode === "percent") {
+    const weights = inputs.map((p) => (p.weight?.trim() ? Number(p.weight) : 0));
+    if (weights.some((w) => !Number.isFinite(w) || w < 0)) return { error: "Percentages can't be negative." };
+    const sum = weights.reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - 100) > 1e-9) return { error: `The percentages add up to ${+sum.toFixed(2)}%, not 100%.` };
+    return { shares: allocate(totalCents, weights.map((w) => (totalCents * w) / 100)).map(fromCents) };
+  }
+
   if (mode === "even") {
     return { shares: allocate(totalCents, Array(n).fill(totalCents / n)).map(fromCents) };
   }

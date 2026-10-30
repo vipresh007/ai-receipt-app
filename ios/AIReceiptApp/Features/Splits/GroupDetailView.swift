@@ -21,6 +21,7 @@ struct GroupDetailView: View {
     @State private var payment: PaymentDraft?
     @State private var newMember = ""
     @State private var confirmingDelete = false
+    @State private var notice: String?
 
     var body: some View {
         Group {
@@ -120,12 +121,32 @@ struct GroupDetailView: View {
 
     private func settleUpSection(_ group: API.GroupDetailDTO) -> some View {
         LedgerSection("Settle up") {
+            Toggle(
+                isOn: Binding(
+                    get: { group.simplifyDebts },
+                    set: { on in Task { await mutate { try await $0.setSimplifyDebts(groupID: groupID, on) } } }
+                )
+            ) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Simplify debts").font(.appCallout)
+                    Text(
+                        group.simplifyDebts
+                            ? "Fewest payments: if you owe Sam and Sam owes Kim, you pay Kim directly."
+                            : "Everyone pays back whoever they owe, expense by expense."
+                    )
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                }
+            }
             if group.payments.isEmpty {
                 Text("Everyone's square.")
                     .font(.appCallout)
                     .foregroundStyle(Theme.Palette.textSecondary)
             }
             ForEach(group.payments, id: \.self) { p in
+                let debtor = group.members.first { $0.id == p.fromMemberId }
+                let creditor = group.members.first { $0.id == p.toMemberId }
+                VStack(alignment: .leading, spacing: Theme.Space.sm) {
                 HStack(spacing: Theme.Space.sm) {
                     Text(group.memberName(p.fromMemberId)).font(.appCallout.weight(.medium))
                     Image(systemName: "arrow.right")
@@ -141,6 +162,25 @@ struct GroupDetailView: View {
                     .controlSize(.small)
                     .tint(Theme.Palette.accent)
                 }
+                if creditor?.isMe == true, let debtor, debtor.hasAccount {
+                    Button("Remind \(debtor.displayName)") {
+                        Task {
+                            await mutate { try await $0.remindMember(groupID: groupID, memberID: debtor.id) }
+                            if errorMessage == nil { notice = "Reminder sent to \(debtor.displayName)." }
+                        }
+                    }
+                    .font(.appCaption)
+                    .buttonStyle(.borderless)
+                }
+                if debtor?.isMe == true, let creditor, let payTo = creditor.payTo {
+                    PayToView(payTo: payTo, amount: p.amountValue, currency: group.currency, name: creditor.displayName)
+                }
+                }
+            }
+            if let notice {
+                Text(notice)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.success)
             }
             if group.members.count > 1 {
                 Button("Record a payment") {
@@ -165,14 +205,14 @@ struct GroupDetailView: View {
             ForEach(group.splits) { split in
                 DisclosureGroup {
                     SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
+                    if split.receiptId != nil && split.isOwner {
+                        Text("Split from your receipt. Edit it from the receipt.")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textTertiary)
+                    } else if split.canEdit {
+                        Button("Edit expense") { editingSplit = split }
+                    }
                     if split.isOwner {
-                        if split.receiptId == nil {
-                            Button("Edit expense") { editingSplit = split }
-                        } else {
-                            Text("Split from a receipt. Edit it from the receipt.")
-                                .font(.appCaption)
-                                .foregroundStyle(Theme.Palette.textTertiary)
-                        }
                         Button("Remove expense", role: .destructive) { Task { await removeSplit(split) } }
                     }
                 } label: {

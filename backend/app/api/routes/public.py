@@ -54,6 +54,7 @@ async def public_split(
         return names.get(r.member_id, r.display_name) if r.member_id else r.display_name
 
     payer = next((r for r in rows if r.is_payer), None)
+    payer_user = await session.get(User, payer.user_id) if payer and payer.user_id else None
     return PublicSplitOut(
         description=split.description,
         date=split.spent_at.isoformat(),
@@ -74,6 +75,7 @@ async def public_split(
         payer_name=name(payer) if payer else None,
         group_name=group.name if group else None,
         your_share=f"{viewer.share:.2f}",
+        pay_to=people_store.pay_details(payer_user),
     )
 
 
@@ -108,14 +110,13 @@ async def public_person(
     inviter = await session.get(User, person.owner_user_id) if person else None
     if person is None or inviter is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "This invite link isn't valid any more.")
-    splits, rows = await people_store.shared_splits(session, inviter, person)
-    paid = await people_store.payments(session, inviter, person)
-    owed_to_inviter = people_store.net_balance(inviter, person, splits, rows, paid)
+    splits, _rows = await people_store.shared_splits(session, inviter, person)
+    owed_to_inviter, _, _, currency = await people_store.balance(session, inviter, person)
     return PublicPersonOut(
         from_name=split_store.display_name_for(inviter),
         name=person.display_name,
         claimed=person.user_id is not None,
         balance=f"{-owed_to_inviter:.2f}",
-        currency=splits[0].currency if splits else "CAD",
+        currency=currency,
         expense_count=len(splits),
     )

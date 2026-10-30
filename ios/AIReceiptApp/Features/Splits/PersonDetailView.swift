@@ -25,6 +25,7 @@ struct PersonDetailView: View {
     @State private var renaming = false
     @State private var newName = ""
     @State private var confirmingRemove = false
+    @State private var remindNote: String?
 
     var body: some View {
         Group {
@@ -100,10 +101,27 @@ struct PersonDetailView: View {
                             person.balanceValue > 0 ? Theme.Palette.success
                                 : person.balanceValue < 0 ? Theme.Palette.danger : Theme.Palette.text
                         )
-                    Button("Record a payment") { recordingPayment = true }
-                        .buttonStyle(.bordered)
-                        .tint(Theme.Palette.accent)
-                        .padding(.top, Theme.Space.xs)
+                    if !person.groupBalances.isEmpty {
+                        Text(breakdown(person))
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textTertiary)
+                    }
+                    HStack(spacing: Theme.Space.sm) {
+                        Button("Record a payment") { recordingPayment = true }
+                            .buttonStyle(.bordered)
+                            .tint(Theme.Palette.accent)
+                        if person.balanceValue > 0 { remindButton(person) }
+                    }
+                    .padding(.top, Theme.Space.xs)
+                    if let remindNote {
+                        Text(remindNote)
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    if person.balanceValue < 0, let payTo = person.payTo {
+                        PayToView(payTo: payTo, amount: -person.balanceValue, currency: person.currency, name: person.name)
+                            .padding(.top, Theme.Space.xs)
+                    }
                 }
                 .padding(.vertical, Theme.Space.xs)
             }
@@ -121,6 +139,42 @@ struct PersonDetailView: View {
             }
         }
         .ledgerBackground()
+    }
+
+    private func breakdown(_ person: API.PersonDetailDTO) -> String {
+        func signed(_ value: Decimal) -> String {
+            (value > 0 ? "+" : value < 0 ? "−" : "") + abs(value).formatted(.currency(code: person.currency))
+        }
+        let outside = Decimal(string: person.outsideGroups) ?? 0
+        return (["Outside groups \(signed(outside))"] + person.groupBalances.map { "\($0.name) \(signed($0.balanceValue))" })
+            .joined(separator: " · ")
+    }
+
+    /// Tally sends it (in the app once they've joined, by email when there's
+    /// an address); otherwise you text it yourself.
+    @ViewBuilder
+    private func remindButton(_ person: API.PersonDetailDTO) -> some View {
+        if person.hasAccount || (person.email != nil && person.canEmail) {
+            Button("Remind") { Task { await remind() } }
+                .buttonStyle(.bordered)
+        } else {
+            let amount = person.balanceValue.formatted(.currency(code: person.currency))
+            ShareLink(
+                item: "Hi \(person.name), a friendly reminder: you owe me \(amount). Details on Tally: \(person.inviteUrl)"
+            ) {
+                Text("Remind")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func remind() async {
+        do {
+            person = try await Splits.client(auth).remindPerson(id: personID)
+            remindNote = "Reminder sent."
+        } catch {
+            remindNote = error.localizedDescription
+        }
     }
 
     private func balanceText(_ person: API.PersonDetailDTO) -> String {
@@ -145,14 +199,14 @@ struct PersonDetailView: View {
             ForEach(person.splits) { split in
                 DisclosureGroup {
                     SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
+                    if split.receiptId != nil && split.isOwner {
+                        Text("Split from your receipt. Edit it from the receipt.")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textTertiary)
+                    } else if split.canEdit {
+                        Button("Edit expense") { editingSplit = split }
+                    }
                     if split.isOwner {
-                        if split.receiptId == nil {
-                            Button("Edit expense") { editingSplit = split }
-                        } else {
-                            Text("Split from a receipt. Edit it from the receipt.")
-                                .font(.appCaption)
-                                .foregroundStyle(Theme.Palette.textTertiary)
-                        }
                         Button("Remove expense", role: .destructive) { Task { await removeSplit(split) } }
                     }
                 } label: {

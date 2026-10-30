@@ -8,9 +8,11 @@ struct GroupsView: View {
     enum Route: Hashable {
         case group(String)
         case person(String)
+        case activity
     }
 
     @Environment(AuthManager.self) private var auth
+    @Environment(ActivityBadge.self) private var badge
 
     @State private var groups: [API.GroupSummaryDTO] = []
     @State private var people: [API.PersonDTO] = []
@@ -83,10 +85,19 @@ struct GroupsView: View {
                     GroupDetailView(groupID: id, onChange: { Task { await load() } })
                 case .person(let id):
                     PersonDetailView(personID: id, onChange: { Task { await load() } })
+                case .activity:
+                    ActivityView()
                 }
             }
             .toolbar {
                 if auth.isSignedIn {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        NavigationLink(value: Route.activity) {
+                            Image(systemName: badge.unread > 0 ? "bell.badge" : "bell")
+                                .symbolRenderingMode(.multicolor)
+                        }
+                        .accessibilityLabel(badge.unread > 0 ? "Activity, \(badge.unread) new" : "Activity")
+                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
                             Button("Add person", systemImage: "person.badge.plus") { addingPerson = true }
@@ -100,7 +111,12 @@ struct GroupsView: View {
             }
         }
         .task(id: auth.isSignedIn) { await load() }
-        .onAppear { Task { await load() } }
+        .onAppear {
+            Task {
+                await load()
+                await badge.refresh(auth)
+            }
+        }
         .sheet(isPresented: $creating) {
             NewGroupSheet { group in
                 Task {

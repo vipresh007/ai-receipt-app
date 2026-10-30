@@ -1,7 +1,7 @@
 """People you split with outside groups: balances, payments, invites
 (docs/SPLITS.md)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -19,7 +19,7 @@ from app.schemas.split import (
     PersonPatch,
     PersonPaymentIn,
 )
-from app.services import people_store, split_store
+from app.services import activity, people_store, split_store
 from app.services.mailer import Mailer, get_mailer
 
 router = APIRouter()
@@ -136,6 +136,16 @@ async def add_payment(
             note=data.note.strip(),
         )
     )
+    summary = await people_store.person_out(session, user, person)
+    money = split_store._money_text(amount, summary.currency)
+    await activity.notify(
+        session,
+        [person.user_id],
+        user,
+        "payment",
+        f"recorded paying you {money}" if data.you_paid else f"recorded that you paid them {money}",
+        person_id=person.id,
+    )
     await session.commit()
     return await people_store.person_out(session, user, person, detail=True)
 
@@ -152,6 +162,54 @@ async def delete_payment(
     if payment is None or payment.person_id != person.id or payment.owner_user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found.")
     await session.delete(payment)
+    await session.commit()
+    return await people_store.person_out(session, user, person, detail=True)
+
+
+@router.post("/{person_id}/remind", response_model=PersonDetailOut)
+async def remind_person(
+    person_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    mailer: Mailer | None = Depends(get_mailer),
+) -> PersonDetailOut:
+    """Nudge someone who owes you: in the app if they've joined, by email
+    either way when there's an address. Once a day at most."""
+    person = await people_store.require_person(session, person_id, user)
+    overall, _outside, _groups, currency = await people_store.balance(session, user, person)
+    if overall <= 0:
+        raise HTTPException(status.HTTP_409_CONFLICT, "They don't owe you anything right now.")
+    last = person.reminded_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    if last is not None and datetime.now(UTC) - last < timedelta(days=1):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You reminded them today already.")
+    money = split_store._money_text(overall, currency)
+    if person.user_id is not None:
+        await activity.notify(
+            session, [person.user_id], user, "reminder", f"sent a reminder: you owe them {money}"
+        )
+    elif person.email and mailer is not None:
+        name = split_store.display_name_for(user)
+        url = people_store.invite_url(person.invite_token)
+        try:
+            await mailer.send(
+                to=person.email,
+                subject=f"{name} sent you a reminder on Tally",
+                text=f"Hi {person.display_name},\n\n{name} sent a friendly reminder: "
+                f"you owe them {money}.\n\nSee what it's for: {url}\n",
+                html=people_store.invite_email(name, person, overall, currency)["html"],
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "Couldn't send the email. Text them instead."
+            ) from exc
+    else:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Add their email to send a reminder, or text them yourself.",
+        )
+    person.reminded_at = datetime.now(UTC)
     await session.commit()
     return await people_store.person_out(session, user, person, detail=True)
 

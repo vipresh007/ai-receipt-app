@@ -2,10 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, ReceiptText, ScanLine, Target, UserRound, Users } from "lucide-react";
+import {
+  Bell,
+  LayoutDashboard,
+  LogOut,
+  ReceiptText,
+  ScanLine,
+  Target,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TallyMark } from "@/components/tally-mark";
 import { AppDownloadBanner } from "@/components/app-download-banner";
+import {
+  ActivityBell,
+  UnreadBadge,
+  useUnreadActivity,
+} from "@/components/activity-bell";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -13,6 +27,7 @@ const LINKS = [
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
   { href: "/groups", label: "Shared", icon: Users },
   { href: "/budgets", label: "Budgets", icon: Target },
+  { href: "/activity", label: "Activity", icon: Bell },
 ];
 
 /** Phones get the iOS app's tabs: Budgets lives under Dashboard and Account
@@ -59,6 +74,7 @@ function Brand({ size = "md" }: { size?: "sm" | "md" }) {
 export function AppNav({ displayName }: { displayName?: string }) {
   const pathname = usePathname();
   const initial = (displayName ?? "").trim().charAt(0).toUpperCase() || "A";
+  const unread = useUnreadActivity();
 
   return (
     <>
@@ -66,13 +82,16 @@ export function AppNav({ displayName }: { displayName?: string }) {
       <header className="-mx-lg -mt-lg mb-xs space-y-sm px-lg pt-[max(12px,env(safe-area-inset-top))] md:hidden">
         <div className="flex items-center justify-between">
           <Brand size="sm" />
-          <Link
-            href="/account"
-            aria-label="Account"
-            className="grid h-9 w-9 place-items-center rounded-full bg-hero font-display text-[15px] font-bold text-gold ring-1 ring-white/5"
-          >
-            {initial}
-          </Link>
+          <div className="flex items-center gap-sm">
+            <ActivityBell />
+            <Link
+              href="/account"
+              aria-label="Account"
+              className="grid h-9 w-9 place-items-center rounded-full bg-hero font-display text-[15px] font-bold text-gold ring-1 ring-white/5"
+            >
+              {initial}
+            </Link>
+          </div>
         </div>
         <AppDownloadBanner />
       </header>
@@ -122,7 +141,8 @@ export function AppNav({ displayName }: { displayName?: string }) {
               )}
             >
               <Icon size={18} />
-              <span>{label}</span>
+              <span className="flex-1">{label}</span>
+              {href === "/activity" && <UnreadBadge count={unread} />}
             </Link>
           );
         })}
@@ -134,7 +154,9 @@ export function AppNav({ displayName }: { displayName?: string }) {
               aria-current={pathname === "/account" ? "page" : undefined}
               className={cn(
                 "truncate rounded-md px-md py-sm text-caption transition-colors hover:bg-surface-2",
-                pathname === "/account" ? "text-accent" : "text-text-tertiary hover:text-text",
+                pathname === "/account"
+                  ? "text-accent"
+                  : "text-text-tertiary hover:text-text",
               )}
               title={displayName}
             >

@@ -44,6 +44,11 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("POST", "v1/groups", body: GroupWrite(name: name, currency: currency, members: members))
     }
 
+    /// Fewest payments (A owes B, B owes C → A pays C), or who owes whom directly.
+    func setSimplifyDebts(groupID: String, _ on: Bool) async throws -> GroupDetailDTO {
+        try await splitsCall("PATCH", "v1/groups/\(groupID)", body: ["simplify_debts": on])
+    }
+
     func deleteGroup(id: String) async throws {
         try await splitsSend("DELETE", "v1/groups/\(id)")
     }
@@ -106,6 +111,61 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("DELETE", "v1/people/\(personID)/payments/\(id)")
     }
 
+    /// Anyone on an expense: change the amounts, who paid, how it's divided.
+    func adjustSplit(id: String, _ body: SplitAdjustWrite) async throws -> SplitDTO {
+        try await splitsCall("PATCH", "v1/splits/\(id)", body: body)
+    }
+
+    func timeline(splitID: String) async throws -> [TimelineEntryDTO] {
+        try await splitsCall("GET", "v1/splits/\(splitID)/timeline")
+    }
+
+    func addComment(splitID: String, body: String) async throws -> [TimelineEntryDTO] {
+        try await splitsCall("POST", "v1/splits/\(splitID)/comments", body: ["body": body])
+    }
+
+    func deleteComment(splitID: String, id: String) async throws -> [TimelineEntryDTO] {
+        try await splitsCall("DELETE", "v1/splits/\(splitID)/comments/\(id)")
+    }
+
+    func remindPerson(id: String) async throws -> PersonDetailDTO {
+        try await splitsCall("POST", "v1/people/\(id)/remind", body: [String: String]())
+    }
+
+    func remindMember(groupID: String, memberID: String) async throws -> GroupDetailDTO {
+        try await splitsCall("POST", "v1/groups/\(groupID)/members/\(memberID)/remind", body: [String: String]())
+    }
+
+    // MARK: - Activity, settings, export
+
+    func activity() async throws -> ActivityFeedDTO {
+        try await splitsCall("GET", "v1/activity")
+    }
+
+    func unreadActivity() async throws -> Int {
+        let result: [String: Int] = try await splitsCall("GET", "v1/activity/unread")
+        return result["unread"] ?? 0
+    }
+
+    func markActivityRead() async throws {
+        let _: [String: Int] = try await splitsCall("POST", "v1/activity/read", body: [String: String]())
+    }
+
+    func me() async throws -> MeDTO {
+        try await splitsCall("GET", "v1/auth/me")
+    }
+
+    func updateMe(_ body: MeSettingsWrite) async throws -> MeDTO {
+        try await splitsCall("PATCH", "v1/auth/me", body: body)
+    }
+
+    /// `receipts` or `shared`: a CSV file's bytes.
+    func exportCSV(_ name: String) async throws -> Data {
+        let (data, http) = try await send(try authorized("v1/export/\(name).csv", method: "GET"))
+        try Self.expectOK(http, data, "Couldn't export")
+        return data
+    }
+
     // MARK: - Transport
 
     private static let splitsEncoder: JSONEncoder = {
@@ -149,6 +209,75 @@ extension ReceiptExtractionAPIClient {
         var itemIndexes: [Int]
         var amount: String?
         var weight: String? = nil
+        var paid: String? = nil
+    }
+
+    struct ParticipantAdjustWrite: Encodable {
+        let id: String
+        var isPayer: Bool
+        var paid: String?
+        var itemIndexes: [Int]
+        var amount: String?
+        var weight: String?
+    }
+
+    struct SplitAdjustWrite: Encodable {
+        var description: String?
+        var total: String?
+        var date: String?
+        var mode: SplitMath.Mode
+        var participants: [ParticipantAdjustWrite]
+    }
+
+    struct MeSettingsWrite: Encodable {
+        var emailNotifications: Bool?
+        var paypalMe: String?
+        var interac: String?
+    }
+
+    struct MeDTO: Decodable {
+        let id: String
+        let email: String
+        let displayName: String
+        let emailNotifications: Bool
+        let paypalMe: String
+        let interac: String
+    }
+
+    struct PayDetailsDTO: Decodable, Hashable {
+        let paypalMe: String?
+        let interac: String?
+    }
+
+    struct TimelineEntryDTO: Decodable, Identifiable, Hashable {
+        let id: String
+        let kind: String
+        let authorName: String
+        let text: String
+        let at: String
+        let canDelete: Bool
+
+        var isComment: Bool { kind == "comment" }
+        var date: Date { ISO8601DateFormatter.tally(at) ?? .now }
+    }
+
+    struct ActivityItemDTO: Decodable, Identifiable, Hashable {
+        let id: String
+        let actorName: String
+        let kind: String
+        let text: String
+        let at: String
+        let read: Bool
+        let splitId: String?
+        let groupId: String?
+        let personId: String?
+
+        var date: Date { ISO8601DateFormatter.tally(at) ?? .now }
+    }
+
+    struct ActivityFeedDTO: Decodable {
+        let unread: Int
+        let items: [ActivityItemDTO]
     }
 
     struct SplitWrite: Encodable {
@@ -160,6 +289,7 @@ extension ReceiptExtractionAPIClient {
         var date: String?
         var mode: SplitMath.Mode
         var participants: [ParticipantWrite]
+        var `repeat`: String? = nil
     }
 
     struct GroupWrite: Encodable {
@@ -191,6 +321,7 @@ extension ReceiptExtractionAPIClient {
         let itemIndexes: [Int]
         let amount: String?
         let weight: String?
+        let paid: String?
         let share: String
         let settled: Bool
         let shareUrl: String
@@ -211,10 +342,14 @@ extension ReceiptExtractionAPIClient {
         let participants: [ParticipantDTO]
         let myShare: String?
         let isOwner: Bool
+        let canEdit: Bool
+        let `repeat`: String
+        let nextAt: String?
 
         var totalValue: Decimal { Decimal(string: total) ?? 0 }
         var myShareValue: Decimal? { myShare.flatMap { Decimal(string: $0) } }
         var payer: ParticipantDTO? { participants.first(where: \.isPayer) }
+        var payers: [ParticipantDTO] { participants.filter(\.isPayer) }
         var day: Date { ReceiptExtractionAPIClient.isoDay(date) ?? .now }
     }
 
@@ -238,8 +373,19 @@ extension ReceiptExtractionAPIClient {
         let inviteUrl: String
         let invitedAt: String?
         let balance: String
+        let outsideGroups: String
+        let groupBalances: [PersonGroupBalanceDTO]
         let currency: String
         let canEmail: Bool
+        let payTo: PayDetailsDTO?
+
+        var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
+    }
+
+    struct PersonGroupBalanceDTO: Decodable, Hashable {
+        let groupId: String
+        let name: String
+        let balance: String
 
         var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
     }
@@ -263,8 +409,11 @@ extension ReceiptExtractionAPIClient {
         let inviteUrl: String
         let invitedAt: String?
         let balance: String
+        let outsideGroups: String
+        let groupBalances: [PersonGroupBalanceDTO]
         let currency: String
         let canEmail: Bool
+        let payTo: PayDetailsDTO?
         let splits: [SplitDTO]
         let payments: [PersonPaymentDTO]
 
@@ -279,6 +428,7 @@ extension ReceiptExtractionAPIClient {
         let myBalance: String
         let inviteUrl: String
         let isOwner: Bool
+        let simplifyDebts: Bool
     }
 
     struct GroupMemberDTO: Decodable, Identifiable, Hashable {
@@ -288,6 +438,7 @@ extension ReceiptExtractionAPIClient {
         let hasAccount: Bool
         /// Positive = is owed, negative = owes.
         let balance: String
+        let payTo: PayDetailsDTO?
 
         var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
     }
@@ -319,6 +470,7 @@ extension ReceiptExtractionAPIClient {
         let myBalance: String
         let inviteUrl: String
         let isOwner: Bool
+        let simplifyDebts: Bool
         let members: [GroupMemberDTO]
         let payments: [PaymentDTO]
         let splits: [SplitDTO]
@@ -346,5 +498,20 @@ enum Splits {
             throw ReceiptExtractionError.notConfigured
         }
         return client
+    }
+}
+
+
+extension ISO8601DateFormatter {
+    private static let fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private static let whole = ISO8601DateFormatter()
+
+    /// The API's timestamps, with or without fractional seconds.
+    static func tally(_ string: String) -> Date? {
+        fractional.date(from: string) ?? whole.date(from: string)
     }
 }

@@ -9,9 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db import get_session
-from app.models import Split, SplitParticipant, User
-from app.schemas.split import SettledIn, SplitIn, SplitOut
-from app.services import split_store
+from app.models import Split, SplitComment, SplitEvent, SplitParticipant, User
+from app.schemas.split import (
+    CommentIn,
+    SettledIn,
+    SplitAdjustIn,
+    SplitIn,
+    SplitOut,
+    TimelineEntry,
+)
+from app.services import activity, split_store
 
 router = APIRouter()
 
@@ -83,7 +90,7 @@ async def delete_split(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Only the person who added it can delete it."
         )
-    await split_store.delete_split(session, split)
+    await split_store.delete_split(session, split, actor=user)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -103,6 +110,123 @@ async def set_settled(
     row = await session.get(SplitParticipant, participant_id)
     if row is None or row.split_id != split.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found on this split.")
-    row.settled_at = datetime.now(UTC) if data.settled else None
+    if (row.settled_at is not None) != data.settled:
+        row.settled_at = datetime.now(UTC) if data.settled else None
+        state = "paid" if data.settled else "not paid"
+        await split_store.log_event(
+            session, split, user, f"marked {row.display_name}'s share {state}"
+        )
     await session.commit()
     return await split_store.split_out(session, split, user)
+
+
+@router.patch("/splits/{split_id}", response_model=SplitOut)
+async def adjust_split(
+    split_id: UUID,
+    data: SplitAdjustIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SplitOut:
+    """Anyone on the expense (or in its group) changes the amounts, who paid,
+    or how it's divided. Logged in its history; the others are told."""
+    split = await split_store.require_split(session, split_id, user)
+    split = await split_store.adjust_split(session, user, split, data)
+    await session.commit()
+    return await split_store.split_out(session, split, user)
+
+
+@router.get("/splits/{split_id}/timeline", response_model=list[TimelineEntry])
+async def timeline(
+    split_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[TimelineEntry]:
+    """The expense's history (added, every change) and its comments, oldest first."""
+    split = await split_store.require_split(session, split_id, user)
+    entries = [
+        TimelineEntry(
+            id=e.id,
+            kind="event",
+            author_name=e.actor_name,
+            text=e.text,
+            at=_iso(e.created_at),
+            can_delete=False,
+        )
+        for e in await session.scalars(select(SplitEvent).where(SplitEvent.split_id == split.id))
+    ] + [
+        TimelineEntry(
+            id=c.id,
+            kind="comment",
+            author_name=c.author_name,
+            text=c.body,
+            at=_iso(c.created_at),
+            can_delete=c.user_id == user.id,
+        )
+        for c in await session.scalars(
+            select(SplitComment).where(SplitComment.split_id == split.id)
+        )
+    ]
+    return sorted(entries, key=lambda e: e.at)
+
+
+@router.post(
+    "/splits/{split_id}/comments",
+    response_model=list[TimelineEntry],
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_comment(
+    split_id: UUID,
+    data: CommentIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[TimelineEntry]:
+    split = await split_store.require_split(session, split_id, user)
+    body = data.body.strip()
+    if not body:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Write something first.")
+    session.add(
+        SplitComment(
+            split_id=split.id,
+            user_id=user.id,
+            author_name=split_store.display_name_for(user)[:120],
+            body=body,
+        )
+    )
+    rows = await session.scalars(
+        select(SplitParticipant.user_id).where(SplitParticipant.split_id == split.id)
+    )
+    preview = body if len(body) <= 80 else body[:77] + "…"
+    await activity.notify(
+        session,
+        set(rows),
+        user,
+        "comment",
+        f'commented on "{split.description}": {preview}',
+        split_id=split.id,
+        group_id=split.group_id,
+    )
+    await session.commit()
+    return await timeline(split_id, user, session)
+
+
+@router.delete("/splits/{split_id}/comments/{comment_id}", response_model=list[TimelineEntry])
+async def delete_comment(
+    split_id: UUID,
+    comment_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[TimelineEntry]:
+    split = await split_store.require_split(session, split_id, user)
+    comment = await session.get(SplitComment, comment_id)
+    if comment is None or comment.split_id != split.id or comment.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Comment not found.")
+    await session.delete(comment)
+    await session.commit()
+    return await timeline(split_id, user, session)
+
+
+def _iso(moment: datetime | None) -> str:
+    moment = moment or datetime.now(UTC)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return moment.isoformat()

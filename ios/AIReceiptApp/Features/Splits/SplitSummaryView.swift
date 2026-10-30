@@ -13,6 +13,25 @@ struct SplitParticipantRows: View {
     @State private var busy: String?
 
     var body: some View {
+        rows
+        if !split.repeat.isEmpty {
+            Label(
+                split.repeat == "weekly" ? "Repeats every week" : "Repeats every month",
+                systemImage: "repeat"
+            )
+            .font(.appCaption)
+            .foregroundStyle(Theme.Palette.textTertiary)
+        }
+        NavigationLink {
+            SplitTimelineView(split: split)
+        } label: {
+            Label("History & comments", systemImage: "text.bubble")
+                .font(.appCallout)
+        }
+    }
+
+    @ViewBuilder
+    private var rows: some View {
         ForEach(split.participants) { person in
             HStack(spacing: Theme.Space.md) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -21,7 +40,11 @@ struct SplitParticipantRows: View {
                         .strikethrough(person.settled)
                         .foregroundStyle(person.settled ? Theme.Palette.textTertiary : Theme.Palette.text)
                     if person.isPayer {
-                        Text("paid")
+                        Text(
+                            split.payers.count > 1
+                                ? "paid \((Decimal(string: person.paid ?? "") ?? 0).formatted(.currency(code: split.currency)))"
+                                : "paid"
+                        )
                             .font(.appCaption)
                             .foregroundStyle(Theme.Palette.textTertiary)
                     }
