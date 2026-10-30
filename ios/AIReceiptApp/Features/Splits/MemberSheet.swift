@@ -21,6 +21,9 @@ struct MemberSheet: View {
     @State private var recording = false
     @State private var theyPaid = true
     @State private var amount: Decimal?
+    /// Half height to glance at; full height once you start doing something.
+    @State private var detent: PresentationDetent = .medium
+    @FocusState private var typingEmail: Bool
 
     private var me: API.GroupMemberDTO? { group.members.first(where: \.isMe) }
 
@@ -108,6 +111,7 @@ struct MemberSheet: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.send)
+                            .focused($typingEmail)
                             .onSubmit { Task { await invite() } }
                         Button {
                             Task { await invite() }
@@ -146,7 +150,13 @@ struct MemberSheet: View {
                 Button("Remove", role: .destructive) { Task { await remove() } }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detent)
+        .onChange(of: recording) { _, open in
+            if open { withAnimation(Theme.Motion.base) { detent = .large } }
+        }
+        .onChange(of: typingEmail) { _, typing in
+            if typing { withAnimation(Theme.Motion.base) { detent = .large } }
+        }
         .onAppear {
             email = member.email ?? ""
             // Preset to the payment that would settle up.
