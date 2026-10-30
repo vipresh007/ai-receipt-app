@@ -124,13 +124,6 @@ struct GroupDetailView: View {
                     group: group,
                     member: member,
                     owed: withMe(member, in: group),
-                    onRecordPayment: { draft in
-                        selectedMember = nil
-                        Task {
-                            try? await Task.sleep(for: .milliseconds(350))
-                            payment = draft
-                        }
-                    },
                     onChange: { next in
                         self.group = next
                         onChange()

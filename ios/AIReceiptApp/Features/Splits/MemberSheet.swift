@@ -9,7 +9,6 @@ struct MemberSheet: View {
     let member: API.GroupMemberDTO
     /// Between you and them: positive = they owe you.
     let owed: Decimal
-    let onRecordPayment: (PaymentDraft) -> Void
     let onChange: (API.GroupDetailDTO) -> Void
 
     @Environment(AuthManager.self) private var auth
@@ -18,6 +17,10 @@ struct MemberSheet: View {
     @State private var busy = false
     @State private var note: String?
     @State private var confirmingRemove = false
+    // Recording a payment, right here (no second screen).
+    @State private var recording = false
+    @State private var theyPaid = true
+    @State private var amount: Decimal?
 
     private var me: API.GroupMemberDTO? { group.members.first(where: \.isMe) }
 
@@ -37,19 +40,50 @@ struct MemberSheet: View {
                             .foregroundStyle(owed > 0 ? Theme.Palette.success : owed < 0 ? Theme.Palette.danger : Theme.Palette.text)
                     }
                     .padding(.vertical, Theme.Space.xs)
+                    if let note, !note.isEmpty, !recording {
+                        Text(note).font(.appCaption).foregroundStyle(Theme.Palette.success)
+                    }
                 }
                 .listRowBackground(Color.clear)
 
-                if owed != 0, let me {
+                if let me {
                     Section {
                         Button {
-                            onRecordPayment(
-                                owed > 0
-                                    ? PaymentDraft(from: member.id, to: me.id, amount: owed)
-                                    : PaymentDraft(from: me.id, to: member.id, amount: -owed)
-                            )
+                            withAnimation(Theme.Motion.base) { recording.toggle() }
                         } label: {
-                            Label("Record a payment", systemImage: "checkmark.circle")
+                            HStack {
+                                Label("Record a payment", systemImage: "checkmark.circle")
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.appCaption.weight(.semibold))
+                                    .rotationEffect(.degrees(recording ? 180 : 0))
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
+                        }
+                        if recording {
+                            Picker("Who paid", selection: $theyPaid) {
+                                Text("\(member.displayName) paid you").tag(true)
+                                Text("You paid \(member.displayName)").tag(false)
+                            }
+                            .pickerStyle(.segmented)
+                            LabeledContent("Amount") {
+                                TextField("0.00", value: $amount, format: .currency(code: group.currency))
+                                    .multilineTextAlignment(.trailing)
+                                    .keyboardType(.decimalPad)
+                                    .font(.appMoney)
+                            }
+                            Button {
+                                Task { await record(me) }
+                            } label: {
+                                Text("Record \(money(amount ?? 0))")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(Theme.Palette.accent)
+                            .disabled(busy || (amount ?? 0) <= 0)
+                            Text("Tally only keeps track. Send the money however you normally do.")
+                                .font(.appCaption)
+                                .foregroundStyle(Theme.Palette.textTertiary)
                         }
                         if owed > 0, member.hasAccount {
                             Button {
@@ -113,7 +147,12 @@ struct MemberSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .onAppear { email = member.email ?? "" }
+        .onAppear {
+            email = member.email ?? ""
+            // Preset to the payment that would settle up.
+            theyPaid = owed >= 0
+            amount = owed == 0 ? nil : abs(owed)
+        }
     }
 
     private func run(_ action: (API) async throws -> API.GroupDetailDTO, done: String) async {
@@ -125,6 +164,17 @@ struct MemberSheet: View {
         } catch {
             note = error.localizedDescription
         }
+    }
+
+    private func record(_ me: API.GroupMemberDTO) async {
+        let value = amount ?? 0
+        guard value > 0 else { return }
+        let (from, to) = theyPaid ? (member.id, me.id) : (me.id, member.id)
+        await run(
+            { try await $0.addSettlement(groupID: group.id, from: from, to: to, amount: value) },
+            done: theyPaid ? "Recorded: \(member.displayName) paid you \(money(value))." : "Recorded: you paid \(member.displayName) \(money(value))."
+        )
+        withAnimation(Theme.Motion.base) { recording = false }
     }
 
     private func invite() async {
