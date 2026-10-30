@@ -107,7 +107,7 @@ struct SplitEditorView: View {
         _includeMe = State(initialValue: existing.map { $0.participants.contains(where: \.isMe) } ?? true)
         _picked = State(initialValue: pickedAtStart)
         _names = State(
-            initialValue: !others.isEmpty ? others : (existing != nil || !withPeople.isEmpty) ? [] : [NamedPerson(name: "")]
+            initialValue: others
         )
         _oneOffPayer = State(initialValue: oneOffPayer)
         _included = State(
@@ -381,43 +381,27 @@ struct SplitEditorView: View {
 
             if groupID.isEmpty {
                 Toggle("Include me", isOn: $includeMe)
-                if !savedPeople.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        Text("Your people")
-                            .font(.appCaption)
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                        FlowLayout(spacing: 6) {
-                            ForEach(savedPeople) { person in
-                                let on = picked.contains { $0.id == person.id }
-                                Button {
-                                    togglePicked(person)
-                                } label: {
-                                    Text(person.name)
-                                        .font(.appCaption.weight(.medium))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .foregroundStyle(on ? Theme.Palette.accent : Theme.Palette.textSecondary)
-                                        .background(
-                                            on ? Theme.Palette.accent.opacity(0.14) : Theme.Palette.surface2,
-                                            in: Capsule()
-                                        )
-                                }
-                                .buttonStyle(.borderless)
-                                .accessibilityAddTraits(on ? .isSelected : [])
-                            }
-                        }
+                // Who's on it: picked people and new names, with a search
+                // screen to add more (any number of people).
+                ForEach(picked, id: \.id) { person in
+                    Text(person.name)
+                }
+                .onDelete { picked.remove(atOffsets: $0) }
+                ForEach(names.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }) { person in
+                    HStack {
+                        Text(person.name)
+                        Text("new").font(.appCaption).foregroundStyle(Theme.Palette.textTertiary)
                     }
-                    .padding(.vertical, 2)
                 }
-                ForEach($names) { $person in
-                    TextField("New person's name", text: $person.name)
-                        .textContentType(.name)
+                .onDelete { offsets in
+                    let shown = names.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+                    let gone = Set(offsets.map { shown[$0].id })
+                    names.removeAll { gone.contains($0.id) }
                 }
-                .onDelete { names.remove(atOffsets: $0) }
-                Button {
-                    names.append(NamedPerson(name: ""))
+                NavigationLink {
+                    PeoplePickerView(saved: savedPeople, picked: $picked, names: $names)
                 } label: {
-                    Label("Someone new", systemImage: "plus")
+                    Label(picked.isEmpty && names.isEmpty ? "Add people" : "Add or remove people", systemImage: "person.badge.plus")
                 }
             } else if let group {
                 ForEach(group.members) { member in
@@ -454,24 +438,38 @@ struct SplitEditorView: View {
                             .font(.appMoney)
                             .foregroundStyle(Theme.Palette.textSecondary)
                     }
-                    FlowLayout(spacing: 6) {
-                        ForEach(people) { person in
-                            let on = assigned[person.key]?.contains(index) ?? false
-                            Button {
-                                toggle(person.key, item: index)
-                            } label: {
-                                Text(person.label)
-                                    .font(.appCaption.weight(.medium))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .foregroundStyle(on ? Theme.Palette.accent : Theme.Palette.textSecondary)
-                                    .background(
-                                        on ? Theme.Palette.accent.opacity(0.14) : Theme.Palette.surface2,
-                                        in: Capsule()
-                                    )
+                    if people.count > 6 {
+                        NavigationLink {
+                            WhoHadItView(
+                                item: item.name.isEmpty ? "Item" : item.name,
+                                people: people.map { (key: $0.key, label: $0.label) },
+                                chosen: whoHad(index)
+                            )
+                        } label: {
+                            Text(whoHadSummary(index))
+                                .font(.appCaption)
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                        }
+                    } else {
+                        FlowLayout(spacing: 6) {
+                            ForEach(people) { person in
+                                let on = assigned[person.key]?.contains(index) ?? false
+                                Button {
+                                    toggle(person.key, item: index)
+                                } label: {
+                                    Text(person.label)
+                                        .font(.appCaption.weight(.medium))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .foregroundStyle(on ? Theme.Palette.accent : Theme.Palette.textSecondary)
+                                        .background(
+                                            on ? Theme.Palette.accent.opacity(0.14) : Theme.Palette.surface2,
+                                            in: Capsule()
+                                        )
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityAddTraits(on ? .isSelected : [])
                             }
-                            .buttonStyle(.borderless)
-                            .accessibilityAddTraits(on ? .isSelected : [])
                         }
                     }
                 }
@@ -558,6 +556,27 @@ struct SplitEditorView: View {
                 included = next
             }
         )
+    }
+
+    /// Who had item `index`, as a set of people keys (for the checklist).
+    private func whoHad(_ index: Int) -> Binding<Set<String>> {
+        Binding(
+            get: { Set(people.filter { assigned[$0.key]?.contains(index) ?? false }.map(\.key)) },
+            set: { chosen in
+                for person in people {
+                    var set = assigned[person.key] ?? []
+                    if chosen.contains(person.key) { set.insert(index) } else { set.remove(index) }
+                    assigned[person.key] = set
+                }
+            }
+        )
+    }
+
+    private func whoHadSummary(_ index: Int) -> String {
+        let names = people.filter { assigned[$0.key]?.contains(index) ?? false }.map(\.label)
+        if names.isEmpty { return "Who had it: everyone" }
+        let shown = names.prefix(2).joined(separator: ", ")
+        return "Who had it: " + (names.count > 2 ? "\(shown) +\(names.count - 2)" : shown)
     }
 
     private func toggle(_ key: String, item index: Int) {

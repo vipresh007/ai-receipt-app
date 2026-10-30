@@ -17,6 +17,9 @@ struct PersonDetailView: View {
     @State private var person: API.PersonDetailDTO?
     @State private var errorMessage: String?
     @State private var addingExpense = false
+    @State private var pickingReceipt = false
+    @State private var pendingReceipt: Receipt?
+    @State private var receiptToSplit: Receipt?
     @State private var editingSplit: API.SplitDTO?
     @State private var recordingPayment = false
     @State private var email = ""
@@ -59,6 +62,23 @@ struct PersonDetailView: View {
         .task { await load() }
         .liveRefresh { await load() }
         .refreshable { await load() }
+        .sheet(isPresented: $pickingReceipt, onDismiss: {
+            // One sheet at a time: open the editor once the picker is gone.
+            receiptToSplit = pendingReceipt
+            pendingReceipt = nil
+        }) {
+            ReceiptPickerSheet { pendingReceipt = $0 }
+        }
+        .sheet(item: $receiptToSplit) { receipt in
+            if let person {
+                SplitEditorView(receipt: receipt, withPeople: [PickedPerson(id: person.id, name: person.name)]) { saved in
+                    receipt.myShare = saved.myShareValue
+                    receipt.splitID = saved.id
+                    try? modelContext.save()
+                    Task { await changed() }
+                }
+            }
+        }
         .sheet(isPresented: $addingExpense) {
             if let person {
                 SplitEditorView(withPeople: [PickedPerson(id: person.id, name: person.name)]) { _ in
@@ -187,8 +207,9 @@ struct PersonDetailView: View {
 
     private func expensesSection(_ person: API.PersonDetailDTO) -> some View {
         Section {
-            Button {
-                addingExpense = true
+            Menu {
+                Button("From a receipt", systemImage: "doc.text") { pickingReceipt = true }
+                Button("Type it in", systemImage: "pencil") { addingExpense = true }
             } label: {
                 Label("Add expense", systemImage: "plus")
             }

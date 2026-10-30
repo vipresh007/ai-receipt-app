@@ -375,6 +375,7 @@ extension ReceiptExtractionAPIClient {
         let currency: String
         let canEmail: Bool
         let payTo: PayDetailsDTO?
+        let lastShared: String?
 
         var balanceValue: Decimal { Decimal(string: balance) ?? 0 }
     }

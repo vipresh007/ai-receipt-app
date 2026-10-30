@@ -17,6 +17,9 @@ struct GroupDetailView: View {
     @State private var group: API.GroupDetailDTO?
     @State private var errorMessage: String?
     @State private var addingExpense = false
+    @State private var pickingReceipt = false
+    @State private var pendingReceipt: Receipt?
+    @State private var receiptToSplit: Receipt?
     @State private var editingSplit: API.SplitDTO?
     @State private var payment: PaymentDraft?
     @State private var newMember = ""
@@ -62,6 +65,23 @@ struct GroupDetailView: View {
         .task { await load() }
         .liveRefresh { await load() }
         .refreshable { await load() }
+        .sheet(isPresented: $pickingReceipt, onDismiss: {
+            // One sheet at a time: open the editor once the picker is gone.
+            receiptToSplit = pendingReceipt
+            pendingReceipt = nil
+        }) {
+            ReceiptPickerSheet { pendingReceipt = $0 }
+        }
+        .sheet(item: $receiptToSplit) { receipt in
+            if let group {
+                SplitEditorView(receipt: receipt, group: group) { saved in
+                    receipt.myShare = saved.myShareValue
+                    receipt.splitID = saved.id
+                    try? modelContext.save()
+                    Task { await changed() }
+                }
+            }
+        }
         .sheet(isPresented: $addingExpense) {
             if let group {
                 SplitEditorView(group: group) { _ in Task { await changed() } }
@@ -105,9 +125,9 @@ struct GroupDetailView: View {
             }
             .listRowBackground(Color.clear)
 
-            balancesSection(group)
-            timelineSection(group)
             peopleSection(group)
+            expensesSection(group)
+            if !group.settlements.isEmpty { paymentsSection(group) }
 
             if let errorMessage {
                 Text(errorMessage)
@@ -129,17 +149,33 @@ struct GroupDetailView: View {
         }
     }
 
-    private func balancesSection(_ group: API.GroupDetailDTO) -> some View {
+    /// Everyone in the group, where each stands with you, and what to do
+    /// about it; then adding people, the invite, and simplify debts.
+    private func peopleSection(_ group: API.GroupDetailDTO) -> some View {
         let me = group.members.first(where: \.isMe)
         let others = group.payments.filter { $0.fromMemberId != me?.id && $0.toMemberId != me?.id }
-        return LedgerSection("Balances") {
+        return Section {
             ForEach(group.members.filter { !$0.isMe }) { m in
                 let owed = withMe(m, in: group)
                 let elsewhere = m.balanceValue - owed
                 VStack(alignment: .leading, spacing: Theme.Space.sm) {
                     HStack(spacing: Theme.Space.md) {
+                        Text(m.displayName.prefix(1).uppercased())
+                            .font(.appCallout.weight(.semibold))
+                            .frame(width: 34, height: 34)
+                            .background(Theme.Palette.surface2, in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(m.displayName).font(.appCallout.weight(.medium))
+                            HStack(spacing: 6) {
+                                Text(m.displayName).font(.appCallout.weight(.medium))
+                                if !m.hasAccount {
+                                    Text("not joined")
+                                        .font(.system(size: 10.5))
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 1)
+                                        .background(Theme.Palette.surface2, in: Capsule())
+                                        .foregroundStyle(Theme.Palette.textTertiary)
+                                }
+                            }
                             Text(memberStatus(owed: owed, elsewhere: elsewhere, currency: group.currency))
                                 .font(.appCaption)
                                 .foregroundStyle(
@@ -167,9 +203,18 @@ struct GroupDetailView: View {
                         }
                         .font(.appCaption)
                         .buttonStyle(.borderless)
+                        .padding(.leading, 46)
                     }
                     if owed < 0, let payTo = m.payTo {
                         PayToView(payTo: payTo, amount: -owed, currency: group.currency, name: m.displayName)
+                            .padding(.leading, 46)
+                    }
+                }
+                .swipeActions {
+                    if !m.hasAccount, owed == 0, abs(elsewhere) < 0.005 {
+                        Button("Remove", role: .destructive) {
+                            Task { await mutate { try await $0.removeMember(groupID: groupID, memberID: m.id) } }
+                        }
                     }
                 }
             }
@@ -187,9 +232,20 @@ struct GroupDetailView: View {
                 }
             }
             if let notice {
-                Text(notice)
-                    .font(.appCaption)
-                    .foregroundStyle(Theme.Palette.success)
+                Text(notice).font(.appCaption).foregroundStyle(Theme.Palette.success)
+            }
+            HStack {
+                TextField("Add someone", text: $newMember)
+                    .textContentType(.name)
+                    .submitLabel(.done)
+                    .onSubmit { Task { await addMember() } }
+                Button("Add") { Task { await addMember() } }
+                    .disabled(newMember.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if let url = URL(string: group.inviteUrl) {
+                ShareLink(item: url, message: Text("Join \(group.name) on Tally to see what we've spent and who owes whom.")) {
+                    Label("Send invite link", systemImage: "person.badge.plus")
+                }
             }
             Toggle(
                 isOn: Binding(
@@ -209,11 +265,21 @@ struct GroupDetailView: View {
                 }
             }
             if group.members.count > 1, let me {
-                Button("Other payment") {
+                Button("Record some other payment") {
                     payment = PaymentDraft(from: group.members.first { !$0.isMe }?.id ?? me.id, to: me.id, amount: nil)
                 }
+                .font(.appCaption)
             }
+        } header: {
+            Text("PEOPLE")
+                .font(.appMicro)
+                .tracking(1.4)
+                .foregroundStyle(Theme.Palette.textTertiary)
+        } footer: {
+            Text("Invite people so they see the group too. They sign in and pick their name.")
+                .font(.appCaption)
         }
+        .listRowBackground(Theme.Palette.surface)
     }
 
     private func memberStatus(owed: Decimal, elsewhere: Decimal, currency: String) -> String {
@@ -224,67 +290,30 @@ struct GroupDetailView: View {
         return elsewhere < 0 ? "owes others \(money(-elsewhere))" : "is owed \(money(elsewhere)) by others"
     }
 
-    /// Expenses and payments together, newest first: a payment is part of
-    /// the story ("Mit paid you $100"), not a separate list.
-    private func timelineSection(_ group: API.GroupDetailDTO) -> some View {
-        enum Entry: Identifiable {
-            case expense(API.SplitDTO)
-            case payment(API.SettlementDTO)
-            var id: String {
-                switch self {
-                case .expense(let s): "s-\(s.id)"
-                case .payment(let p): "p-\(p.id)"
-                }
-            }
-            var date: String {
-                switch self {
-                case .expense(let s): s.date
-                case .payment(let p): p.date
-                }
-            }
-        }
-        let entries = (group.splits.map(Entry.expense) + group.settlements.map(Entry.payment))
-            .sorted { $0.date > $1.date }
-        return Section {
-            Button {
-                addingExpense = true
+    /// Expenses, newest first, under month headings.
+    @ViewBuilder
+    private func expensesSection(_ group: API.GroupDetailDTO) -> some View {
+        let months = Dictionary(grouping: group.splits) { String($0.date.prefix(7)) }
+            .sorted { $0.key > $1.key }
+        Section {
+            Menu {
+                Button("From a receipt", systemImage: "doc.text") { pickingReceipt = true }
+                Button("Type it in", systemImage: "pencil") { addingExpense = true }
             } label: {
                 Label("Add expense", systemImage: "plus")
             }
-            if entries.isEmpty {
+            if group.splits.isEmpty {
                 Text("Add one here, or split a receipt with this group from the receipt itself.")
                     .font(.appCaption)
                     .foregroundStyle(Theme.Palette.textSecondary)
             }
-            ForEach(entries) { entry in
-                switch entry {
-                case .payment(let s):
-                    HStack(spacing: Theme.Space.md) {
-                        Image(systemName: "banknote")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.Palette.success)
-                            .frame(width: 28, height: 28)
-                            .background(Theme.Palette.success.opacity(0.14), in: Circle())
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("\(group.memberName(s.fromMemberId)) paid \(group.memberName(s.toMemberId))")
-                                .font(.appCallout)
-                            if let day = API.isoDay(s.date) {
-                                Text(day, format: .dateTime.month(.abbreviated).day())
-                                    .font(.appCaption)
-                                    .foregroundStyle(Theme.Palette.textTertiary)
-                            }
-                        }
-                        Spacer()
-                        Text(s.amountValue, format: .currency(code: group.currency))
-                            .font(.appMoney)
-                            .foregroundStyle(Theme.Palette.success)
-                    }
-                    .swipeActions {
-                        Button("Delete", role: .destructive) {
-                            Task { await mutate { try await $0.deleteSettlement(groupID: groupID, id: s.id) } }
-                        }
-                    }
-                case .expense(let split):
+        } header: {
+            Text("EXPENSES").font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
+        }
+        .listRowBackground(Theme.Palette.surface)
+        ForEach(months, id: \.key) { month, splits in
+            Section {
+                ForEach(splits.sorted { $0.date > $1.date }) { split in
                     DisclosureGroup {
                         SplitParticipantRows(split: split, onChange: { _ in Task { await load() } })
                         if split.receiptId != nil && split.isOwner {
@@ -301,64 +330,46 @@ struct GroupDetailView: View {
                         SharedExpenseRow(split: split)
                     }
                 }
+            } header: {
+                Text(monthTitle(month)).font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
             }
-        } header: {
-            Text("EXPENSES & PAYMENTS")
-                .font(.appMicro)
-                .tracking(1.4)
-                .foregroundStyle(Theme.Palette.textTertiary)
+            .listRowBackground(Theme.Palette.surface)
         }
-        .listRowBackground(Theme.Palette.surface)
     }
 
-    private func peopleSection(_ group: API.GroupDetailDTO) -> some View {
-        Section {
-            ForEach(group.members) { m in
-                HStack {
+    private func monthTitle(_ yearMonth: String) -> String {
+        guard let day = API.isoDay(yearMonth + "-01") else { return yearMonth }
+        return day.formatted(.dateTime.month(.wide).year()).uppercased()
+    }
+
+    private func paymentsSection(_ group: API.GroupDetailDTO) -> some View {
+        LedgerSection("Payments") {
+            ForEach(group.settlements) { s in
+                HStack(spacing: Theme.Space.md) {
+                    Image(systemName: "banknote")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.Palette.success)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.Palette.success.opacity(0.14), in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(m.isMe ? "\(m.displayName) (you)" : m.displayName).font(.appCallout)
-                        if !m.hasAccount {
-                            Text("Hasn't joined yet")
+                        Text("\(group.memberName(s.fromMemberId)) paid \(group.memberName(s.toMemberId))")
+                            .font(.appCallout)
+                        if let day = API.isoDay(s.date) {
+                            Text(day, format: .dateTime.month(.abbreviated).day())
                                 .font(.appCaption)
                                 .foregroundStyle(Theme.Palette.textTertiary)
                         }
                     }
                     Spacer()
-                    if m.hasAccount {
-                        Text("On Tally").font(.appCaption).foregroundStyle(Theme.Palette.textTertiary)
-                    }
+                    Text(s.amountValue, format: .currency(code: group.currency)).font(.appMoney)
                 }
                 .swipeActions {
-                    if !m.hasAccount {
-                        Button("Remove", role: .destructive) {
-                            Task { await mutate { try await $0.removeMember(groupID: groupID, memberID: m.id) } }
-                        }
+                    Button("Delete", role: .destructive) {
+                        Task { await mutate { try await $0.deleteSettlement(groupID: groupID, id: s.id) } }
                     }
                 }
             }
-            HStack {
-                TextField("Add a name", text: $newMember)
-                    .textContentType(.name)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await addMember() } }
-                Button("Add") { Task { await addMember() } }
-                    .disabled(newMember.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            if let url = URL(string: group.inviteUrl) {
-                ShareLink(item: url, message: Text("Join \(group.name) on Tally to see what we've spent and who owes whom.")) {
-                    Label("Send invite link", systemImage: "person.badge.plus")
-                }
-            }
-        } header: {
-            Text("PEOPLE")
-                .font(.appMicro)
-                .tracking(1.4)
-                .foregroundStyle(Theme.Palette.textTertiary)
-        } footer: {
-            Text("Each person opens the invite, signs in, and picks their name, so they see the group too.")
-                .font(.appCaption)
         }
-        .listRowBackground(Theme.Palette.surface)
     }
 
     // MARK: - Actions
