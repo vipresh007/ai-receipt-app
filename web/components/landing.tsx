@@ -123,7 +123,7 @@ export function Hero() {
             style={vars({ "--d": "240ms" })}
           >
             {/* Side by side on phones too: the badge is 50px, the button 52px. */}
-            <a href={SIGNUP} className="l-btn grow basis-[150px] !px-5 sm:grow-0 sm:basis-auto sm:!px-[26px]">
+            <a href={SIGNUP} className="l-btn grow basis-[130px] !px-4 sm:grow-0 sm:basis-auto sm:!px-[26px]">
               Start free <ArrowRight size={17} />
             </a>
             <AppStoreBadge />
@@ -796,8 +796,8 @@ export function FAQ() {
 export function BottomCTA() {
   const strokes = [40, 88, 136, 184];
   return (
-    <section className="px-6 pb-28">
-      <div className="relative mx-auto max-w-[1180px] overflow-hidden rounded-[32px] bg-[color:var(--ink-2)] px-8 py-20 ring-1 ring-[color:var(--rule)] sm:px-16 lg:py-24">
+    <section className="px-4 pb-28 sm:px-6">
+      <div className="relative mx-auto max-w-[1180px] overflow-hidden rounded-[32px] bg-[color:var(--ink-2)] px-5 py-16 ring-1 ring-[color:var(--rule)] sm:px-16 sm:py-20 lg:py-24">
         <svg
           aria-hidden
           viewBox="0 0 240 240"
@@ -820,7 +820,7 @@ export function BottomCTA() {
             the next minute. Free forever tier, no card.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            <a href={SIGNUP} className="l-btn grow basis-[150px] !px-5 sm:grow-0 sm:basis-auto sm:!px-[26px]">
+            <a href={SIGNUP} className="l-btn grow basis-[130px] !px-4 sm:grow-0 sm:basis-auto sm:!px-[26px]">
               Start free <ArrowRight size={17} />
             </a>
             <AppStoreBadge />
