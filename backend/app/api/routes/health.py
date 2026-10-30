@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.config import get_settings
+from app.services import realtime
 
 router = APIRouter(tags=["health"])
 
@@ -14,4 +15,5 @@ async def healthz() -> dict:
         "auth_configured": s.auth_configured,
         "azure_openai_configured": s.azure_openai_configured,
         "blob_configured": s.blob_configured,
+        "live_updates": realtime.listening,
     }

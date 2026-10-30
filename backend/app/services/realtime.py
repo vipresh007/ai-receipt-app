@@ -24,6 +24,9 @@ CHANNEL = "tally_events"
 # user id → the queues of that person's open streams on this replica.
 _streams: dict[uuid.UUID, set[asyncio.Queue]] = {}
 
+# Whether this replica's LISTEN connection is up (shown by /healthz).
+listening = False
+
 
 def subscribe(user_id: uuid.UUID) -> asyncio.Queue:
     queue: asyncio.Queue = asyncio.Queue(maxsize=1)
@@ -71,6 +74,7 @@ async def publish(session: AsyncSession, user_ids: Iterable[uuid.UUID | None]) -
 async def listen_forever(engine: AsyncEngine) -> None:
     """Hold a LISTEN connection on this replica and fan NOTIFYs out to the
     streams open here. Reconnects if the connection drops."""
+    global listening
     if engine.dialect.name != "postgresql":
         return
     delay = 1.0
@@ -88,6 +92,7 @@ async def listen_forever(engine: AsyncEngine) -> None:
 
                 await driver.add_listener(CHANNEL, on_notify)
                 log.info("listening for live updates")
+                listening = True
                 delay = 1.0
                 while not driver.is_closed():
                     await asyncio.sleep(30)
@@ -96,5 +101,6 @@ async def listen_forever(engine: AsyncEngine) -> None:
             raise
         except Exception:  # noqa: BLE001 - reconnect
             log.warning("live updates listener dropped; reconnecting", exc_info=True)
+        listening = False
         await asyncio.sleep(delay)
         delay = min(delay * 2, 30)
