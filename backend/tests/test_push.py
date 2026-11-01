@@ -89,3 +89,20 @@ async def test_turning_a_kind_off_stops_its_push(client, anon_client, test_user,
     # The feed still has everything.
     act_as(sam)
     assert len((await anon_client.get("/v1/activity")).json()["items"]) >= 2
+
+
+async def test_me_works_for_accounts_from_before_notification_settings(
+    client, test_user, sessionmaker_
+):
+    from sqlalchemy import update
+
+    from app.models import User
+
+    async with sessionmaker_() as session:
+        await session.execute(update(User).values(notify_prefs=None))
+        await session.commit()
+    r = await client.get("/v1/auth/me")
+    assert r.status_code == 200, r.text
+    assert r.json()["notify_prefs"]["comments.push"] is True
+    r = await client.patch("/v1/auth/me", json={"notify_prefs": {"comments.push": False}})
+    assert r.status_code == 200 and r.json()["notify_prefs"]["comments.push"] is False

@@ -22,7 +22,8 @@ class MeOut(BaseModel):
     receipts_email: str | None = None
     receipts_personal_email: str | None = None
     # Every notification kind × channel → on/off, e.g. "comments.push".
-    notify_prefs: dict[str, bool] = {}
+    # (Filled from notify_prefs.resolved; the column is null for older accounts.)
+    notify_prefs: dict[str, bool] | None = None
 
 
 class MeSettingsIn(BaseModel):
