@@ -59,7 +59,7 @@ async def process_receipt(
     settings = settings or get_settings()
 
     async def upload() -> str | None:
-        if not settings.blob_configured:
+        if not settings.blob_configured or not image_bytes:
             return None
         try:
             store = blob or BlobStorage(settings)

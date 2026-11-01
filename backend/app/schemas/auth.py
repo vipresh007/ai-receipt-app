@@ -18,6 +18,9 @@ class MeOut(BaseModel):
     # else null (the app guesses from the device).
     currency: str | None = None
     currency_is_set: bool = False
+    # Forward receipts here (null when forwarding isn't set up on the server).
+    receipts_email: str | None = None
+    receipts_personal_email: str | None = None
 
 
 class MeSettingsIn(BaseModel):

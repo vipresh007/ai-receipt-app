@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { APP_STORE_URL } from "@/lib/site";
-import { BlockedCard, ExportCard, SharingSettings } from "@/components/account-sharing";
+import { BlockedCard, ExportCard, ForwardCard, SharingSettings } from "@/components/account-sharing";
 
 export default function AccountPage() {
   const { data, isLoading } = useQuery({
@@ -82,6 +82,7 @@ export default function AccountPage() {
         </a>
       </Card>
 
+      {data && <ForwardCard me={data} />}
       {data && <SharingSettings me={data} />}
       <ExportCard />
       <BlockedCard />

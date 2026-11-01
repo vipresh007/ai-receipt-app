@@ -75,6 +75,9 @@ export interface Me {
   /** Home currency (set, or from your receipts); null = guess from the device. */
   currency: string | null;
   currency_is_set: boolean;
+  /** Forward receipts here; null when forwarding isn't set up. */
+  receipts_email?: string | null;
+  receipts_personal_email?: string | null;
 }
 
 export interface Budget {

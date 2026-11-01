@@ -77,13 +77,23 @@ class AzureOpenAIExtractor:
                                 "text": (
                                     "Extract this receipt. OCR lines "
                                     f"(may be wrong or empty):\n<ocr>\n{ocr_block}\n</ocr>"
+                                    if image_bytes
+                                    # An emailed receipt with no attachment: just its text.
+                                    else "Extract this emailed receipt from its text:\n"
+                                    f"<email>\n{ocr_block}\n</email>"
                                 ),
                             },
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:{media_type};base64,{image_b64}"},
-                            },
-                        ],
+                        ]
+                        + (
+                            [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:{media_type};base64,{image_b64}"},
+                                }
+                            ]
+                            if image_bytes
+                            else []
+                        ),
                     },
                 ],
                 response_format=ExtractedReceipt,

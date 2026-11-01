@@ -74,6 +74,20 @@ struct SharingSettingsView: View {
                         .font(.appCaption)
                 }
                 .listRowBackground(Theme.Palette.surface)
+                if let address = me.receiptsEmail {
+                    Section {
+                        ForwardRow(title: "Forward to", address: address)
+                        if let personal = me.receiptsPersonalEmail {
+                            ForwardRow(title: "From any other inbox", address: personal)
+                        }
+                    } header: {
+                        header("Email receipts in")
+                    } footer: {
+                        Text("Forward an e-receipt from \(me.email) to \(address) and it's read and added for you, attachments (PDF or photo) or not. From another email address, use your personal one.")
+                            .font(.appCaption)
+                    }
+                    .listRowBackground(Theme.Palette.surface)
+                }
             } else {
                 ProgressView().frame(maxWidth: .infinity)
             }
@@ -216,5 +230,30 @@ struct SharingSettingsView: View {
         } catch {
             note = error.localizedDescription
         }
+    }
+}
+
+
+private struct ForwardRow: View {
+    let title: String
+    let address: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            UIPasteboard.general.string = address
+            copied = true
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.appCaption).foregroundStyle(Theme.Palette.textTertiary)
+                HStack {
+                    Text(address).font(.appCallout).foregroundStyle(Theme.Palette.text).textSelection(.enabled)
+                    Spacer()
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .foregroundStyle(Theme.Palette.accent)
+                }
+            }
+        }
+        .accessibilityLabel("Copy \(address)")
     }
 }

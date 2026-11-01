@@ -86,6 +86,13 @@ class Settings(BaseSettings):
     apns_team_id: str = "253QMGHP88"
     apns_topic: str = "com.vipreshpatel.tally"
 
+    # Forwarded receipts (services/inbox.py): the mailbox people forward to,
+    # read over IMAP. Empty password = the feature is off and hidden.
+    receipts_inbox_address: str = "receipts@dataeaver.ca"
+    imap_host: str = "imap.hostinger.com"
+    imap_port: int = 993
+    imap_password: str = ""
+
     # Where reports of comments go (empty: kept in content_reports only).
     report_email: str = ""
 

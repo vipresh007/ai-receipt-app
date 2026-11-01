@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: October 30, 2026._
+_Last updated: November 1, 2026._
 
 This policy explains what **Tally** ("we", "us"), an app developed and
 operated by **DATA EAVER INC.**, collects when you use the Tally app and
@@ -25,6 +25,14 @@ choices you have. Questions: **contact@dataeaver.ca**.
   each one.
 - **Payment details you choose to add** — an Interac e-Transfer email or phone
   number, so people who owe you can pay you back.
+- **Receipts you forward by email** — when you forward an e-receipt to your
+  Tally address, the email (sender, subject, text and attachments) is read to
+  pull out the receipt, the receipt is saved like a scanned one, and the email
+  itself is not kept beyond that. Mail that doesn't match an account is ignored.
+- **Return and warranty dates** you set on a receipt, to remind you before they
+  pass.
+- **Reports and blocks** — if you report a comment, a copy of it and why; the
+  people you block.
 
 **Created as you use Tally**
 
@@ -34,6 +42,13 @@ choices you have. Questions: **contact@dataeaver.ca**.
 - **Anti-abuse data** — for people using the app without an account, a random
   device identifier and a per-device / per-IP count of AI scans, to enforce
   the free limit. It is not linked to an identity.
+- **Push notification token** — if you allow notifications on iPhone while
+  signed in, the token Apple gives your device, so we can send you activity
+  on shared expenses. Removed when you sign out or delete your account.
+
+The iPhone widget, Share to Tally and return reminders work on your device:
+the widget's numbers and anything you share in stay on the phone until you
+save them as a receipt.
 
 We do **not** collect precise location, contacts, advertising identifiers, or
 health/financial-institution data, and we do not use tracking technologies for

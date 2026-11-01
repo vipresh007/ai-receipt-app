@@ -32,5 +32,7 @@ class User(Base):
     currency: Mapped[str] = mapped_column(String(3), default="")
     # Interac e-Transfer email or phone, shown to people who owe you.
     interac: Mapped[str] = mapped_column(String(120), default="")
+    # Personal forwarding address: receipts+<inbox_token>@… (services/inbox.py).
+    inbox_token: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     plan: Mapped[str] = mapped_column(String(20), default="free")  # free | pro

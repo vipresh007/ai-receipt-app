@@ -238,3 +238,43 @@ export function BlockedCard() {
     </Card>
   );
 }
+
+/** Where to forward e-receipts; shown once the server's mailbox is set up. */
+export function ForwardCard({ me }: { me: Me }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  if (!me.receipts_email) return null;
+  const rows = [
+    ["Forward to", me.receipts_email],
+    ...(me.receipts_personal_email ? [["From any other inbox", me.receipts_personal_email]] : []),
+  ] as [string, string][];
+
+  return (
+    <Card className="space-y-md">
+      <CardTitle>Email receipts in</CardTitle>
+      <p className="text-caption text-text-secondary">
+        Forward an e-receipt from {me.email} to {me.receipts_email} and it&apos;s read and added for
+        you, with or without a PDF or photo attached. From another address, use your personal one.
+      </p>
+      <ul className="space-y-sm">
+        {rows.map(([label, address]) => (
+          <li key={address} className="flex items-center justify-between gap-md rounded-md bg-surface-2 px-md py-sm">
+            <span className="min-w-0">
+              <span className="block text-caption text-text-tertiary">{label}</span>
+              <span className="block truncate font-mono text-callout">{address}</span>
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                void navigator.clipboard.writeText(address);
+                setCopied(address);
+              }}
+            >
+              {copied === address ? "Copied" : "Copy"}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}

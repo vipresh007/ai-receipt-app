@@ -293,6 +293,9 @@ extension ReceiptExtractionAPIClient {
         let displayName: String
         let emailNotifications: Bool
         let interac: String
+        /// Forward receipts here (nil when forwarding isn't set up).
+        let receiptsEmail: String?
+        let receiptsPersonalEmail: String?
     }
 
     struct PayDetailsDTO: Decodable, Hashable {

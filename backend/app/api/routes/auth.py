@@ -25,6 +25,7 @@ from app.models import (
     User,
 )
 from app.schemas.auth import MeOut, MeSettingsIn
+from app.services import inbox
 from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
@@ -43,6 +44,9 @@ async def _me_out(session: AsyncSession, user: User) -> MeOut:
             .order_by(func.count().desc())
             .limit(1)
         )
+    if inbox.enabled():
+        out.receipts_email = get_settings().receipts_inbox_address
+        out.receipts_personal_email = await inbox.personal_address(session, user)
     return out
 
 
