@@ -90,8 +90,10 @@ struct ReceiptListView: View {
                 monthSections
             }
             .listStyle(.plain)
+            .contentMargins(.bottom, 80, for: .scrollContent)  // clear of the Scan button
             .ledgerBackground()
             .overlay { emptyOverlay }
+            .overlay(alignment: .bottomTrailing) { ScanFloatingButton() }
             .navigationTitle("Receipts")
             // Inline — a safeAreaInset chip row fought with the large title
             // and .searchable's own layout (it left a large blank gap and

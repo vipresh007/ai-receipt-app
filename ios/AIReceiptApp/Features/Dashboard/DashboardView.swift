@@ -189,6 +189,7 @@ struct DashboardView: View {
                             )
                         }
                         .padding(Theme.Space.lg)
+                        .padding(.bottom, 72)  // clear of the floating Scan button
                         .contentShape(Rectangle())  // empty space swipes too
                         .coordinateSpace(.named("dashboard"))
                         // Swipe left/right anywhere but the chart: next/previous period.
@@ -221,6 +222,7 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Palette.bg.ignoresSafeArea())
+            .overlay(alignment: .bottomTrailing) { ScanFloatingButton() }
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showingBudgets) { BudgetsView() }
