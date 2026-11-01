@@ -202,6 +202,7 @@ final class AuthManager {
         // actually signs this device out; a stale Google browser session at
         // worst skips the account picker on a future Google sign-in, not a
         // security issue.
+        await PushNotifications.unregister(self)
         try? credentialsManager?.clear()
         defaults.removeObject(forKey: Key.name)
         defaults.removeObject(forKey: Key.email)

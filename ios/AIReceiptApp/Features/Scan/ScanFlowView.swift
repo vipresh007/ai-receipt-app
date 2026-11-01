@@ -16,6 +16,7 @@ struct ScanFlowView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var auth
     @Environment(\.dismiss) private var dismiss
+    @Environment(TabRouter.self) private var router: TabRouter?
 
     @State private var pickedItem: PhotosPickerItem?
     @State private var showCamera = false
@@ -106,6 +107,16 @@ struct ScanFlowView: View {
             } else {
                 errorMessage = "That PDF couldn't be opened."
             }
+        }
+        .onChange(of: router?.sharedFile, initial: true) { _, file in
+            // Shared in from another app (the Tally share extension).
+            guard onSaved == nil, let file, stage == .idle else { return }
+            router?.sharedFile = nil
+            defer { try? FileManager.default.removeItem(at: file) }
+            let image = file.pathExtension.lowercased() == "pdf"
+                ? PDFReceipt.image(from: file)
+                : UIImage(contentsOfFile: file.path)
+            if let image { handle(image) } else { errorMessage = "That file couldn't be read." }
         }
         .onChange(of: pickedItem) { _, newValue in
             guard let newValue else { return }

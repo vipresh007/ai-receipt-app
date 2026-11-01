@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import realtime, safety
+from app.services import push, realtime, safety
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -70,6 +70,7 @@ async def notify(
                 person_id=person_id,
             )
         )
+    await push.send(session, ids, f"{actor_name} {text}", link=link)
     if kind in EMAILED_KINDS:
         await _email(session, ids, actor_name, text, link)
 

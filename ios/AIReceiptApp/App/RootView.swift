@@ -9,6 +9,13 @@ struct RootView: View {
     @State private var activityBadge = ActivityBadge()
     @State private var live = LiveEvents()
 
+    /// Something was shared into Tally while it was closed: read it on Scan.
+    private func pickUpShared() {
+        guard router.sharedFile == nil, let file = SharedInbox.next() else { return }
+        router.sharedFile = file
+        router.selection = .scan
+    }
+
     var body: some View {
         TabView(selection: $router.selection) {
             DashboardView()
@@ -44,6 +51,21 @@ struct RootView: View {
             await activityBadge.refresh(auth)
             if auth.isSignedIn { live.start(auth) }
             await ReturnReminders.sync(modelContext)
+            WidgetSync.update(modelContext)
+            pickUpShared()
+            PushNotifications.auth = auth
+            PushNotifications.onOpen = { link in
+                router.selection = link.hasPrefix("receipts") ? .receipts : .groups
+            }
+            await PushNotifications.refresh()
+        }
+        .onOpenURL { url in
+            // From the widget: com.vipreshpatel.tally://scan | //dashboard.
+            switch url.host() {
+            case "scan": router.selection = .scan
+            case "dashboard": router.selection = .dashboard
+            default: break
+            }
         }
         .onChange(of: live.tick) { _, _ in
             // Someone changed something you share: the badge, and your share
@@ -55,12 +77,17 @@ struct RootView: View {
         }
         .onChange(of: auth.isSignedIn) { _, signedIn in
             if signedIn { live.start(auth) } else { live.stop() }
+            if signedIn { Task { await PushNotifications.upload() } }
         }
         .onChange(of: scenePhase) { _, phase in
             // Streams only while the app is in front (battery).
             if phase == .active, auth.isSignedIn { live.start(auth) }
-            if phase == .background { live.stop() }
+            if phase == .background {
+                live.stop()
+                WidgetSync.update(modelContext)
+            }
             guard phase == .active else { return }
+            pickUpShared()
             Task {
                 await AccountSync.pull(auth: auth, context: modelContext)
                 await activityBadge.refresh(auth)

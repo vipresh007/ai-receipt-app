@@ -71,3 +71,19 @@ before and the morning of the last return day; 30 days before a warranty ends â€
 reminders once each (`services/reminders.py`, hourly, replica-safe claims)
 and adds them to Activity. Dashboards show a "Coming up" card
 (`GET /v1/receipts/coming-up`).
+
+## Widget, Share to Tally, push
+
+- **Widget** (`ios/TallyWidget`): this month's total, the change vs last month
+  and the top three categories (small, medium, lock screen). The app writes a
+  snapshot to the App Group `group.com.vipreshpatel.tally` (`Shared/AppGroup.swift`,
+  `WidgetSync`) on launch and when it goes to the background. Tapping Scan on
+  the widget opens `com.vipreshpatel.tally://scan`.
+- **Share to Tally** (`ios/TallyShare`): Share a photo or PDF from Photos,
+  Files, Mail or Safari; the extension drops it in the App Group inbox and the
+  app reads it on the Scan tab next time it opens (`SharedInbox`).
+- **Push** (`Services/PushNotifications.swift`, backend `services/push.py`):
+  signed-in iPhones register with `POST /v1/devices` (asked on the Shared tab);
+  everything that lands in Activity is pushed too. Off until `APNS_KEY` +
+  `APNS_KEY_ID` are set on the API (token auth, `.p8` from the developer
+  account). Return/warranty reminders stay local notifications.

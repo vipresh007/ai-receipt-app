@@ -112,7 +112,11 @@ struct GroupsView: View {
                 }
             }
         }
-        .task(id: auth.isSignedIn) { await load() }
+        .task(id: auth.isSignedIn) {
+            await load()
+            // Shared is where pushes matter: ask here, once, when signed in.
+            if auth.isSignedIn { await PushNotifications.enable() }
+        }
         .liveRefresh { await load() }
         .onAppear {
             Task {

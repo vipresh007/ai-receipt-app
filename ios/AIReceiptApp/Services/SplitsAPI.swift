@@ -139,6 +139,20 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("DELETE", "v1/splits/\(splitID)/comments/\(id)")
     }
 
+    struct DeviceWrite: Encodable {
+        let token: String
+        let environment: String
+    }
+
+    func registerDevice(token: String, environment: String) async throws {
+        let (data, http) = try await send(try splitsRequest("POST", "v1/devices", body: DeviceWrite(token: token, environment: environment)))
+        try Self.expectOK(http, data, "Couldn't turn on notifications")
+    }
+
+    func unregisterDevice(token: String) async throws {
+        try await splitsSend("DELETE", "v1/devices/\(token)")
+    }
+
     struct ReportWrite: Encodable {
         let reason: String
         let block: Bool

@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     # Empty = no emails; the invite link still works when shared by hand.
     acs_email_connection_string: str = ""
     email_sender: str = ""  # e.g. DoNotReply@dataeaver.ca (a verified ACS sender)
+    # Apple Push Notifications (token auth). Empty key = no pushes; the app
+    # still works and email/activity carry everything.
+    apns_key: str = ""  # the .p8 contents (PEM)
+    apns_key_id: str = ""
+    apns_team_id: str = "253QMGHP88"
+    apns_topic: str = "com.vipreshpatel.tally"
+
     # Where reports of comments go (empty: kept in content_reports only).
     report_email: str = ""
 
