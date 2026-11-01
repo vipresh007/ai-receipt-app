@@ -117,6 +117,24 @@ class TimelineEntry(BaseModel):
     text: str
     at: str  # ISO datetime
     can_delete: bool
+    # Someone else's comment: you can report it and block them.
+    can_report: bool = False
+    author_id: UUID | None = None
+
+
+class ReportIn(BaseModel):
+    reason: Literal["spam", "abuse", "inappropriate", "other"] = "other"
+    block: bool = False
+
+
+class BlockIn(BaseModel):
+    user_id: UUID
+    name: str = Field(default="", max_length=120)
+
+
+class BlockOut(BaseModel):
+    user_id: UUID
+    name: str
 
 
 class SettledIn(BaseModel):

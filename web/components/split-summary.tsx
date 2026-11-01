@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, History, Repeat, Share2, Trash2 } from "lucide-react";
+import { Check, Copy, Flag, History, Repeat, Share2, Trash2 } from "lucide-react";
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { money, shortDate } from "@/lib/format";
 import type { Participant, Split, TimelineEntry } from "@/lib/types";
@@ -179,6 +179,9 @@ export function SplitTimeline({ splitId }: { splitId: string }) {
     queryClient.setQueryData(["timeline", splitId], await apiDelete<TimelineEntry[]>(`v1/splits/${splitId}/comments/${id}`));
   }
 
+  const [reporting, setReporting] = useState<string | null>(null);
+  const [reported, setReported] = useState<string | null>(null);
+
   return (
     <div className="space-y-sm border-t border-border pt-md">
       <p className="text-caption font-medium text-text-secondary">History &amp; comments</p>
@@ -195,9 +198,29 @@ export function SplitTimeline({ splitId }: { splitId: string }) {
                       <Trash2 size={12} />
                     </button>
                   )}
+                  {entry.can_report && (
+                    <button
+                      type="button"
+                      onClick={() => setReporting(reporting === entry.id ? null : entry.id)}
+                      className="hover:text-danger"
+                      aria-label={`Report ${entry.author_name}'s comment`}
+                    >
+                      <Flag size={12} />
+                    </button>
+                  )}
                 </span>
               </div>
               <p className="mt-[2px] whitespace-pre-wrap break-words text-callout">{entry.text}</p>
+              {reporting === entry.id && (
+                <ReportComment
+                  splitId={splitId}
+                  entry={entry}
+                  onDone={(blocked) => {
+                    setReporting(null);
+                    setReported(blocked ? `Reported, and ${entry.author_name} is blocked.` : "Reported. Thanks for telling us.");
+                  }}
+                />
+              )}
             </li>
           ) : (
             <li key={entry.id} className="flex gap-sm text-caption text-text-secondary">
@@ -223,7 +246,78 @@ export function SplitTimeline({ splitId }: { splitId: string }) {
           Post
         </Button>
       </form>
+      {reported && <p className="text-caption text-text-secondary">{reported}</p>}
       {error && <p className="text-caption text-danger">{error}</p>}
+    </div>
+  );
+}
+
+const REASONS = [
+  ["spam", "Spam"],
+  ["abuse", "Harassment or hate"],
+  ["inappropriate", "Inappropriate"],
+  ["other", "Something else"],
+] as const;
+
+/** Why it's being reported, and whether to block its author too. */
+function ReportComment({
+  splitId,
+  entry,
+  onDone,
+}: {
+  splitId: string;
+  entry: TimelineEntry;
+  onDone: (blocked: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState<(typeof REASONS)[number][0]>("abuse");
+  const [block, setBlock] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setError(null);
+    try {
+      queryClient.setQueryData(
+        ["timeline", splitId],
+        await apiPost<TimelineEntry[]>(`v1/splits/${splitId}/comments/${entry.id}/report`, { reason, block }),
+      );
+      if (block) queryClient.invalidateQueries({ queryKey: ["blocks"] });
+      onDone(block);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send the report.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-sm space-y-sm border-t border-border pt-sm">
+      <p className="text-caption font-medium">What&apos;s wrong with it?</p>
+      <div className="flex flex-wrap gap-xs">
+        {REASONS.map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setReason(value)}
+            className={`rounded-full px-sm py-[3px] text-caption ring-1 ${
+              reason === value ? "bg-accent text-accent-fg ring-accent" : "ring-border text-text-secondary"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <label className="flex items-center gap-sm text-caption">
+        <input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} />
+        Also block {entry.author_name} (you won&apos;t see their comments or hear from them)
+      </label>
+      <div className="flex items-center gap-sm">
+        <Button type="button" size="sm" variant="danger" onClick={send} disabled={busy}>
+          Report
+        </Button>
+        {error && <span className="text-caption text-danger">{error}</span>}
+      </div>
     </div>
   );
 }

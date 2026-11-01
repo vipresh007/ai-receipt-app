@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { APP_STORE_URL } from "@/lib/site";
-import { ExportCard, SharingSettings } from "@/components/account-sharing";
+import { BlockedCard, ExportCard, SharingSettings } from "@/components/account-sharing";
 
 export default function AccountPage() {
   const { data, isLoading } = useQuery({
@@ -84,6 +84,7 @@ export default function AccountPage() {
 
       {data && <SharingSettings me={data} />}
       <ExportCard />
+      <BlockedCard />
 
       <Card className="space-y-md border-danger/40">
         <CardTitle className="text-danger">Delete account</CardTitle>

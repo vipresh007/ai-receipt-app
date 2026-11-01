@@ -5,6 +5,7 @@ from app.models.budget import Budget
 from app.models.category import DEFAULT_CATEGORY_SLUGS, Category
 from app.models.expense import Expense
 from app.models.receipt import Receipt
+from app.models.safety import ContentReport, UserBlock
 from app.models.split import (
     Activity,
     Group,
@@ -26,6 +27,7 @@ __all__ = [
     "Base",
     "Budget",
     "Category",
+    "ContentReport",
     "DEFAULT_CATEGORY_SLUGS",
     "Expense",
     "Group",
@@ -39,4 +41,5 @@ __all__ = [
     "SplitEvent",
     "SplitParticipant",
     "User",
+    "UserBlock",
 ]

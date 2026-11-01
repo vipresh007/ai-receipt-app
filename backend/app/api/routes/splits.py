@@ -12,13 +12,14 @@ from app.db import get_session
 from app.models import Split, SplitComment, SplitEvent, SplitParticipant, User
 from app.schemas.split import (
     CommentIn,
+    ReportIn,
     SettledIn,
     SplitAdjustIn,
     SplitIn,
     SplitOut,
     TimelineEntry,
 )
-from app.services import activity, split_store
+from app.services import activity, safety, split_store
 
 router = APIRouter()
 
@@ -155,6 +156,7 @@ async def timeline(
 ) -> list[TimelineEntry]:
     """The expense's history (added, every change) and its comments, oldest first."""
     split = await split_store.require_split(session, split_id, user)
+    hidden = await safety.blocked_by(session, user.id)
     entries = [
         TimelineEntry(
             id=e.id,
@@ -173,10 +175,13 @@ async def timeline(
             text=c.body,
             at=_iso(c.created_at),
             can_delete=c.user_id == user.id,
+            can_report=c.user_id is not None and c.user_id != user.id,
+            author_id=c.user_id,
         )
         for c in await session.scalars(
             select(SplitComment).where(SplitComment.split_id == split.id)
         )
+        if c.user_id not in hidden
     ]
     return sorted(entries, key=lambda e: e.at)
 
@@ -217,6 +222,35 @@ async def add_comment(
         split_id=split.id,
         group_id=split.group_id,
     )
+    await session.commit()
+    return await timeline(split_id, user, session)
+
+
+@router.post("/splits/{split_id}/comments/{comment_id}/report", response_model=list[TimelineEntry])
+async def report_comment(
+    split_id: UUID,
+    comment_id: UUID,
+    data: ReportIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[TimelineEntry]:
+    """Report someone's comment (kept for review) and, optionally, block them."""
+    split = await split_store.require_split(session, split_id, user)
+    comment = await session.get(SplitComment, comment_id)
+    if comment is None or comment.split_id != split.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Comment not found.")
+    await safety.report(
+        session,
+        user,
+        reason=data.reason,
+        body=comment.body,
+        reported_user_id=comment.user_id,
+        reported_name=comment.author_name,
+        comment_id=comment.id,
+        split_id=split.id,
+    )
+    if data.block and comment.user_id is not None:
+        await safety.block(session, user, comment.user_id, comment.author_name)
     await session.commit()
     return await timeline(split_id, user, session)
 

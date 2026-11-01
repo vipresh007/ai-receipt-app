@@ -168,6 +168,13 @@ export interface TimelineEntry {
   text: string;
   at: string;
   can_delete: boolean;
+  can_report: boolean;
+  author_id: string | null;
+}
+
+export interface Blocked {
+  user_id: string;
+  name: string;
 }
 
 export interface PayDetails {

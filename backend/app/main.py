@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.api.routes import (
     activity,
     auth,
+    blocks,
     budgets,
     events,
     expenses,
@@ -102,6 +103,7 @@ app.include_router(splits.router, prefix="/v1", tags=["splits"])
 app.include_router(groups.router, prefix="/v1/groups", tags=["groups"])
 app.include_router(people.router, prefix="/v1/people", tags=["people"])
 app.include_router(activity.router, prefix="/v1/activity", tags=["activity"])
+app.include_router(blocks.router, prefix="/v1/blocks", tags=["safety"])
 app.include_router(events.router, prefix="/v1/events", tags=["events"])
 app.include_router(export.router, prefix="/v1/export", tags=["export"])
 app.include_router(public.router, prefix="/v1/public", tags=["public"])

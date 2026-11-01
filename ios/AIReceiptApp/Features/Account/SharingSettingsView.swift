@@ -20,6 +20,7 @@ struct SharingSettingsView: View {
     @State private var customTo = Date.now
     @State private var exports: [String: URL] = [:]
     @State private var exporting: String?
+    @State private var blocked: [API.BlockedDTO] = []
     @FocusState private var editingInterac: Bool
 
     private var interacChanged: Bool {
@@ -96,6 +97,26 @@ struct SharingSettingsView: View {
             .onChange(of: range) { _, _ in exports = [:] }
             .onChange(of: customFrom) { _, _ in exports = [:] }
             .onChange(of: customTo) { _, _ in exports = [:] }
+
+            if !blocked.isEmpty {
+                Section {
+                    ForEach(blocked) { person in
+                        HStack {
+                            Text(person.name)
+                            Spacer()
+                            Button("Unblock") { Task { await unblock(person) } }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                        }
+                    }
+                } header: {
+                    header("Blocked")
+                } footer: {
+                    Text("You don't see their comments or get their activity. Shared expenses stay as they are.")
+                        .font(.appCaption)
+                }
+                .listRowBackground(Theme.Palette.surface)
+            }
         }
         .ledgerBackground()
         .navigationTitle("Sharing & export")
@@ -152,9 +173,15 @@ struct SharingSettingsView: View {
     }
 
     private func load() async {
-        guard let loaded = try? await Splits.client(auth).me() else { return }
+        guard let client = try? await Splits.client(auth), let loaded = try? await client.me() else { return }
         me = loaded
         interac = loaded.interac
+        blocked = (try? await client.blocked()) ?? []
+    }
+
+    private func unblock(_ person: API.BlockedDTO) async {
+        guard (try? await Splits.client(auth).unblock(userID: person.userId)) != nil else { return }
+        blocked.removeAll { $0.id == person.id }
     }
 
     private func saveInterac() async {

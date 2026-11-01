@@ -13,6 +13,10 @@ struct SplitTimelineView: View {
     @State private var draft = ""
     @State private var sending = false
     @State private var errorMessage: String?
+    @State private var note: String?
+    // Reporting: pick a reason, then whether to block them too.
+    @State private var reporting: API.TimelineEntryDTO?
+    @State private var reason: String?
 
     var body: some View {
         List {
@@ -36,6 +40,15 @@ struct SplitTimelineView: View {
                         if entry.canDelete {
                             Button("Delete", role: .destructive) { Task { await delete(entry) } }
                         }
+                        if entry.canReport == true {
+                            Button("Report") { reporting = entry }
+                                .tint(Theme.Palette.danger)
+                        }
+                    }
+                    .contextMenu {
+                        if entry.canReport == true {
+                            Button("Report \(entry.authorName)'s comment…", systemImage: "flag") { reporting = entry }
+                        }
                     }
                 } else {
                     HStack(alignment: .top, spacing: Theme.Space.sm) {
@@ -55,6 +68,12 @@ struct SplitTimelineView: View {
                 }
             }
             .listRowBackground(Theme.Palette.surface)
+            if let note {
+                Text(note)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .listRowBackground(Theme.Palette.surface)
+            }
             if let errorMessage {
                 Text(errorMessage)
                     .font(.appCaption)
@@ -84,6 +103,27 @@ struct SplitTimelineView: View {
             .padding(Theme.Space.md)
             .background(Theme.Palette.bg)
         }
+        .confirmationDialog(
+            "What's wrong with this comment?",
+            isPresented: Binding(get: { reporting != nil && reason == nil }, set: { if !$0, reason == nil { reporting = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Spam") { reason = "spam" }
+            Button("Harassment or hate") { reason = "abuse" }
+            Button("Inappropriate") { reason = "inappropriate" }
+            Button("Something else") { reason = "other" }
+            Button("Cancel", role: .cancel) { reporting = nil }
+        }
+        .alert(
+            "Block \(reporting?.authorName ?? "them") too?",
+            isPresented: Binding(get: { reporting != nil && reason != nil }, set: { if !$0 { reporting = nil; reason = nil } })
+        ) {
+            Button("Report and block", role: .destructive) { Task { await report(block: true) } }
+            Button("Just report") { Task { await report(block: false) } }
+            Button("Cancel", role: .cancel) { reporting = nil; reason = nil }
+        } message: {
+            Text("You won't see their comments or hear from them. Shared expenses stay as they are.")
+        }
         .task { await load() }
         .liveRefresh { await load() }
         .refreshable { await load() }
@@ -109,6 +149,18 @@ struct SplitTimelineView: View {
             entries = try await Splits.client(auth).addComment(splitID: split.id, body: body)
             draft = ""
             errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func report(block: Bool) async {
+        guard let entry = reporting, let reason else { return }
+        reporting = nil
+        self.reason = nil
+        do {
+            entries = try await Splits.client(auth).reportComment(splitID: split.id, id: entry.id, reason: reason, block: block)
+            note = block ? "Reported, and \(entry.authorName) is blocked." : "Reported. Thanks for telling us."
         } catch {
             errorMessage = error.localizedDescription
         }

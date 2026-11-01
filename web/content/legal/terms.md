@@ -1,6 +1,6 @@
 # Terms of Service
 
-_Last updated: September 18, 2026._
+_Last updated: November 1, 2026._
 
 These terms are a contract between you and **DATA EAVER INC.** ("we", "us"),
 the developer of **Tally**, for use of the Tally app and website
@@ -35,6 +35,14 @@ available; paid plans, if offered, are described at sign-up.
 Don't: break the law; upload content you have no right to; probe, overload, or
 disrupt the Service; reverse engineer it except as permitted by law; resell or
 scrape it; or use it to build a competing product.
+
+When you share expenses, you may write comments other people see. There is no
+tolerance for objectionable content or abusive users: no harassment, hate,
+threats, sexual content, spam, or anything else you wouldn't say to the person
+directly. Anyone can report a comment and block its author from the comment
+itself; blocked people's comments and activity are hidden from the person who
+blocked them. We review reports within 24 hours, remove content that breaks
+these terms, and may suspend or close the account that posted it.
 
 ## AI output
 

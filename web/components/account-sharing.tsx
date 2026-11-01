@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
-import { apiPatch } from "@/lib/api";
-import type { Me } from "@/lib/types";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api";
+import type { Blocked, Me } from "@/lib/types";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -200,6 +200,41 @@ export function ExportCard() {
         </Button>
       </div>
       {error && <p className="text-caption text-danger">{error}</p>}
+    </Card>
+  );
+}
+
+/** People you've blocked from a comment; shown only when there are some. */
+export function BlockedCard() {
+  const queryClient = useQueryClient();
+  const { data: blocked } = useQuery({
+    queryKey: ["blocks"],
+    queryFn: () => apiGet<Blocked[]>("v1/blocks"),
+  });
+  if (!blocked?.length) return null;
+
+  async function unblock(id: string) {
+    await apiDelete(`v1/blocks/${id}`);
+    queryClient.invalidateQueries({ queryKey: ["blocks"] });
+    queryClient.invalidateQueries({ queryKey: ["timeline"] });
+  }
+
+  return (
+    <Card className="space-y-md">
+      <CardTitle>Blocked</CardTitle>
+      <p className="text-caption text-text-secondary">
+        You don&apos;t see their comments or get their activity. Shared expenses stay as they are.
+      </p>
+      <ul className="divide-y divide-border">
+        {blocked.map((b) => (
+          <li key={b.user_id} className="flex items-center justify-between py-sm">
+            <span className="text-callout">{b.name}</span>
+            <Button variant="secondary" size="sm" onClick={() => unblock(b.user_id)}>
+              Unblock
+            </Button>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

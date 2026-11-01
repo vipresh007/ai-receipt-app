@@ -139,6 +139,31 @@ extension ReceiptExtractionAPIClient {
         try await splitsCall("DELETE", "v1/splits/\(splitID)/comments/\(id)")
     }
 
+    struct ReportWrite: Encodable {
+        let reason: String
+        let block: Bool
+    }
+
+    /// Report someone's comment (spam / abuse / inappropriate / other), and
+    /// optionally block them.
+    func reportComment(splitID: String, id: String, reason: String, block: Bool) async throws -> [TimelineEntryDTO] {
+        try await splitsCall("POST", "v1/splits/\(splitID)/comments/\(id)/report", body: ReportWrite(reason: reason, block: block))
+    }
+
+    struct BlockedDTO: Decodable, Identifiable, Hashable {
+        let userId: String
+        let name: String
+        var id: String { userId }
+    }
+
+    func blocked() async throws -> [BlockedDTO] {
+        try await splitsCall("GET", "v1/blocks")
+    }
+
+    func unblock(userID: String) async throws {
+        try await splitsSend("DELETE", "v1/blocks/\(userID)")
+    }
+
     func remindPerson(id: String) async throws -> PersonDetailDTO {
         try await splitsCall("POST", "v1/people/\(id)/remind", body: [String: String]())
     }
@@ -267,6 +292,8 @@ extension ReceiptExtractionAPIClient {
         let text: String
         let at: String
         let canDelete: Bool
+        let canReport: Bool?
+        let authorId: String?
 
         var isComment: Bool { kind == "comment" }
         var date: Date { ISO8601DateFormatter.tally(at) ?? .now }

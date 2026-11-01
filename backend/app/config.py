@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     # Empty = no emails; the invite link still works when shared by hand.
     acs_email_connection_string: str = ""
     email_sender: str = ""  # e.g. DoNotReply@dataeaver.ca (a verified ACS sender)
+    # Where reports of comments go (empty: kept in content_reports only).
+    report_email: str = ""
 
     # Monitoring
     applicationinsights_connection_string: str = ""

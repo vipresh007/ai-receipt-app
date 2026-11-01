@@ -183,3 +183,14 @@ other people's lists you go back to being just a name.
 | Live share preview | `lib/splits.ts` | `Services/SplitMath.swift` (`SplitMathTests` mirror the server's cases) |
 
 Both previews are conveniences: the shares saved are always the server's.
+
+## Report and block
+
+Every comment someone else wrote can be reported (spam, harassment or hate,
+inappropriate, something else) from the comment itself, with an option to block
+its author (`POST /v1/splits/{id}/comments/{cid}/report`). Reports are kept in
+`content_reports` with a copy of the text and emailed to `REPORT_EMAIL` when
+set. Blocking (`/v1/blocks`) hides that person's comments from you and drops
+their activity and emails to you; shared expenses and balances are untouched.
+Unblock from Account → Sharing & export (iOS) or Account (web). The Terms say
+there's no tolerance for abuse and reports are reviewed within 24 hours.

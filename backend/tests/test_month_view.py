@@ -43,9 +43,10 @@ async def test_bad_month_param_falls_back_to_current(client):
 async def test_trend_returns_zero_filled_months_oldest_first(client):
     await _seed(client)
 
-    trend = (await client.get("/v1/expenses/trend?months=4")).json()
+    # Wide enough that the seeded Jul/Aug 2026 stay in the window for a while.
+    trend = (await client.get("/v1/expenses/trend?months=24")).json()
     assert [p["month"] for p in trend] == sorted(p["month"] for p in trend)  # oldest first
-    assert len(trend) == 4
+    assert len(trend) == 24
     by_month = {p["month"]: p["total"] for p in trend}
     assert by_month.get("2026-07") == "40.00"
     assert by_month.get("2026-08") == "100.00"
