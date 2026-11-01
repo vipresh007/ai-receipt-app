@@ -91,8 +91,8 @@ struct MonthWidgetView: View {
             circular
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    TallyGlyph().frame(width: 11, height: 11)
+                HStack(spacing: 5) {
+                    TallyGlyph().frame(width: 15, height: 15)
                     Text("THIS MONTH").font(.caption2.weight(.semibold))
                 }
                 Text(money(s.monthTotal)).font(.title3.weight(.bold)).minimumScaleFactor(0.7)
@@ -135,7 +135,16 @@ struct MonthWidgetView: View {
             Gauge(value: min(used, 1)) {
                 TallyGlyph()
             } currentValueLabel: {
-                Text("\(Int((used * 100).rounded()))%")
+                if used > 1 {
+                    // Over budget: how much over reads better than "887%".
+                    VStack(spacing: 0) {
+                        Text("OVER").font(.system(size: 8, weight: .bold))
+                        Text(compact(spent - limit)).font(.system(size: 12, weight: .bold, design: .rounded))
+                            .minimumScaleFactor(0.6)
+                    }
+                } else {
+                    Text("\(Int((used * 100).rounded()))%")
+                }
             }
             .gaugeStyle(.accessoryCircular)
             .widgetLabel("Budget used")
@@ -143,7 +152,7 @@ struct MonthWidgetView: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 1) {
-                    TallyGlyph().frame(width: 12, height: 12)
+                    TallyGlyph().frame(width: 16, height: 16)
                     Text(compact(s.monthTotal))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
@@ -209,9 +218,14 @@ struct MonthWidgetView: View {
 struct TallyGlyph: View {
     var body: some View {
         Canvas { context, size in
-            let unit = min(size.width, size.height) / 1024
+            // Cropped to the strokes (round caps included), not the logo's padded 1024 box.
+            let box: CGFloat = 526, origin: CGFloat = 254
+            let unit = min(size.width, size.height) / box
             func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-                CGPoint(x: (x - 512) * unit + size.width / 2, y: (y - 512) * unit + size.height / 2)
+                CGPoint(
+                    x: (x - origin - box / 2) * unit + size.width / 2,
+                    y: (y - origin - box / 2) * unit + size.height / 2
+                )
             }
             var strokes = Path()
             for x in [344.0, 459, 574, 689] {

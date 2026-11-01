@@ -47,30 +47,33 @@ struct NotificationSettingsView: View {
             }
 
             Section {
-                Toggle("Send me emails", isOn: Binding(get: { emails }, set: { on in
-                    emails = on
-                    Task { await save(.init(emailNotifications: on)) }
-                }))
-            } footer: {
-                Text("At most one email every 10 minutes. Turn this off to stop all emails at once.")
-                    .font(.appCaption)
+                ForEach(Self.kinds) { kind in
+                    toggleRow(kind, key: "\(kind.id).push")
+                }
+            } header: {
+                header("On this iPhone")
             }
             .listRowBackground(Theme.Palette.surface)
 
-            ForEach(Self.kinds) { kind in
-                Section {
-                    Toggle("Push", isOn: binding("\(kind.id).push"))
-                    if kind.email {
-                        Toggle("Email", isOn: binding("\(kind.id).email"))
-                            .disabled(!emails)
-                    }
-                } header: {
-                    Text(kind.title.uppercased()).font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
-                } footer: {
-                    Text("“\(kind.example)”").font(.appCaption)
+            Section {
+                Toggle(isOn: Binding(get: { emails }, set: { on in
+                    emails = on
+                    Task { await save(.init(emailNotifications: on)) }
+                })) {
+                    Text("Send me emails").font(.appCallout.weight(.medium))
                 }
-                .listRowBackground(Theme.Palette.surface)
+                if emails {
+                    ForEach(Self.kinds.filter(\.email)) { kind in
+                        toggleRow(kind, key: "\(kind.id).email", example: false)
+                    }
+                }
+            } header: {
+                header("By email")
+            } footer: {
+                Text("At most one email every 10 minutes. Everything also shows under Activity.")
+                    .font(.appCaption)
             }
+            .listRowBackground(Theme.Palette.surface)
 
             if let error {
                 Text(error).font(.appCaption).foregroundStyle(Theme.Palette.danger)
@@ -81,6 +84,24 @@ struct NotificationSettingsView: View {
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title.uppercased()).font(.appMicro).tracking(1.4).foregroundStyle(Theme.Palette.textTertiary)
+    }
+
+    private func toggleRow(_ kind: Kind, key: String, example: Bool = true) -> some View {
+        Toggle(isOn: binding(key)) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(kind.title).font(.appCallout)
+                if example {
+                    Text(kind.example)
+                        .font(.appCaption)
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .lineLimit(1)
+                }
+            }
+        }
     }
 
     private func binding(_ key: String) -> Binding<Bool> {
