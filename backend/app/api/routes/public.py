@@ -4,10 +4,11 @@ A share link shows a snapshot of one split: description, date, items, names
 and amounts. Never the receipt image or anything else in the account.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db import get_session
 from app.models import Group, GroupMember, Person, Receipt, Split, SplitParticipant, User
 from app.schemas.receipt import ExtractionItemOut
@@ -19,6 +20,7 @@ from app.schemas.split import (
     PublicSplitOut,
 )
 from app.services import people_store, split_store
+from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
 
@@ -89,6 +91,34 @@ async def public_split(
         tax=f"{receipt.tax:.2f}" if receipt is not None else None,
         owner_name=split_store.display_name_for(owner) if owner else "",
         invite_url=invite,
+        photo=bool(split.photo_shared and receipt is not None and receipt.image_blob_url),
+    )
+
+
+@router.get("/splits/{share_token}/photo")
+async def public_split_photo(
+    share_token: str, session: AsyncSession = Depends(get_session)
+) -> Response:
+    """The receipt photo, only while its owner has chosen to show it."""
+    viewer = await session.scalar(
+        select(SplitParticipant).where(SplitParticipant.share_token == share_token)
+    )
+    split = await session.get(Split, viewer.split_id) if viewer else None
+    receipt = await session.get(Receipt, split.receipt_id) if split and split.receipt_id else None
+    settings = get_settings()
+    if (
+        split is None
+        or not split.photo_shared
+        or receipt is None
+        or not receipt.image_blob_url
+        or not settings.blob_configured
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No photo here.")
+    data = await BlobStorage(settings).download_by_url(receipt.image_blob_url)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No photo here.")
+    return Response(
+        content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=300"}
     )
 
 

@@ -3,7 +3,7 @@ import { auth0 } from "@/lib/auth0";
 
 const PROTECTED = ["/dashboard", "/receipts", "/scan", "/account", "/expenses", "/budgets", "/groups", "/people", "/activity"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Handles /auth/login, /auth/logout, /auth/callback, /auth/access-token, …
   // and keeps the encrypted session cookie fresh.
   const authRes = await auth0.middleware(request);

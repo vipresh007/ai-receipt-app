@@ -153,6 +153,15 @@ extension ReceiptExtractionAPIClient {
         try await splitsSend("DELETE", "v1/devices/\(token)")
     }
 
+    struct PhotoShareWrite: Encodable {
+        let shared: Bool
+    }
+
+    /// Owner only: show the receipt photo on everyone's share link.
+    func setPhotoShared(splitID: String, shared: Bool) async throws -> SplitDTO {
+        try await splitsCall("PATCH", "v1/splits/\(splitID)/photo", body: PhotoShareWrite(shared: shared))
+    }
+
     struct ReportWrite: Encodable {
         let reason: String
         let block: Bool
@@ -408,6 +417,9 @@ extension ReceiptExtractionAPIClient {
         let myShare: String?
         let isOwner: Bool
         let canEdit: Bool
+        /// The receipt has a photo, and whether everyone on the split may see it.
+        let hasPhoto: Bool?
+        let photoShared: Bool?
         let `repeat`: String
         let nextAt: String?
 

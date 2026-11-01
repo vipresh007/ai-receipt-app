@@ -79,6 +79,18 @@ export default async function SharePage({
         )}
       </Card>
 
+      {split.photo && (
+        <Card className="space-y-md">
+          <CardTitle>The receipt photo</CardTitle>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/s/${encodeURIComponent(token)}/photo`}
+            alt={`${split.owner_name || "Their"} receipt`}
+            className="w-full rounded-md border border-border"
+          />
+        </Card>
+      )}
+
       {split.items.length > 0 && (
         <Card className="space-y-md">
           <CardTitle>The receipt</CardTitle>

@@ -194,3 +194,10 @@ set. Blocking (`/v1/blocks`) hides that person's comments from you and drops
 their activity and emails to you; shared expenses and balances are untouched.
 Unblock from Account → Sharing & export (iOS) or Account (web). The Terms say
 there's no tolerance for abuse and reports are reviewed within 24 hours.
+
+## Receipt photo on share links
+
+Off by default. The owner of a split can turn on "Show the receipt photo"
+(`PATCH /v1/splits/{id}/photo {"shared": true}`); the share page then shows it
+via `GET /v1/public/splits/{token}/photo` (web proxies it at `/s/<token>/photo`).
+Turning it off hides it again immediately.

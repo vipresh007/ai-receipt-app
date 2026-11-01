@@ -100,6 +100,9 @@ class SplitOut(BaseModel):
     # Anyone on it (or in its group) can change the amounts; only the owner
     # changes who's on it or deletes it.
     can_edit: bool
+    # The receipt has a photo, and whether everyone on the split may see it.
+    has_photo: bool = False
+    photo_shared: bool = False
     repeat: Repeat
     next_at: str | None
 
@@ -332,6 +335,12 @@ class PublicSplitOut(BaseModel):
     # to you, or the group's).
     owner_name: str = ""
     invite_url: str | None = None
+    # The owner chose to show the receipt photo (GET …/splits/{token}/photo).
+    photo: bool = False
+
+
+class PhotoShareIn(BaseModel):
+    shared: bool
 
 
 class PublicMemberOut(BaseModel):

@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -86,6 +87,8 @@ class Split(Base):
     # Repeating expenses (rent, a subscription): "" | weekly | monthly. Each
     # time `next_at` comes round a copy is added and `next_at` moves on.
     repeat: Mapped[str] = mapped_column(String(10), default="")
+    # The owner chose to show the receipt photo on everyone's share link.
+    photo_shared: Mapped[bool] = mapped_column(Boolean, default=False)
     next_at: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     # Line items the split was computed from (a receipt's, or entered with a
     # manual split): [{"name": str, "price": "12.34", "quantity": 1}, ...]

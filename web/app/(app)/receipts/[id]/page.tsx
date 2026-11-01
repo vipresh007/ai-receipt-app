@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Users } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api";
@@ -41,16 +41,10 @@ export default function ReceiptDetailPage() {
     queryFn: () => apiGet<Split>(`v1/splits/${receipt!.split_id}`),
     enabled: !!receipt?.split_id,
   });
-  const [splitting, setSplitting] = useState(false);
   // From a fresh scan ("Split with Akash"): open the editor with them picked.
-  const [splitWith, setSplitWith] = useState<SplitWith | null>(null);
-  useEffect(() => {
-    const target = parseWith(new URLSearchParams(window.location.search).get("split"));
-    if (target) {
-      setSplitWith(target);
-      setSplitting(true);
-    }
-  }, []);
+  const params = useSearchParams();
+  const [splitWith, setSplitWith] = useState<SplitWith | null>(() => parseWith(params.get("split")));
+  const [splitting, setSplitting] = useState(() => !!parseWith(params.get("split")));
 
   async function afterSplitChange() {
     setSplitting(false);
@@ -74,16 +68,17 @@ export default function ReceiptDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Seed the editable fields once the receipt loads.
-  useEffect(() => {
-    if (!receipt) return;
+  // Seed the editable fields when the receipt arrives (and again on a refetch).
+  const [seededFrom, setSeededFrom] = useState<ReceiptOut | null>(null);
+  if (receipt && seededFrom !== receipt) {
+    setSeededFrom(receipt);
     setMerchant(receipt.merchant);
     setDate(receipt.purchased_at ?? "");
     setCategory(receipt.category_slug);
     setTotal(receipt.total);
     setTax(receipt.tax);
     setItems(receipt.line_items);
-  }, [receipt]);
+  }
 
   function updateItem(index: number, patch: Partial<ExtractionItem>) {
     // A price change moves the total by the same amount, so tax and anything

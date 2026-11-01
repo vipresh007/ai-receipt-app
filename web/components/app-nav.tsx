@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   ReceiptText,
+  Camera,
   ScanLine,
   Target,
   UserRound,
@@ -32,10 +33,11 @@ const LINKS = [
 
 /** Phones get the iOS app's tabs: Budgets lives under Dashboard and Account
  * there too. */
+// Scan sits in the middle as the gold camera, like the iPhone app's tab bar.
 const TABS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/scan", label: "Scan", icon: Camera },
   { href: "/groups", label: "Shared", icon: Users },
   { href: "/account", label: "Account", icon: UserRound },
 ];
@@ -103,6 +105,7 @@ export function AppNav({ displayName }: { displayName?: string }) {
       >
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
+          const scan = href === "/scan";
           return (
             <Link
               key={href}
@@ -110,10 +113,16 @@ export function AppNav({ displayName }: { displayName?: string }) {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex min-w-0 flex-1 flex-col items-center gap-[2px] rounded-[22px] py-[7px] text-[10.5px] font-medium transition-colors",
-                active ? "bg-accent-muted text-accent" : "text-text-secondary",
+                active && !scan ? "bg-accent-muted text-accent" : "text-text-secondary",
               )}
             >
-              <Icon size={21} strokeWidth={active ? 2.3 : 1.9} />
+              {scan ? (
+                <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-accent text-accent-fg">
+                  <Icon size={16} strokeWidth={2.4} />
+                </span>
+              ) : (
+                <Icon size={21} strokeWidth={active ? 2.3 : 1.9} />
+              )}
               <span className="truncate">{label}</span>
             </Link>
           );

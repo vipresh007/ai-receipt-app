@@ -684,9 +684,12 @@ async def split_out(
         return member is not None and member.user_id == viewer.id
 
     mine = next((r for r in rows if is_me(r)), None)
+    receipt = await session.get(Receipt, split.receipt_id) if split.receipt_id else None
     return SplitOut(
         id=split.id,
         receipt_id=split.receipt_id,
+        has_photo=bool(receipt is not None and receipt.image_blob_url),
+        photo_shared=split.photo_shared,
         group_id=split.group_id,
         description=split.description,
         total=f"{split.total:.2f}",

@@ -163,6 +163,9 @@ export interface Split {
   is_owner: boolean;
   /** Anyone on it can change the amounts; only the owner who's on it. */
   can_edit: boolean;
+  /** The receipt has a photo, and whether everyone on the split may see it. */
+  has_photo: boolean;
+  photo_shared: boolean;
   repeat: Repeat;
   next_at: string | null;
 }
@@ -274,6 +277,8 @@ export interface PublicSplit {
   tax: string | null;
   owner_name: string;
   invite_url: string | null;
+  /** The owner chose to show the receipt photo (served at /s/<token>/photo). */
+  photo: boolean;
 }
 
 export interface PublicGroup {

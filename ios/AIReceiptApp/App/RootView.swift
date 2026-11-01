@@ -8,6 +8,9 @@ struct RootView: View {
     @State private var router = TabRouter()
     @State private var activityBadge = ActivityBadge()
     @State private var live = LiveEvents()
+    /// First launch only (skipped for seeded/demo runs, e.g. screenshots).
+    @State private var showOnboarding =
+        !OnboardingView.hasSeen && !ProcessInfo.processInfo.arguments.contains(SampleData.launchArgument)
 
     /// Something was shared into Tally while it was closed: read it on Scan.
     private func pickUpShared() {
@@ -31,6 +34,9 @@ struct RootView: View {
                 .ignoresSafeArea(.keyboard)
         }
         .tint(Theme.Palette.accent)
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView { router.scanning = true }
+        }
         .sheet(isPresented: $router.scanning) {
             ScanFlowView(onSaved: { _ in router.scanning = false }, isMainScan: true)
                 .environment(router)

@@ -128,6 +128,19 @@ struct ReceiptSplitSection: View {
             } else if let split {
                 SplitParticipantRows(split: split, onChange: { self.split = $0 })
                 if split.isOwner {
+                    if split.hasPhoto == true {
+                        Toggle(isOn: Binding(
+                            get: { split.photoShared ?? false },
+                            set: { on in Task { await sharePhoto(on) } }
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Show the receipt photo")
+                                Text("Everyone on this split sees it on their link.")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Theme.Palette.textSecondary)
+                            }
+                        }
+                    }
                     Button("Edit split") { Task { await openEditor() } }
                     Button("Remove split", role: .destructive) { confirmingRemove = true }
                 }
@@ -201,6 +214,15 @@ struct ReceiptSplitSection: View {
         defer { preparing = false }
         await AccountSync.pushUpdate(receipt, auth: auth)
         editing = true
+    }
+
+    private func sharePhoto(_ on: Bool) async {
+        guard let current = split else { return }
+        do {
+            split = try await Splits.client(auth).setPhotoShared(splitID: current.id, shared: on)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func remove() async {

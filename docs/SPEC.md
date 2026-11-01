@@ -100,3 +100,10 @@ applied by `services/notify_prefs.py` in activity pushes/emails, return
 reminder emails and the email inbox. Return/warranty pushes are local on the
 iPhone, so the app mirrors `returns.push` into UserDefaults. Activity always
 records everything.
+
+## First launch
+
+Three onboarding screens (`Features/Onboarding/OnboardingView.swift`): scan,
+split, prices & returns, ending on "Scan your first receipt" (opens the Scan
+sheet) or "Maybe later". Shown once (`onboarding.seen`), skipped for seeded
+or demo launches so screenshots and tests aren't interrupted.

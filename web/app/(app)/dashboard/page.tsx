@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronLeft, ChevronRight, Plus, ScanLine } from "lucide-react";
@@ -85,7 +86,12 @@ function daysCovered(months: string[], isCurrent: boolean): number {
 }
 
 export default function DashboardPage() {
-  const [month, setMonth] = useState(thisMonth);
+  // Deep-linked month (e.g. from /months), else this month.
+  const params = useSearchParams();
+  const [month, setMonth] = useState(() => {
+    const m = params.get("month");
+    return m && /^\d{4}-\d{2}$/.test(m) ? m : thisMonth();
+  });
   const [granularity, setGranularity] = useState<Granularity>("month");
   const me = useQuery({ queryKey: ["me"], queryFn: () => apiGet<Me>("v1/auth/me") });
   const tracked = useQuery({
@@ -93,12 +99,6 @@ export default function DashboardPage() {
     queryFn: () => apiGet<TrackedItem[]>("v1/receipts/prices"),
   });
   const firstName = me.data?.display_name?.split(" ")[0];
-
-  // Allow deep-linking a month, e.g. from /months.
-  useEffect(() => {
-    const m = new URLSearchParams(window.location.search).get("month");
-    if (m && /^\d{4}-\d{2}$/.test(m)) setMonth(m);
-  }, []);
 
   const periodMonths = monthsInPeriod(month, granularity);
   const previousAnchor = shiftPeriod(month, granularity, -1);

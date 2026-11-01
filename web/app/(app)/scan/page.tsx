@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Users } from "lucide-react";
 import { parseWith, withParam, type SplitWith } from "@/components/add-expense";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,10 +36,8 @@ export default function ScanPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   // Came from "Add expense → Scan a receipt": offer to split it straight away.
-  const [splitWith, setSplitWith] = useState<SplitWith | null>(null);
-  useEffect(() => {
-    setSplitWith(parseWith(new URLSearchParams(window.location.search).get("with")));
-  }, []);
+  const params = useSearchParams();
+  const [splitWith, setSplitWith] = useState<SplitWith | null>(() => parseWith(params.get("with")));
 
   async function handleFile(file: File) {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");

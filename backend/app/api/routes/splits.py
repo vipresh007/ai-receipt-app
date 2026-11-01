@@ -12,6 +12,7 @@ from app.db import get_session
 from app.models import Split, SplitComment, SplitEvent, SplitParticipant, User
 from app.schemas.split import (
     CommentIn,
+    PhotoShareIn,
     ReportIn,
     SettledIn,
     SplitAdjustIn,
@@ -144,6 +145,22 @@ async def adjust_split(
     or how it's divided. Logged in its history; the others are told."""
     split = await split_store.require_split(session, split_id, user)
     split = await split_store.adjust_split(session, user, split, data)
+    await session.commit()
+    return await split_store.split_out(session, split, user)
+
+
+@router.patch("/splits/{split_id}/photo", response_model=SplitOut)
+async def share_photo(
+    split_id: UUID,
+    data: PhotoShareIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SplitOut:
+    """Owner only: show (or stop showing) the receipt photo on share links."""
+    split = await split_store.require_split(session, split_id, user)
+    if split.owner_user_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only whoever added it can change that.")
+    split.photo_shared = data.shared
     await session.commit()
     return await split_store.split_out(session, split, user)
 

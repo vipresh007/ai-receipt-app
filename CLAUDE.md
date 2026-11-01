@@ -67,11 +67,11 @@ Insights** (telemetry).
 - Design tokens: `design/tokens.css` is copied to `web/app/tokens.css` by
   `scripts/sync-tokens.mjs` on `predev`/`prebuild` (that file is git-ignored).
   `tailwind.config.ts` pulls in `../design/tailwind-preset.js`.
-- Auth: **Auth0** (`@auth0/nextjs-auth0` v4). `lib/auth0.ts` + `middleware.ts`
-  (`auth0.middleware()` auto-mounts `/auth/login|logout|callback|access-token`
+- Auth: **Auth0** (`@auth0/nextjs-auth0` v4). `lib/auth0.ts` + `proxy.ts`
+  (`auth0.middleware()`, called from `proxy.ts`, auto-mounts `/auth/login|logout|callback|access-token`
   and holds an encrypted httpOnly session cookie). `app/api/proxy/[...path]`
   attaches `auth0.getAccessToken()` as the bearer. Route protection in
-  `middleware.ts` + `app/(app)/layout.tsx`. Full setup: [`docs/AUTH.md`](docs/AUTH.md).
+  `proxy.ts` + `app/(app)/layout.tsx`. Full setup: [`docs/AUTH.md`](docs/AUTH.md).
 - Keep `lib/types.ts` in sync with `backend/app/schemas`.
 - The scan screen shows results as already-saved (backend `/v1/extract`
   persists). Merchant/date/category/total/tax/line-items are all editable

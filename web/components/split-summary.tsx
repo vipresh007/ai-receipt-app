@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Flag, History, Repeat, Share2, Trash2 } from "lucide-react";
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { money, shortDate } from "@/lib/format";
 import type { Participant, Split, TimelineEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,7 @@ export function SplitSummary({
           {split.next_at && <> · next {shortDate(split.next_at)}</>}
         </p>
       )}
+      {split.is_owner && split.has_photo && <SharePhotoToggle split={split} />}
       {((split.can_edit && onEdit) || (split.is_owner && onRemove)) && (
         <div className="flex justify-end gap-sm">
           {split.is_owner && onRemove && (
@@ -141,6 +142,36 @@ export function SplitSummary({
       )}
       <SplitTimeline splitId={split.id} />
     </div>
+  );
+}
+
+/** Owner only: let everyone on the split see the receipt photo. */
+function SharePhotoToggle({ split }: { split: Split }) {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  async function set(shared: boolean) {
+    setBusy(true);
+    try {
+      await apiPatch(`v1/splits/${split.id}/photo`, { shared });
+      await queryClient.invalidateQueries({ queryKey: ["split"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <label className="flex items-start gap-sm text-caption text-text-secondary">
+      <input
+        type="checkbox"
+        checked={split.photo_shared}
+        disabled={busy}
+        onChange={(e) => set(e.target.checked)}
+        className="mt-[2px] h-4 w-4 accent-[var(--c-accent)]"
+      />
+      <span>
+        Show the receipt photo to everyone on this split
+        <span className="block text-text-tertiary">They see it on their link. Off by default.</span>
+      </span>
+    </label>
   );
 }
 

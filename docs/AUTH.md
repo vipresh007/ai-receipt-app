@@ -120,8 +120,8 @@ longer shows anywhere in the actual login flow.
 | Piece | File |
 |---|---|
 | Auth0 client | `web/lib/auth0.ts` |
-| Login/logout/callback routes (auto-mounted at `/auth/*`) + session cookie | `web/middleware.ts` → `auth0.middleware()` |
-| Route protection | `web/middleware.ts` (redirect to `/auth/login`) and `web/app/(app)/layout.tsx` (`auth0.getSession()`) |
+| Login/logout/callback routes (auto-mounted at `/auth/*`) + session cookie | `web/proxy.ts` → `auth0.middleware()` |
+| Route protection | `web/proxy.ts` (redirect to `/auth/login`) and `web/app/(app)/layout.tsx` (`auth0.getSession()`) |
 | Attach the token to API calls | `web/app/api/proxy/[...path]/route.ts` → `auth0.getAccessToken()` |
 | Token verification | `backend/app/core/security.py` → `verify_access_token()` (PyJWT + `PyJWKClient`) |
 | Identity → local user (upsert on first sight, calls `/userinfo` once) | `backend/app/api/deps.py` → `get_current_user` / `_provision_user` |
