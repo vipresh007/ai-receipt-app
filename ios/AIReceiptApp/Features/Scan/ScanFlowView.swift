@@ -333,6 +333,7 @@ struct ScanFlowView: View {
             receipt.tax = merged.tax
             receipt.category = merged.category
             receipt.items = merged.items
+            if receipt.returnBy == nil { receipt.returnBy = merged.returnBy }
             receipt.remoteID = result.serverID
             try? modelContext.save()
             if result.serverID != nil {

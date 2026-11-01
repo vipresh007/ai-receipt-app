@@ -59,3 +59,15 @@ the change against the last different price; each line on a receipt shows
 dashboard adds "Oat milk 1L is $4.49 now, up 12% from $3.99 in June" for the
 biggest 5%+ rise among items bought in the last 45 days. Server:
 `GET /v1/receipts/prices`. iOS computes it on device from SwiftData.
+
+## Returns and warranties
+
+A receipt can carry a "Return by" date and a "Warranty until" date (quick
+picks: 14/30/90 days, 1/2/3 years from the purchase date). When a receipt
+prints a return window, extraction fills "Return by" in (`return_days` from the
+model + the purchase date). The iPhone schedules local notifications (3 days
+before and the morning of the last return day; 30 days before a warranty ends —
+`ReturnReminders`, no push server needed). The server emails the same
+reminders once each (`services/reminders.py`, hourly, replica-safe claims)
+and adds them to Activity. Dashboards show a "Coming up" card
+(`GET /v1/receipts/coming-up`).

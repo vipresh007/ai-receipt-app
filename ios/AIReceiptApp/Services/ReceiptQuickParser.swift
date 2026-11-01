@@ -172,6 +172,7 @@ extension ReceiptDraft {
         if tax == baseline.tax { out.tax = server.tax }
         if category == baseline.category { out.category = server.category }
         if items == baseline.items { out.items = server.items }
+        if returnBy == baseline.returnBy { out.returnBy = server.returnBy }
         return out
     }
 }

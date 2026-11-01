@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodHero } from "@/components/period-hero";
 import { CategoryBreakdown } from "@/components/category-breakdown";
 import { InsightList } from "@/components/insight-list";
+import { ComingUp } from "@/components/coming-up";
 import { ReceiptRow } from "@/components/receipt-row";
 import { BudgetRow } from "@/components/budget-row";
 import { cn } from "@/lib/utils";
@@ -305,6 +306,8 @@ export default function DashboardPage() {
         activeKey={periodKey(month, granularity)}
         onSelect={(key) => setMonth(anchorFromPeriodKey(key, granularity))}
       />
+
+      {isCurrentPeriod && <ComingUp />}
 
       <div
         className={cn(

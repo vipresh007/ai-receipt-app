@@ -18,6 +18,7 @@ import { fromCents, money, shortDate, toCents } from "@/lib/format";
 import { SplitEditor } from "@/components/split-editor";
 import { parseWith, type SplitWith } from "@/components/add-expense";
 import { SplitSummary } from "@/components/split-summary";
+import { ReturnWarranty } from "@/components/return-warranty";
 import { LIVE } from "@/lib/live";
 
 export default function ReceiptDetailPage() {
@@ -296,6 +297,8 @@ export default function ReceiptDetailPage() {
           </Button>
         </div>
       </Card>
+
+      {receipt && <ReturnWarranty receipt={receipt} />}
 
       <Card className="space-y-lg">
         <div className="flex items-center justify-between gap-md">

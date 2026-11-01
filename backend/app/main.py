@@ -45,6 +45,9 @@ async def lifespan(app: FastAPI):
         from app.services.repeating import run_forever
 
         repeat_task = asyncio.create_task(run_forever(SessionLocal))
+        from app.services import reminders
+
+        remind_task = asyncio.create_task(reminders.run_forever(SessionLocal))
         from app.db import engine
         from app.services.realtime import listen_forever
 
@@ -53,6 +56,7 @@ async def lifespan(app: FastAPI):
     if repeat_task is not None:
         repeat_task.cancel()
         listen_task.cancel()
+        remind_task.cancel()
 
 
 app = FastAPI(title="AI Receipt API", version="0.1.0", lifespan=lifespan)

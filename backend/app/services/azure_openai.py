@@ -21,7 +21,9 @@ _SYSTEM_PROMPT = (
     "not legible use the empty/zero/null fallback described by the schema. "
     "Amounts are decimal strings using a period as the decimal separator, with "
     "no currency symbol and no thousands separators. Dates are YYYY-MM-DD. "
-    "Choose the single best-fitting category from the allowed list."
+    "Choose the single best-fitting category from the allowed list. "
+    "If the receipt prints a return or exchange window (e.g. 'returns within 30 "
+    "days'), set return_days to that number of days; otherwise null."
 )
 
 

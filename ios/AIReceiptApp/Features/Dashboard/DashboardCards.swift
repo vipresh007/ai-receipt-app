@@ -466,3 +466,77 @@ struct RecentReceiptsCard: View {
         .contentShape(Rectangle())
     }
 }
+
+
+/// Return windows closing in the next two weeks and warranties ending in the
+/// next two months, soonest first.
+struct ComingUpCard: View {
+    let receipts: [Receipt]
+
+    struct Item: Identifiable {
+        let id: String
+        let receipt: Receipt
+        let date: Date
+        let isReturn: Bool
+    }
+
+    static func items(in receipts: [Receipt], now: Date = .now) -> [Item] {
+        let today = Calendar.current.startOfDay(for: now)
+        let soon = Calendar.current.date(byAdding: .day, value: 14, to: today) ?? today
+        let later = Calendar.current.date(byAdding: .day, value: 60, to: today) ?? today
+        var out: [Item] = []
+        for r in receipts {
+            if let d = r.returnBy, d >= today, d <= soon {
+                out.append(Item(id: "r\(r.persistentModelID.hashValue)", receipt: r, date: d, isReturn: true))
+            }
+            if let d = r.warrantyUntil, d >= today, d <= later {
+                out.append(Item(id: "w\(r.persistentModelID.hashValue)", receipt: r, date: d, isReturn: false))
+            }
+        }
+        return out.sorted { $0.date < $1.date }
+    }
+
+    var body: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                SectionLabel("Coming up")
+                VStack(spacing: 0) {
+                    ForEach(Array(Self.items(in: receipts).prefix(5).enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { Divider().overlay(Theme.Palette.border) }
+                        NavigationLink {
+                            ReceiptDetailView(receipt: item.receipt)
+                        } label: {
+                            HStack(spacing: Theme.Space.md) {
+                                Image(systemName: item.isReturn ? "arrow.uturn.backward" : "checkmark.shield")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(Theme.Palette.accent)
+                                    .frame(width: 28, height: 28)
+                                    .background(Theme.Palette.accent.opacity(0.14), in: Circle())
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(item.receipt.merchant)
+                                        .font(.appCallout)
+                                        .foregroundStyle(Theme.Palette.text)
+                                    Text(item.isReturn ? "Return by \(when(item.date))" : "Warranty ends \(when(item.date))")
+                                        .font(.appCaption)
+                                        .foregroundStyle(Theme.Palette.textSecondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
+                            .padding(.vertical, Theme.Space.md)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func when(_ date: Date) -> String {
+        if Calendar.current.isDateInToday(date) { return "today" }
+        if Calendar.current.isDateInTomorrow(date) { return "tomorrow" }
+        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+    }
+}

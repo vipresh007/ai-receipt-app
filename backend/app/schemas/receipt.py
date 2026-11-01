@@ -41,6 +41,8 @@ class ExtractionOut(BaseModel):
     confidence: float | None = None
     # Anonymous calls only: free scans left for this device. null when signed in.
     scans_remaining: int | None = None
+    # YYYY-MM-DD, when the receipt prints a return window.
+    return_by: str | None = None
 
 
 class ReceiptUpdate(BaseModel):
@@ -54,6 +56,9 @@ class ReceiptUpdate(BaseModel):
     tax: str | None = None
     category: str | None = None
     items: list[ExtractionItemOut] | None = None
+    # YYYY-MM-DD; null clears.
+    return_by: str | None = None
+    warranty_until: str | None = None
 
 
 class ReceiptCreate(BaseModel):
@@ -73,6 +78,8 @@ class ReceiptCreate(BaseModel):
     image_base64: str | None = Field(default=None, alias="imageBase64", max_length=14_000_000)
     confidence: float | None = None
     note: str = Field(default="", max_length=2000)
+    return_by: str | None = None
+    warranty_until: str | None = None
 
 
 class ImportIn(BaseModel):
@@ -95,6 +102,8 @@ class ReceiptOut(BaseModel):
     # Set while the receipt is split: your share, which is what counts as spending.
     my_share: str | None = None
     split_id: UUID | None = None
+    return_by: date | None = None
+    warranty_until: date | None = None
 
 
 class RecurringGroupOut(BaseModel):

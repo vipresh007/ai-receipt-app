@@ -270,11 +270,34 @@ struct ReceiptExtractionAPIClient {
         var currency: String
         var items: [Item]
         var imageBase64: String?
+        /// YYYY-MM-DD; always sent (null clears it on a PATCH).
+        var returnBy: String?
+        var warrantyUntil: String?
 
         struct Item: Encodable {
             let name: String
             let price: String
             let quantity: Int
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case merchant, date, total, tax, category, currency, items, imageBase64
+            case returnBy = "return_by"
+            case warrantyUntil = "warranty_until"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(merchant, forKey: .merchant)
+            try c.encode(date, forKey: .date)
+            try c.encode(total, forKey: .total)
+            try c.encode(tax, forKey: .tax)
+            try c.encode(category, forKey: .category)
+            try c.encode(currency, forKey: .currency)
+            try c.encode(items, forKey: .items)
+            try c.encodeIfPresent(imageBase64, forKey: .imageBase64)
+            try c.encode(returnBy, forKey: .returnBy)
+            try c.encode(warrantyUntil, forKey: .warrantyUntil)
         }
 
         init(
@@ -314,6 +337,8 @@ struct ReceiptExtractionAPIClient {
                 },
                 imageBase64: includeImage ? receipt.imageData?.base64EncodedString() : nil
             )
+            returnBy = receipt.returnBy.map(ReceiptExtractionAPIClient.isoDayString)
+            warrantyUntil = receipt.warrantyUntil.map(ReceiptExtractionAPIClient.isoDayString)
         }
     }
 
@@ -361,9 +386,13 @@ struct ReceiptExtractionAPIClient {
         let lineItems: [Item]
         let myShare: String?
         let splitID: String?
+        let returnBy: String?
+        let warrantyUntil: String?
 
         enum CodingKeys: String, CodingKey {
             case id, merchant, total, tax, currency
+            case returnBy = "return_by"
+            case warrantyUntil = "warranty_until"
             case myShare = "my_share"
             case splitID = "split_id"
             case purchasedAt = "purchased_at"
@@ -400,6 +429,8 @@ struct ReceiptExtractionAPIClient {
             receipt.remoteID = id
             receipt.myShare = myShare.flatMap { Decimal(string: $0) }
             receipt.splitID = splitID
+            receipt.returnBy = ReceiptExtractionAPIClient.isoDay(returnBy)
+            receipt.warrantyUntil = ReceiptExtractionAPIClient.isoDay(warrantyUntil)
             return receipt
         }
 
@@ -414,6 +445,8 @@ struct ReceiptExtractionAPIClient {
             receipt.remoteID = id
             receipt.myShare = myShare.flatMap { Decimal(string: $0) }
             receipt.splitID = splitID
+            receipt.returnBy = ReceiptExtractionAPIClient.isoDay(returnBy)
+            receipt.warrantyUntil = ReceiptExtractionAPIClient.isoDay(warrantyUntil)
         }
     }
 
@@ -431,10 +464,13 @@ struct ReceiptExtractionAPIClient {
         let confidence: Double?
         /// Anonymous only — free scans left on this device after this call.
         let scansRemaining: Int?
+        /// When the receipt prints a return window.
+        let returnBy: String?
 
         enum CodingKeys: String, CodingKey {
             case id, merchant, date, total, tax, category, items, confidence
             case scansRemaining = "scans_remaining"
+            case returnBy = "return_by"
         }
 
         struct Item: Decodable {
@@ -461,6 +497,7 @@ struct ReceiptExtractionAPIClient {
                 )
             }
             draft.imageData = imageData
+            draft.returnBy = ReceiptExtractionAPIClient.isoDay(returnBy)
             return draft
         }
     }

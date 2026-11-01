@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +36,13 @@ def _parse_date(value: str | None) -> date | None:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         return None
+
+
+def return_by(purchased: date | None, days: int | None) -> date | None:
+    """The last day to return it, from a printed return window."""
+    if purchased is None or days is None or not 0 < days <= 365:
+        return None
+    return purchased + timedelta(days=days)
 
 
 async def process_receipt(
@@ -85,6 +92,7 @@ async def process_receipt(
         raw_ocr="\n".join(ocr_lines) or None,
         extraction_confidence=extracted.confidence,
         line_items=[item.model_dump() for item in extracted.line_items],
+        return_by=return_by(_parse_date(extracted.purchased_at), extracted.return_days),
     )
     session.add(receipt)
     await session.flush()
@@ -114,4 +122,5 @@ def receipt_to_extraction_out(receipt: Receipt) -> ExtractionOut:
         category=receipt.category_slug,
         items=[ExtractionItemOut(**item) for item in (receipt.line_items or [])],
         confidence=receipt.extraction_confidence,
+        return_by=receipt.return_by.isoformat() if receipt.return_by else None,
     )

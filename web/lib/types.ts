@@ -41,6 +41,8 @@ export interface ReceiptOut {
   /** Set while the receipt is split: your share, which is what counts as spending. */
   my_share?: string | null;
   split_id?: string | null;
+  return_by?: string | null;
+  warranty_until?: string | null;
 }
 
 export interface CategoryTotal {

@@ -1,8 +1,8 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, Date, Float, ForeignKey, Numeric, String, Text
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -33,3 +33,14 @@ class Receipt(Base):
     # already point here, and the pair is kept in step by services/split_store.
     my_share: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     split_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+
+    # Returns and warranty (services/reminders.py): the last day it can go
+    # back, and when the warranty ends. Reminded once each, ahead of time.
+    return_by: Mapped[date | None] = mapped_column(Date, nullable=True)
+    warranty_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    return_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    warranty_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

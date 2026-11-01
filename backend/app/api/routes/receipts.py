@@ -35,6 +35,7 @@ from app.services.extraction import (
     _to_decimal,
     process_receipt,
     receipt_to_extraction_out,
+    return_by,
 )
 from app.services.recurring import find_recurring
 
@@ -76,7 +77,16 @@ def _extracted_to_out(ex: ExtractedReceipt) -> ExtractionOut:
             for li in ex.line_items
         ],
         confidence=ex.confidence,
+        return_by=(
+            rb.isoformat()
+            if (rb := return_by(_parse_date(ex.purchased_at), ex.return_days))
+            else None
+        ),
     )
+
+
+def _iso(day: date | None) -> str | None:
+    return day.isoformat() if day else None
 
 
 async def _consume_anon_quota(session: AsyncSession, device_id: str) -> int:
@@ -208,6 +218,8 @@ async def _persist_receipt(
         image_blob_url=blob_url,
         extraction_confidence=item.confidence,
         line_items=[li.model_dump() for li in item.items],
+        return_by=_parse_date(item.return_by),
+        warranty_until=_parse_date(item.warranty_until),
     )
     session.add(receipt)
     await session.flush()
@@ -302,6 +314,30 @@ async def list_receipts(
         query = query.where(Receipt.total <= _to_decimal(max_amount))
     rows = await session.scalars(query.order_by(Receipt.created_at.desc()).limit(min(limit, 200)))
     return [_receipt_out(r) for r in rows]
+
+
+@router.get("/receipts/coming-up", response_model=list[ReceiptOut])
+async def coming_up(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[ReceiptOut]:
+    """Return windows closing in the next 14 days and warranties ending in the
+    next 60, soonest first."""
+    today = date.today()
+    rows = await session.scalars(
+        select(Receipt).where(
+            Receipt.user_id == user.id,
+            or_(
+                Receipt.return_by.between(today, today + timedelta(days=14)),
+                Receipt.warranty_until.between(today, today + timedelta(days=60)),
+            ),
+        )
+    )
+
+    def soonest(r: Receipt) -> date:
+        return min(d for d in (r.return_by, r.warranty_until) if d is not None and d >= today)
+
+    return [_receipt_out(r) for r in sorted(rows, key=soonest)][:10]
 
 
 @router.get("/receipts/prices", response_model=list[TrackedItemOut])
@@ -411,6 +447,12 @@ async def update_receipt(
         receipt.category_slug = fields["category"] or "other"
     if "items" in fields:
         receipt.line_items = [li.model_dump() for li in (payload.items or [])]
+    if "return_by" in fields:
+        receipt.return_by = _parse_date(fields["return_by"])
+        receipt.return_reminded_at = None
+    if "warranty_until" in fields:
+        receipt.warranty_until = _parse_date(fields["warranty_until"])
+        receipt.warranty_reminded_at = None
 
     expense = await session.scalar(select(Expense).where(Expense.receipt_id == receipt.id))
     if expense is not None:
@@ -456,4 +498,6 @@ def _receipt_out(r: Receipt) -> ReceiptOut:
         line_items=[ExtractionItemOut(**it) for it in (r.line_items or [])],
         my_share=f"{r.my_share:.2f}" if r.my_share is not None else None,
         split_id=r.split_id,
+        return_by=r.return_by,
+        warranty_until=r.warranty_until,
     )

@@ -21,6 +21,11 @@ final class Receipt {
     var myShare: Decimal? = nil
     var splitID: String? = nil
 
+    /// The last day it can go back, and when its warranty ends. Reminded
+    /// ahead of time (`ReturnReminders`).
+    var returnBy: Date? = nil
+    var warrantyUntil: Date? = nil
+
     /// What this receipt counts for in your spending: your share if split.
     var spend: Decimal { myShare ?? total }
 

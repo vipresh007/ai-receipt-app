@@ -10,13 +10,15 @@ struct ReceiptDraft {
     var category: ExpenseCategory = .other
     var items: [ReceiptLineItem] = []
     var imageData: Data?
+    /// From a return window printed on the receipt.
+    var returnBy: Date?
 
     var isValid: Bool {
         !merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && total > 0
     }
 
     func makeReceipt() -> Receipt {
-        Receipt(
+        let receipt = Receipt(
             merchant: merchant.trimmingCharacters(in: .whitespacesAndNewlines),
             date: date,
             total: total,
@@ -25,5 +27,7 @@ struct ReceiptDraft {
             items: items,
             imageData: imageData
         )
+        receipt.returnBy = returnBy
+        return receipt
     }
 }

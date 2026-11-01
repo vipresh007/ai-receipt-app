@@ -167,6 +167,9 @@ struct DashboardView: View {
                                 }
                             }
 
+                            if isCurrentPeriod, !ComingUpCard.items(in: receipts).isEmpty {
+                                ComingUpCard(receipts: receipts)
+                            }
                             if !summary.insights.isEmpty {
                                 InsightsCard(insights: summary.insights)
                             }

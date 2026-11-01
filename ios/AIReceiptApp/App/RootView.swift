@@ -43,6 +43,7 @@ struct RootView: View {
             await AccountSync.pull(auth: auth, context: modelContext)
             await activityBadge.refresh(auth)
             if auth.isSignedIn { live.start(auth) }
+            await ReturnReminders.sync(modelContext)
         }
         .onChange(of: live.tick) { _, _ in
             // Someone changed something you share: the badge, and your share
@@ -63,6 +64,7 @@ struct RootView: View {
             Task {
                 await AccountSync.pull(auth: auth, context: modelContext)
                 await activityBadge.refresh(auth)
+                await ReturnReminders.sync(modelContext)
             }
         }
     }

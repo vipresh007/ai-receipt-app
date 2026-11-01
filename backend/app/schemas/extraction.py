@@ -40,3 +40,5 @@ class ExtractedReceipt(BaseModel):
     currency: str = "USD"
     line_items: list[ExtractedLineItem] = Field(default_factory=list)
     confidence: float | None = None
+    # Days to return or exchange, only when the receipt prints a policy.
+    return_days: int | None = None
