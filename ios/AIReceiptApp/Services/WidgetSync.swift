@@ -18,9 +18,7 @@ enum WidgetSync {
                 .init(name: $0.category.displayName, amount: $0.amount, slug: $0.category.rawValue)
             },
             nextReturn: next.map { "\($0.receipt.merchant) · \($0.date.formatted(.dateTime.weekday(.abbreviated)))" },
-            updated: .now,
-            budgetSpent: AppGroup.budgetTotals?.spent,
-            budgetLimit: AppGroup.budgetTotals?.limit
+            updated: .now
         )
         snapshot.save()
         WidgetCenter.shared.reloadAllTimelines()

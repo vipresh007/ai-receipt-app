@@ -127,41 +127,20 @@ struct MonthWidgetView: View {
         }
     }
 
-    /// Budget used this month as a ring; without budgets, the month's total.
-    @ViewBuilder
+    /// This month's total, short ("$1.5k"), under the Tally mark.
     private var circular: some View {
-        if let spent = s.budgetSpent, let limit = s.budgetLimit, limit > 0 {
-            let used = NSDecimalNumber(decimal: spent / limit).doubleValue
-            Gauge(value: min(used, 1)) {
-                TallyGlyph()
-            } currentValueLabel: {
-                if used > 1 {
-                    // Over budget: how much over reads better than "887%".
-                    VStack(spacing: 0) {
-                        Text("OVER").font(.system(size: 8, weight: .bold))
-                        Text(compact(spent - limit)).font(.system(size: 12, weight: .bold, design: .rounded))
-                            .minimumScaleFactor(0.6)
-                    }
-                } else {
-                    Text("\(Int((used * 100).rounded()))%")
-                }
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 2) {
+                TallyGlyph().frame(width: 16, height: 16)
+                Text(compact(s.monthTotal))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
             }
-            .gaugeStyle(.accessoryCircular)
-            .widgetLabel("Budget used")
-        } else {
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 1) {
-                    TallyGlyph().frame(width: 16, height: 16)
-                    Text(compact(s.monthTotal))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                }
-                .padding(4)
-            }
-            .widgetLabel("This month")
+            .padding(5)
         }
+        .widgetLabel("This month")
     }
 
     /// $1,474.49 → "$1.5k"; under 1,000 → "$742".
