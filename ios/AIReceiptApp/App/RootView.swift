@@ -32,9 +32,16 @@ struct RootView: View {
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
                 .tag(AppTab.receipts)
 
-            // Holds the middle place for the gold camera drawn over it.
+            // Not a screen: its gold camera icon opens the Scan sheet. Drawn
+            // as the tab's own icon so the tab bar lines it up like the rest.
             Color.clear
-                .tabItem { Text(" ") }
+                .tabItem {
+                    Label {
+                        Text("Scan")
+                    } icon: {
+                        Image(uiImage: ScanTabIcon.image)
+                    }
+                }
                 .tag(AppTab.scan)
 
 
@@ -48,11 +55,6 @@ struct RootView: View {
                 .tag(AppTab.account)
         }
         .tint(Theme.Palette.accent)
-        .overlay(alignment: .bottom) {
-            ScanTabButton { router.scanning = true }
-                .padding(.bottom, -5)
-        }
-        .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $router.scanning) {
             ScanFlowView(onSaved: { _ in router.scanning = false }, isMainScan: true)
                 .environment(router)
@@ -123,23 +125,21 @@ struct RootView: View {
 }
 
 
-/// The gold camera in the middle of the tab bar: sized to its own slot so it
-/// never covers the neighbouring tabs' selection, and opens the Scan sheet.
-struct ScanTabButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            action()
-        } label: {
-            Image(systemName: "camera.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Theme.Palette.bg)
-                .frame(width: 46, height: 46)
-                .background(Theme.Palette.gold, in: Circle())
+/// The middle tab's icon: a gold circle with the camera, kept in its own
+/// colours (not tinted like the other tab icons).
+enum ScanTabIcon {
+    static let image: UIImage = {
+        let size = CGSize(width: 34, height: 34)
+        let rendered = UIGraphicsImageRenderer(size: size).image { _ in
+            UIColor(Theme.Palette.gold).setFill()
+            UIBezierPath(ovalIn: CGRect(origin: .zero, size: size)).fill()
+            let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+            if let camera = UIImage(systemName: "camera.fill", withConfiguration: config)?
+                .withTintColor(UIColor(Theme.Palette.bg), renderingMode: .alwaysOriginal) {
+                let origin = CGPoint(x: (size.width - camera.size.width) / 2, y: (size.height - camera.size.height) / 2)
+                camera.draw(at: origin)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Scan a receipt")
-    }
+        return rendered.withRenderingMode(.alwaysOriginal)
+    }()
 }
