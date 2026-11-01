@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import push, realtime, safety
+from app.services import notify_prefs, push, realtime, safety
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -70,16 +70,23 @@ async def notify(
                 person_id=person_id,
             )
         )
-    await push.send(session, ids, f"{actor_name} {text}", link=link)
+    people = (await session.scalars(select(User).where(User.id.in_(ids)))).all()
+    await push.send(
+        session,
+        [u.id for u in people if notify_prefs.allowed(u, kind, "push")],
+        f"{actor_name} {text}",
+        link=link,
+    )
     if kind in EMAILED_KINDS:
-        await _email(session, ids, actor_name, text, link)
+        wanted = {u.id for u in people if notify_prefs.allowed(u, kind, "email")}
+        await _email(session, wanted, actor_name, text, link)
 
 
 async def _email(
     session: AsyncSession, ids: set[uuid.UUID], actor_name: str, text: str, link: str
 ) -> None:
     mailer = get_mailer()
-    if mailer is None:
+    if mailer is None or not ids:
         return
     now = datetime.now(UTC)
     users = await session.scalars(

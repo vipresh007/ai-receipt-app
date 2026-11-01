@@ -104,6 +104,29 @@ struct AccountView: View {
         .buttonStyle(.plain)
 
         NavigationLink {
+            NotificationSettingsView()
+        } label: {
+            AppCard {
+                HStack(spacing: Theme.Space.md) {
+                    Image(systemName: "bell").foregroundStyle(Theme.Palette.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Notifications")
+                            .font(.appCallout.weight(.medium))
+                            .foregroundStyle(Theme.Palette.text)
+                        Text("Push and email, kind by kind")
+                            .font(.appCaption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.appCaption.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+
+        NavigationLink {
             SharingSettingsView()
         } label: {
             AppCard {
@@ -113,7 +136,7 @@ struct AccountView: View {
                         Text("Sharing & export")
                             .font(.appCallout.weight(.medium))
                             .foregroundStyle(Theme.Palette.text)
-                        Text("Notifications, getting paid back, CSV files")
+                        Text("Getting paid back, email receipts in, CSV files")
                             .font(.appCaption)
                             .foregroundStyle(Theme.Palette.textSecondary)
                     }

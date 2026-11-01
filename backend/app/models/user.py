@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import JSON, Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -32,6 +32,9 @@ class User(Base):
     currency: Mapped[str] = mapped_column(String(3), default="")
     # Interac e-Transfer email or phone, shown to people who owe you.
     interac: Mapped[str] = mapped_column(String(120), default="")
+    # Push/email per kind of notification, e.g. {"comments.push": false}
+    # (services/notify_prefs.py). Missing keys are on.
+    notify_prefs: Mapped[dict] = mapped_column(JSON, default=dict)
     # Personal forwarding address: receipts+<inbox_token>@… (services/inbox.py).
     inbox_token: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -89,3 +89,14 @@ and adds them to Activity. Dashboards show a "Coming up" card
   everything that lands in Activity is pushed too. Off until `APNS_KEY` +
   `APNS_KEY_ID` are set on the API (token auth, `.p8` from the developer
   account). Return/warranty reminders stay local notifications.
+
+## Notification settings
+
+Account → Notifications (iPhone and web): a master "Send me emails" switch and,
+per kind — shared expenses, payments, reminders to pay, comments, returns &
+warranties, receipts emailed in — iPhone push and (where it applies) email.
+Stored as `users.notify_prefs` (`"comments.push": false`; missing = on) and
+applied by `services/notify_prefs.py` in activity pushes/emails, return
+reminder emails and the email inbox. Return/warranty pushes are local on the
+iPhone, so the app mirrors `returns.push` into UserDefaults. Activity always
+records everything.

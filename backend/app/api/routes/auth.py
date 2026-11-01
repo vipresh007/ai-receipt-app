@@ -25,7 +25,7 @@ from app.models import (
     User,
 )
 from app.schemas.auth import MeOut, MeSettingsIn
-from app.services import inbox
+from app.services import inbox, notify_prefs
 from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
@@ -44,6 +44,7 @@ async def _me_out(session: AsyncSession, user: User) -> MeOut:
             .order_by(func.count().desc())
             .limit(1)
         )
+    out.notify_prefs = notify_prefs.resolved(user)
     if inbox.enabled():
         out.receipts_email = get_settings().receipts_inbox_address
         out.receipts_personal_email = await inbox.personal_address(session, user)
@@ -70,6 +71,8 @@ async def update_me(
     me = await session.get(User, user.id)
     if data.email_notifications is not None:
         me.email_notifications = data.email_notifications
+    if data.notify_prefs is not None:
+        me.notify_prefs = notify_prefs.merged(me, data.notify_prefs)
     if data.interac is not None:
         me.interac = _interac(data.interac)
     if data.currency is not None:

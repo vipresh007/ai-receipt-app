@@ -78,6 +78,8 @@ export interface Me {
   /** Forward receipts here; null when forwarding isn't set up. */
   receipts_email?: string | null;
   receipts_personal_email?: string | null;
+  /** Push/email per kind, e.g. "comments.push"; missing = on. */
+  notify_prefs?: Record<string, boolean>;
 }
 
 export interface Budget {

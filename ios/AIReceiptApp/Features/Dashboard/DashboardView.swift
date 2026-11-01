@@ -8,6 +8,9 @@ struct DashboardView: View {
 
     /// A date inside the period currently being viewed.
     @State private var anchor: Date = .now
+    /// Where the hero card (and its scrubbable chart) sits, so a swipe there
+    /// scrubs the chart instead of changing the period.
+    @State private var heroFrame: CGRect = .zero
     @State private var granularity: Granularity = .month
     @State private var budgets: [ReceiptExtractionAPIClient.BudgetDTO] = []
     @State private var showingBudgets = false
@@ -145,6 +148,9 @@ struct DashboardView: View {
                                 points: trendPoints,
                                 highlighted: periodStart
                             )
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("dashboard")) } action: {
+                                heroFrame = $0
+                            }
 
                             CategoryBreakdownCard(
                                 breakdown: summary.currentMonthByCategory,
@@ -183,6 +189,23 @@ struct DashboardView: View {
                             )
                         }
                         .padding(Theme.Space.lg)
+                        .contentShape(Rectangle())  // empty space swipes too
+                        .coordinateSpace(.named("dashboard"))
+                        // Swipe left/right anywhere but the chart: next/previous period.
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 30, coordinateSpace: .named("dashboard"))
+                                .onEnded { value in
+                                    guard !heroFrame.contains(value.startLocation) else { return }
+                                    let dx = value.translation.width, dy = value.translation.height
+                                    guard abs(dx) > 60, abs(dx) > abs(dy) * 2 else { return }
+                                    let step = dx < 0 ? 1 : -1
+                                    guard step > 0 ? canGoForward : canGoBack else { return }
+                                    withAnimation(Theme.Motion.base) {
+                                        anchor = granularity.shift(anchor, by: step, calendar: calendar)
+                                    }
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                }
+                        )
                     }
                     // With the nav bar hidden nothing covers the status bar,
                     // so scrolled content would run under the clock. Paint the

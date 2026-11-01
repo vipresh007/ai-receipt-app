@@ -285,6 +285,8 @@ extension ReceiptExtractionAPIClient {
     struct MeSettingsWrite: Encodable {
         var emailNotifications: Bool?
         var interac: String?
+        /// Only the keys sent change, e.g. ["comments.push": false].
+        var notifyPrefs: [String: Bool]?
     }
 
     struct MeDTO: Decodable {
@@ -296,6 +298,8 @@ extension ReceiptExtractionAPIClient {
         /// Forward receipts here (nil when forwarding isn't set up).
         let receiptsEmail: String?
         let receiptsPersonalEmail: String?
+        /// Push/email per kind, e.g. "comments.push" → true.
+        let notifyPrefs: [String: Bool]?
     }
 
     struct PayDetailsDTO: Decodable, Hashable {

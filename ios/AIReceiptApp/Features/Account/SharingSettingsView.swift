@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Notification emails, how people pay you back, and CSV export.
+/// How people pay you back, emailing receipts in, and CSV export.
 struct SharingSettingsView: View {
     typealias API = ReceiptExtractionAPIClient
 
@@ -30,22 +30,6 @@ struct SharingSettingsView: View {
     var body: some View {
         Form {
             if let me {
-                Section {
-                    Toggle(
-                        "Email me about shared expenses",
-                        isOn: Binding(
-                            get: { me.emailNotifications },
-                            set: { on in Task { await save(.init(emailNotifications: on)) } }
-                        )
-                    )
-                } header: {
-                    header("Notifications")
-                } footer: {
-                    Text("New expenses with you, payments and reminders. Everything also shows under Activity.")
-                        .font(.appCaption)
-                }
-                .listRowBackground(Theme.Palette.surface)
-
                 Section {
                     LabeledContent("Interac") {
                         HStack(spacing: Theme.Space.sm) {

@@ -68,3 +68,24 @@ async def test_no_key_no_push(client, test_user, monkeypatch):
 async def test_bad_tokens_are_refused(client):
     r = await client.post("/v1/devices", json={"token": "not-hex!"})
     assert r.status_code == 422
+
+
+async def test_turning_a_kind_off_stops_its_push(client, anon_client, test_user, sam, apns):  # noqa: F811
+    person, _ = await _linked_sam(client, anon_client, test_user, sam)
+    act_as(sam)
+    await anon_client.post("/v1/devices", json={"token": "ef" * 32})
+    me = (
+        await anon_client.patch("/v1/auth/me", json={"notify_prefs": {"expenses.push": False}})
+    ).json()
+    assert me["notify_prefs"]["expenses.push"] is False
+    assert me["notify_prefs"]["comments.push"] is True
+    act_as(test_user)
+    split = await _expense(client, "30.00", [{"is_me": True}, {"person_id": person["id"]}])
+    await push.drain()
+    assert apns.sent == []  # expenses are off for Sam
+    await client.post(f"/v1/splits/{split['id']}/comments", json={"body": "dinner was great"})
+    await push.drain()
+    assert len(apns.sent) == 1  # comments are still on
+    # The feed still has everything.
+    act_as(sam)
+    assert len((await anon_client.get("/v1/activity")).json()["items"]) >= 2

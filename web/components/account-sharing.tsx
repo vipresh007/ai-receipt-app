@@ -37,19 +37,7 @@ export function SharingSettings({ me }: { me: Me }) {
   return (
     <Card className="space-y-lg">
       <CardTitle>Sharing</CardTitle>
-      <label className="flex items-start gap-sm text-callout">
-        <input
-          type="checkbox"
-          checked={me.email_notifications}
-          onChange={(e) => save({ email_notifications: e.target.checked })}
-          className="mt-[3px] h-4 w-4 accent-[var(--c-accent)]"
-        />
-        <span>
-          Email me when someone adds an expense with me, records a payment or sends a reminder
-          <span className="block text-caption text-text-tertiary">Everything also shows under Activity.</span>
-        </span>
-      </label>
-      <div className="space-y-xs border-t border-border pt-lg">
+      <div className="space-y-xs">
         <Label htmlFor="home-currency">Currency</Label>
         <select
           id="home-currency"
@@ -275,6 +263,87 @@ export function ForwardCard({ me }: { me: Me }) {
           </li>
         ))}
       </ul>
+    </Card>
+  );
+}
+
+
+const NOTIFY_KINDS = [
+  { id: "expenses", title: "Shared expenses", example: "Sam added Dinner, your share $20", email: true },
+  { id: "payments", title: "Payments", example: "Sam paid you $40", email: true },
+  { id: "reminders", title: "Reminders to pay", example: "Sam reminded you about $25", email: true },
+  { id: "comments", title: "Comments", example: "Sam commented on Dinner", email: false },
+  { id: "returns", title: "Returns & warranties", example: "Last day to return your Best Buy purchase", email: true },
+  { id: "emailed", title: "Receipts you email in", example: "Added Uber $23.40 from your email", email: false },
+];
+
+/** Push (iPhone) and email, kind by kind. Activity still gets everything. */
+export function NotificationsCard({ me }: { me: Me }) {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const prefs = me.notify_prefs ?? {};
+
+  async function save(patch: Record<string, unknown>) {
+    setError(null);
+    try {
+      queryClient.setQueryData(["me"], await apiPatch<Me>("v1/auth/me", patch));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save.");
+    }
+  }
+
+  const box = (key: string, disabled = false) => (
+    <input
+      type="checkbox"
+      checked={prefs[key] ?? true}
+      disabled={disabled}
+      onChange={(e) => save({ notify_prefs: { [key]: e.target.checked } })}
+      className="h-4 w-4 accent-[var(--c-accent)] disabled:opacity-40"
+      aria-label={key}
+    />
+  );
+
+  return (
+    <Card className="space-y-lg">
+      <CardTitle>Notifications</CardTitle>
+      <label className="flex items-start gap-sm text-callout">
+        <input
+          type="checkbox"
+          checked={me.email_notifications}
+          onChange={(e) => save({ email_notifications: e.target.checked })}
+          className="mt-[3px] h-4 w-4 accent-[var(--c-accent)]"
+        />
+        <span>
+          Send me emails
+          <span className="block text-caption text-text-tertiary">
+            At most one every 10 minutes. Everything also shows under Activity.
+          </span>
+        </span>
+      </label>
+      <div className="overflow-x-auto">
+        <table className="w-full text-callout">
+          <thead>
+            <tr className="text-caption text-text-tertiary">
+              <th className="py-xs text-left font-normal">What</th>
+              <th className="w-16 py-xs font-normal">iPhone</th>
+              <th className="w-16 py-xs font-normal">Email</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {NOTIFY_KINDS.map((k) => (
+              <tr key={k.id}>
+                <td className="py-sm pr-md">
+                  {k.title}
+                  <span className="block text-caption text-text-tertiary">&ldquo;{k.example}&rdquo;</span>
+                </td>
+                <td className="text-center">{box(`${k.id}.push`)}</td>
+                <td className="text-center">{k.email ? box(`${k.id}.email`, !me.email_notifications) : <span className="text-text-tertiary">–</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {error && <p className="text-caption text-danger">{error}</p>}
     </Card>
   );
 }

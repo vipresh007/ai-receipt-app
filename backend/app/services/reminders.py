@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, Receipt, User
+from app.services import notify_prefs
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -90,10 +91,16 @@ async def send_due(session: AsyncSession, today: date) -> int:
             lines.append(f"The warranty on your {store} purchase ends {_day(wu)}.")
         for line in lines:
             session.add(
-                Activity(user_id=user.id, actor_name="Tally", kind="reminder", text=line[:300])
+                Activity(
+                    user_id=user.id, actor_name="Tally", kind="return_reminder", text=line[:300]
+                )
             )
             sent += 1
-            if mailer and user.email_verified and user.email_notifications:
+            if (
+                mailer
+                and user.email_verified
+                and notify_prefs.allowed(user, "return_reminder", "email")
+            ):
                 message = {
                     "subject": line,
                     "text": f"{line}\n\nSee the receipt: {url}/{receipt.id}\n",

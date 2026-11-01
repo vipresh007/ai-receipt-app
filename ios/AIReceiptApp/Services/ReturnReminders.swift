@@ -23,6 +23,9 @@ enum ReturnReminders {
         let pending = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(prefix) }
         center.removePendingNotificationRequests(withIdentifiers: pending)
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+        // Account → Notifications → Returns & warranties → Push.
+        let wanted = UserDefaults.standard.object(forKey: NotificationSettingsView.localReturnsKey) as? Bool ?? true
+        guard wanted else { return }
 
         let receipts = (try? context.fetch(FetchDescriptor<Receipt>())) ?? []
         var requests: [UNNotificationRequest] = []

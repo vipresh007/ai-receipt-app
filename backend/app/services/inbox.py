@@ -29,7 +29,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import pdf, push
+from app.services import notify_prefs, pdf, push
 from app.services.azure_openai import ExtractionError
 from app.services.extraction import process_receipt
 
@@ -179,7 +179,8 @@ async def handle(session: AsyncSession, raw: bytes, extractor) -> str:
         return "extraction failed"
     text = f"added {receipt.merchant or 'a receipt'} ({receipt.total:.2f}) from your email"
     session.add(Activity(user_id=user.id, actor_name="Tally", kind="emailed", text=text))
-    await push.send(session, [user.id], f"Tally {text}", link=f"receipts/{receipt.id}")
+    if notify_prefs.allowed(user, "emailed", "push"):
+        await push.send(session, [user.id], f"Tally {text}", link=f"receipts/{receipt.id}")
     await session.commit()
     return "added"
 
