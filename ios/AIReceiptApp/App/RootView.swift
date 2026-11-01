@@ -10,7 +10,7 @@ struct RootView: View {
     @State private var live = LiveEvents()
     /// First launch only (skipped for seeded/demo runs, e.g. screenshots).
     @State private var showOnboarding =
-        !OnboardingView.hasSeen && !ProcessInfo.processInfo.arguments.contains(SampleData.launchArgument)
+        !OnboardingView.hasSeen && !ProcessInfo.processInfo.arguments.contains("-seedSampleReceipts")
 
     /// Something was shared into Tally while it was closed: read it on Scan.
     private func pickUpShared() {
