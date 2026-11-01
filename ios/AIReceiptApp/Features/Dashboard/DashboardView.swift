@@ -13,6 +13,7 @@ struct DashboardView: View {
     @State private var heroFrame: CGRect = .zero
     @State private var granularity: Granularity = .month
     @State private var budgets: [ReceiptExtractionAPIClient.BudgetDTO] = []
+    @Environment(\.modelContext) private var modelContext
     @State private var showingBudgets = false
 
     private let calendar = Calendar.current
@@ -52,6 +53,13 @@ struct DashboardView: View {
         }
         do {
             budgets = try await AccountSync.listBudgets(auth: auth, month: periodMonthString)
+            if isCurrentPeriod {
+                // For the round lock screen widget: this month across all budgets.
+                let limit = budgets.compactMap { Decimal(string: $0.monthlyLimit) }.reduce(0, +)
+                let spent = budgets.compactMap { Decimal(string: $0.spent) }.reduce(0, +)
+                AppGroup.budgetTotals = (spent, limit)
+                WidgetSync.update(modelContext)
+            }
         } catch is CancellationError {
             // Superseded by a newer load (e.g. .task(id:) and .onAppear both
             // firing, or rapid tab switching) — not a real failure.

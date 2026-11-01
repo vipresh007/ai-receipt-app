@@ -47,7 +47,7 @@ struct MonthWidget: Widget {
         }
         .configurationDisplayName("This month")
         .description("What you've spent this month, and where it went.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline, .accessoryCircular])
     }
 }
 
@@ -87,9 +87,14 @@ struct MonthWidgetView: View {
         switch family {
         case .accessoryInline:
             Text("\(money(s.monthTotal, cents: false)) this month")
+        case .accessoryCircular:
+            circular
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                Text("THIS MONTH").font(.caption2.weight(.semibold))
+                HStack(spacing: 4) {
+                    TallyGlyph().frame(width: 11, height: 11)
+                    Text("THIS MONTH").font(.caption2.weight(.semibold))
+                }
                 Text(money(s.monthTotal)).font(.title3.weight(.bold)).minimumScaleFactor(0.7)
                 if s.previousMonthTotal > 0 {
                     Text("\(delta >= 0 ? "+" : "−")\(money(abs(delta), cents: false)) vs last month").font(.caption2)
@@ -120,6 +125,41 @@ struct MonthWidgetView: View {
         default:
             total.widgetURL(URL(string: "com.vipreshpatel.tally://dashboard"))
         }
+    }
+
+    /// Budget used this month as a ring; without budgets, the month's total.
+    @ViewBuilder
+    private var circular: some View {
+        if let spent = s.budgetSpent, let limit = s.budgetLimit, limit > 0 {
+            let used = NSDecimalNumber(decimal: spent / limit).doubleValue
+            Gauge(value: min(used, 1)) {
+                TallyGlyph()
+            } currentValueLabel: {
+                Text("\(Int((used * 100).rounded()))%")
+            }
+            .gaugeStyle(.accessoryCircular)
+            .widgetLabel("Budget used")
+        } else {
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 1) {
+                    TallyGlyph().frame(width: 12, height: 12)
+                    Text(compact(s.monthTotal))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+                .padding(4)
+            }
+            .widgetLabel("This month")
+        }
+    }
+
+    /// $1,474.49 → "$1.5k"; under 1,000 → "$742".
+    private func compact(_ value: Decimal) -> String {
+        let n = NSDecimalNumber(decimal: value).doubleValue
+        let symbol = Locale.current.currencySymbol ?? "$"
+        return n >= 1000 ? "\(symbol)\(String(format: "%.1f", n / 1000))k" : money(value, cents: false)
     }
 
     private func share(_ c: WidgetSnapshot.Category) -> CGFloat {
@@ -160,5 +200,31 @@ struct MonthWidgetView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
+    }
+}
+
+
+/// The Tally mark: four strokes and a slash (design/logo/tally-mark.svg),
+/// drawn so it tints with the lock screen like any other glyph.
+struct TallyGlyph: View {
+    var body: some View {
+        Canvas { context, size in
+            let unit = min(size.width, size.height) / 1024
+            func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                CGPoint(x: (x - 512) * unit + size.width / 2, y: (y - 512) * unit + size.height / 2)
+            }
+            var strokes = Path()
+            for x in [344.0, 459, 574, 689] {
+                strokes.move(to: p(x, 300))
+                strokes.addLine(to: p(x, 724))
+            }
+            var slash = Path()
+            slash.move(to: p(300, 708))
+            slash.addLine(to: p(733, 316))
+            let style = StrokeStyle(lineWidth: 92 * unit, lineCap: .round)
+            context.stroke(strokes, with: .foreground, style: style)
+            context.stroke(slash, with: .foreground, style: style)
+        }
+        .accessibilityHidden(true)
     }
 }
