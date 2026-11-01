@@ -20,11 +20,12 @@ HERE = pathlib.Path(__file__).resolve().parent
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # (output name, raw capture, theme, eyebrow, headline) — in App Store order.
+# The dashboard always leads; dark grounds first, light ones together at the end.
 SLIDES = [
-    ("01-scan", "scan.png", "dark", "Scan", "Snap a receipt.<br>It reads itself."),
-    ("02-split", "split-items.png", "dark", "Split it", "Split the bill,<br>item by item."),
-    ("03-group", "group.png", "dark", "Groups", "Who owes whom,<br>always up to date."),
-    ("04-dashboard", "dashboard.png", "dark", "This month", "Know where your<br>month stands."),
+    ("01-dashboard", "dashboard.png", "dark", "This month", "Know where your<br>month stands."),
+    ("02-scan", "scan.png", "dark", "Scan", "Snap a receipt.<br>It reads itself."),
+    ("03-split", "split-items.png", "dark", "Split it", "Split the bill,<br>item by item."),
+    ("04-group", "group.png", "dark", "Groups", "Who owes whom,<br>always up to date."),
     ("05-shared", "shared.png", "dark", "Shared", "Trips, roommates,<br>friends. One balance."),
     ("06-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
     ("07-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),

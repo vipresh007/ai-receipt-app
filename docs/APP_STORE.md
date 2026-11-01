@@ -136,14 +136,17 @@ is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-onl
 
 | # | File | Shows |
 |---|---|---|
-| 1 | `out/<size>/01-scan.png` | A receipt read into its fields (the core loop) |
-| 2 | `out/<size>/02-split.png` | Splitting a receipt item by item |
-| 3 | `out/<size>/03-group.png` | A group: who owes whom |
-| 4 | `out/<size>/04-dashboard.png` | This month's total + trend |
+| 1 | `out/<size>/01-dashboard.png` | This month's total + trend (always first) |
+| 2 | `out/<size>/02-scan.png` | A receipt read into its fields (the core loop) |
+| 3 | `out/<size>/03-split.png` | Splitting a receipt item by item |
+| 4 | `out/<size>/04-group.png` | A group: who owes whom |
 | 5 | `out/<size>/05-shared.png` | The Shared tab: people and groups |
 | 6 | `out/<size>/06-insights.png` | Where it went + insights |
 | 7 | `out/<size>/07-receipts.png` | Receipts list (light ground) |
 | 8 | `out/<size>/08-history.png` | Month history (light ground) |
+
+Every release refreshes these with the new build (recapture what changed) and
+keeps the dashboard first.
 
 Slides 1–6 sit on the dark ground and 7–8 on the light one: mostly dark, with
 the two light ones together at the end rather than alternating.
