@@ -19,6 +19,7 @@ struct ScanFlowView: View {
 
     @State private var pickedItem: PhotosPickerItem?
     @State private var showCamera = false
+    @State private var showPDFPicker = false
     @State private var stage: Stage = .idle
     @State private var draft = ReceiptDraft()
     @State private var previewImage: UIImage?
@@ -96,6 +97,16 @@ struct ScanFlowView: View {
                 .presentationDetents([.medium])
         }
         .sensoryFeedback(.success, trigger: savedTick)
+        .fileImporter(isPresented: $showPDFPicker, allowedContentTypes: [.pdf]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            if let image = PDFReceipt.image(from: url) {
+                handle(image)
+            } else {
+                errorMessage = "That PDF couldn't be opened."
+            }
+        }
         .onChange(of: pickedItem) { _, newValue in
             guard let newValue else { return }
             Task {
@@ -176,10 +187,15 @@ struct ScanFlowView: View {
                     .buttonStyle(.secondaryFill)
                 }
 
-                Button("Enter manually", systemImage: "square.and.pencil", action: startManualEntry)
-                    .font(.appCallout)
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .padding(.top, Theme.Space.xs)
+                HStack(spacing: Theme.Space.xl) {
+                    if !quotaSpent {
+                        Button("Choose a PDF", systemImage: "doc.text") { showPDFPicker = true }
+                    }
+                    Button("Enter manually", systemImage: "square.and.pencil", action: startManualEntry)
+                }
+                .font(.appCallout)
+                .foregroundStyle(Theme.Palette.textSecondary)
+                .padding(.top, Theme.Space.xs)
             }
         }
         .padding(Theme.Space.lg)

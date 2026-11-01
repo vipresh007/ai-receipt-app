@@ -38,7 +38,7 @@ shutter is disabled).
 
 | Field             | Type       | Notes |
 |-------------------|------------|-------|
-| `imageBase64`     | string     | JPEG bytes, base64 (no data-URI prefix). ~0.7 quality from the app. |
+| `imageBase64`     | string     | JPEG bytes, base64 (no data-URI prefix). ~0.7 quality from the app. A PDF (`%PDF-…`) is accepted too: the server renders its first two pages to one JPEG (what's stored and sent to the model) and uses the PDF's own text in place of `ocrLines` (`services/pdf.py`). iOS renders PDFs itself and sends the image. |
 | `ocrLines`        | string[]   | On-device Vision OCR, one entry per printed row (label and price joined, corrected for photo tilt). Noisy/possibly empty — a hint, not ground truth. |
 | `clientRequestID` | string     | UUID. Idempotency / dedupe / correlation in logs + blob name. |
 
@@ -86,7 +86,7 @@ shutter is disabled).
 | `400`  | Anonymous call missing the `X-Device-Id` header. |
 | `401`  | Bearer token present but invalid/expired. |
 | `402`  | Anonymous device has used all its free scans — sign in to continue. |
-| `422`  | `imageBase64` not valid base64, or empty. |
+| `422`  | `imageBase64` not valid base64, or empty, or a PDF that can't be opened. |
 | `429`  | Anonymous: too many calls from this client IP this hour (`anon_ip_hourly_limit`, default 60). Signed-in monthly limit is *planned*. |
 | `502`  | Azure OpenAI unavailable or returned nothing usable. |
 

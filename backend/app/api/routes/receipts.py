@@ -25,7 +25,7 @@ from app.schemas.receipt import (
     ReceiptUpdate,
     RecurringGroupOut,
 )
-from app.services import split_store
+from app.services import pdf, split_store
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 from app.services.extraction import (
@@ -49,6 +49,17 @@ def _decode_image(image_base64: str) -> bytes:
     if not data:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Empty image.")
     return data
+
+
+def _readable(data: bytes, ocr_lines: list[str]) -> tuple[bytes, list[str]]:
+    """A PDF becomes an image plus its exact text; anything else passes through."""
+    if not pdf.is_pdf(data):
+        return data, ocr_lines
+    try:
+        image, lines = pdf.to_image_and_text(data)
+    except pdf.PdfError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return image, lines or ocr_lines
 
 
 def _extracted_to_out(ex: ExtractedReceipt) -> ExtractionOut:
@@ -128,7 +139,9 @@ async def extract(
     session: AsyncSession = Depends(get_session),
     extractor: AzureOpenAIExtractor = Depends(get_extractor),
 ) -> ExtractionOut:
-    image_bytes = _decode_image(payload.image_base64)
+    image_bytes, ocr_lines = await run_in_threadpool(
+        _readable, _decode_image(payload.image_base64), payload.ocr_lines
+    )
 
     # ---- anonymous (local-first iOS): rate-limited, not persisted ----
     if user is None:
@@ -141,7 +154,7 @@ async def extract(
             # The OpenAI SDK call is blocking; off the event loop so a scan
             # doesn't stall every other request on this worker.
             extracted = await run_in_threadpool(
-                extractor.extract, image_bytes=image_bytes, ocr_lines=payload.ocr_lines
+                extractor.extract, image_bytes=image_bytes, ocr_lines=ocr_lines
             )
         except ExtractionError as exc:
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
@@ -156,7 +169,7 @@ async def extract(
             session=session,
             user=user,
             image_bytes=image_bytes,
-            ocr_lines=payload.ocr_lines,
+            ocr_lines=ocr_lines,
             request_id=payload.client_request_id,
             extractor=extractor,
         )

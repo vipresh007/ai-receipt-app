@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
 import { parseWith, withParam, type SplitWith } from "@/components/add-expense";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, PencilLine, RotateCcw, UploadCloud } from "lucide-react";
+import { CheckCircle2, FileText, PencilLine, RotateCcw, UploadCloud } from "lucide-react";
 import { apiPost } from "@/lib/api";
 import type { Extraction } from "@/lib/types";
 import { categoryMeta } from "@/lib/categories";
@@ -19,8 +19,8 @@ import { PageHeader } from "@/components/page-header";
 type Stage =
   | { name: "idle" }
   | { name: "error"; message: string }
-  | { name: "reading"; preview: string }
-  | { name: "done"; preview: string; result: Extraction };
+  | { name: "reading"; preview: string | null }
+  | { name: "done"; preview: string | null; result: Extraction };
 
 async function fileToBase64(file: File): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -42,11 +42,13 @@ export default function ScanPage() {
   }, []);
 
   async function handleFile(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setStage({ name: "error", message: "Please choose an image file." });
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!file.type.startsWith("image/") && !isPdf) {
+      setStage({ name: "error", message: "Choose a photo or a PDF of the receipt." });
       return;
     }
-    const preview = URL.createObjectURL(file);
+    // A PDF has no quick preview here; the server renders it.
+    const preview = isPdf ? null : URL.createObjectURL(file);
     setStage({ name: "reading", preview });
     try {
       const base64 = await fileToBase64(file);
@@ -93,13 +95,13 @@ export default function ScanPage() {
             )}
           >
             <UploadCloud className="text-accent" size={40} />
-            <span className="text-callout">Drop a receipt photo here, or click to choose</span>
-            <span className="text-caption text-text-secondary">JPG or PNG</span>
+            <span className="text-callout">Drop a receipt photo or PDF here, or click to choose</span>
+            <span className="text-caption text-text-secondary">JPG, PNG or PDF</span>
           </button>
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -127,12 +129,16 @@ export default function ScanPage() {
 
       {stage.name === "reading" && (
         <Card className="flex flex-col items-center gap-md py-2xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={stage.preview}
-            alt="Receipt preview"
-            className="max-h-56 rounded-md border border-border"
-          />
+          {stage.preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={stage.preview}
+              alt="Receipt preview"
+              className="max-h-56 rounded-md border border-border"
+            />
+          ) : (
+            <FileText className="text-accent" size={48} aria-hidden />
+          )}
           <p className="text-callout text-text-secondary">Reading receipt…</p>
         </Card>
       )}
