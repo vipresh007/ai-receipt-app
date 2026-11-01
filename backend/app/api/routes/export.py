@@ -58,7 +58,7 @@ async def receipts_csv(
     )
     return _csv(
         "receipts",
-        ["Date", "Merchant", "Category", "Total", "Tax", "Your share", "Currency"],
+        ["Date", "Merchant", "Category", "Total", "Tax", "Your share"],
         [
             [
                 r.purchased_at.isoformat() if r.purchased_at else "",
@@ -67,7 +67,6 @@ async def receipts_csv(
                 f"{r.total:.2f}",
                 f"{r.tax:.2f}",
                 f"{(r.my_share if r.my_share is not None else r.total):.2f}",
-                r.currency,
             ]
             for r in receipts
         ],
@@ -112,7 +111,6 @@ async def shared_csv(
                 split.description,
                 groups.get(split.group_id, "") if split.group_id else "",
                 f"{split.total:.2f}",
-                split.currency,
                 payers,
                 f"{me.share:.2f}" if me else "",
                 shares,
@@ -120,6 +118,6 @@ async def shared_csv(
         )
     return _csv(
         "shared",
-        ["Date", "Description", "Group", "Total", "Currency", "Paid by", "Your share", "Shares"],
+        ["Date", "Description", "Group", "Total", "Paid by", "Your share", "Shares"],
         rows,
     )

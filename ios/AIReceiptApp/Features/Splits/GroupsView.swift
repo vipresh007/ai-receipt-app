@@ -24,63 +24,78 @@ struct GroupsView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if !auth.isSignedIn {
-                    signInPrompt
-                } else if !loaded {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if groups.isEmpty && people.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing shared yet", systemImage: "person.2")
-                    } description: {
-                        Text("Split a receipt with anyone by name, add a person here, or make a group for a trip or housemates. Tally keeps the tab.")
-                    } actions: {
-                        Button("Add person") { addingPerson = true }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Theme.Palette.accent)
-                        Button("New group") { creating = true }
-                    }
-                } else {
-                    List {
-                        Section {
-                            ForEach(people) { person in
-                                NavigationLink(value: Route.person(person.id)) {
-                                    PersonRow(person: person)
-                                }
-                            }
-                            Button {
-                                addingPerson = true
-                            } label: {
-                                Label("Add person", systemImage: "person.badge.plus")
-                            }
-                        } header: {
-                            ListHeader("People")
-                        }
-                        .listRowBackground(Theme.Palette.surface)
-
-                        Section {
-                            ForEach(groups) { group in
-                                NavigationLink(value: Route.group(group.id)) {
-                                    GroupRow(group: group)
-                                }
-                            }
-                            Button {
-                                creating = true
-                            } label: {
-                                Label("New group", systemImage: "person.3")
-                            }
-                        } header: {
-                            ListHeader("Groups")
-                        }
-                        .listRowBackground(Theme.Palette.surface)
-                    }
-                    .ledgerBackground()
-                    .refreshable { await load() }
+            VStack(spacing: 0) {
+                // Same header as the Dashboard: title, and the bell top-right.
+                HStack(alignment: .center) {
+                    Text("Shared")
+                        .font(.display(38, relativeTo: .largeTitle))
+                        .tracking(-1)
+                        .foregroundStyle(Theme.Palette.text)
+                    Spacer()
+                    if auth.isSignedIn { ActivityBellButton() }
                 }
+                .padding(.horizontal, Theme.Space.lg)
+                .padding(.top, Theme.Space.sm)
+                .padding(.bottom, Theme.Space.xs)
+
+                Group {
+                    if !auth.isSignedIn {
+                        signInPrompt
+                    } else if !loaded {
+                        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if groups.isEmpty && people.isEmpty {
+                        ContentUnavailableView {
+                            Label("Nothing shared yet", systemImage: "person.2")
+                        } description: {
+                            Text("Split a receipt with anyone by name, add a person here, or make a group for a trip or housemates. Tally keeps the tab.")
+                        } actions: {
+                            Button("Add person") { addingPerson = true }
+                                .buttonStyle(.borderedProminent)
+                                .tint(Theme.Palette.accent)
+                            Button("New group") { creating = true }
+                        }
+                    } else {
+                        List {
+                            Section {
+                                ForEach(people) { person in
+                                    NavigationLink(value: Route.person(person.id)) {
+                                        PersonRow(person: person)
+                                    }
+                                }
+                                Button {
+                                    addingPerson = true
+                                } label: {
+                                    Label("Add person", systemImage: "person.badge.plus")
+                                }
+                            } header: {
+                                ListHeader("People")
+                            }
+                            .listRowBackground(Theme.Palette.surface)
+
+                            Section {
+                                ForEach(groups) { group in
+                                    NavigationLink(value: Route.group(group.id)) {
+                                        GroupRow(group: group)
+                                    }
+                                }
+                                Button {
+                                    creating = true
+                                } label: {
+                                    Label("New group", systemImage: "person.3")
+                                }
+                            } header: {
+                                ListHeader("Groups")
+                            }
+                            .listRowBackground(Theme.Palette.surface)
+                        }
+                        .ledgerBackground()
+                        .refreshable { await load() }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.Palette.bg.ignoresSafeArea())
-            .navigationTitle("Shared")
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .group(let id):
@@ -89,26 +104,6 @@ struct GroupsView: View {
                     PersonDetailView(personID: id, onChange: { Task { await load() } })
                 case .activity:
                     ActivityView()
-                }
-            }
-            .toolbar {
-                if auth.isSignedIn {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        NavigationLink(value: Route.activity) {
-                            Image(systemName: badge.unread > 0 ? "bell.badge" : "bell")
-                                .symbolRenderingMode(.multicolor)
-                        }
-                        .accessibilityLabel(badge.unread > 0 ? "Activity, \(badge.unread) new" : "Activity")
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            Button("Add person", systemImage: "person.badge.plus") { addingPerson = true }
-                            Button("New group", systemImage: "person.3") { creating = true }
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        .accessibilityLabel("Add")
-                    }
                 }
             }
         }

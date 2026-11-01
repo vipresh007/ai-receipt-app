@@ -8,7 +8,6 @@ struct DashboardView: View {
 
     /// A date inside the period currently being viewed.
     @State private var anchor: Date = .now
-    @Environment(ActivityBadge.self) private var activityBadge
     /// Where the hero card (and its scrubbable chart) sits, so a swipe there
     /// scrubs the chart instead of changing the period.
     @State private var heroFrame: CGRect = .zero
@@ -272,28 +271,7 @@ struct DashboardView: View {
             Spacer(minLength: 0)
             if auth.isSignedIn {
                 // New activity on shared expenses: same bell and count as on Shared.
-                NavigationLink {
-                    ActivityView()
-                } label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Theme.Palette.gold)
-                        .frame(width: 44, height: 44)
-                        .background(HeroPanelBackground(cornerRadius: 22))
-                        .overlay(alignment: .topTrailing) {
-                            if activityBadge.unread > 0 {
-                                Text(activityBadge.unread > 9 ? "9+" : "\(activityBadge.unread)")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 5)
-                                    .frame(minWidth: 18, minHeight: 18)
-                                    .background(Theme.Palette.danger, in: Capsule())
-                                    .offset(x: 4, y: -4)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(activityBadge.unread > 0 ? "Activity, \(activityBadge.unread) new" : "Activity")
+                ActivityBellButton()
             }
             if let firstName {
                 Button {

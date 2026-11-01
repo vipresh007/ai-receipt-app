@@ -113,3 +113,35 @@ struct ActivityView: View {
         }
     }
 }
+
+
+/// The gold bell with a red unread count, top-right on Dashboard and Shared;
+/// opens Activity.
+struct ActivityBellButton: View {
+    @Environment(ActivityBadge.self) private var badge
+
+    var body: some View {
+        NavigationLink {
+            ActivityView()
+        } label: {
+            Image(systemName: "bell")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.Palette.gold)
+                .frame(width: 44, height: 44)
+                .background(HeroPanelBackground(cornerRadius: 22))
+                .overlay(alignment: .topTrailing) {
+                    if badge.unread > 0 {
+                        Text(badge.unread > 9 ? "9+" : "\(badge.unread)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .frame(minWidth: 18, minHeight: 18)
+                            .background(Theme.Palette.danger, in: Capsule())
+                            .offset(x: 4, y: -4)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(badge.unread > 0 ? "Activity, \(badge.unread) new" : "Activity")
+    }
+}
