@@ -1,3 +1,4 @@
+import UserNotifications
 import SwiftUI
 
 /// Unread activity, shared by the tab badge and the bell (refreshed on
@@ -12,7 +13,11 @@ final class ActivityBadge {
             unread = 0
             return
         }
-        if let count = try? await client.unreadActivity() { unread = count }
+        if let count = try? await client.unreadActivity() {
+            unread = count
+            // The same number on the app icon (if notifications are allowed).
+            try? await UNUserNotificationCenter.current().setBadgeCount(count)
+        }
     }
 }
 
@@ -83,6 +88,7 @@ struct ActivityView: View {
             if feed.unread > 0 {
                 try? await client.markActivityRead()
                 badge.unread = 0
+                try? await UNUserNotificationCenter.current().setBadgeCount(0)
             }
         } catch is CancellationError {
             return
