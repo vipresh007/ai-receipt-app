@@ -100,7 +100,11 @@ struct ReceiptDetailView: View {
                 }
             }
 
-            ReturnWarrantySection(receipt: receipt)
+            // Not for everyday spending (groceries, meals, rides, bills) unless a date was set.
+            if ![.groceries, .restaurants, .transport, .utilities].contains(receipt.category)
+                || receipt.returnBy != nil || receipt.warrantyUntil != nil {
+                ReturnWarrantySection(receipt: receipt)
+            }
 
             ReceiptSplitSection(receipt: receipt)
         }

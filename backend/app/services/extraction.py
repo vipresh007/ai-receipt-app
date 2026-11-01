@@ -38,9 +38,25 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
-def return_by(purchased: date | None, days: int | None) -> date | None:
-    """The last day to return it, from a printed return window."""
+# Only things worth taking back get a return date on their own: groceries,
+# meals, rides and bills often print a policy too, but nobody returns milk.
+RETURNABLE = {"shopping", "other"}
+RETURN_MIN_TOTAL = Decimal("25")
+
+
+def return_by(
+    purchased: date | None,
+    days: int | None,
+    category: str | None = "shopping",
+    total: Decimal | str | None = None,
+) -> date | None:
+    """The last day to return it, from a printed return window — only for
+    shopping (or uncategorized) receipts of $25 or more."""
     if purchased is None or days is None or not 0 < days <= 365:
+        return None
+    if category not in RETURNABLE:
+        return None
+    if total is not None and _to_decimal(str(total)) < RETURN_MIN_TOTAL:
         return None
     return purchased + timedelta(days=days)
 
@@ -92,7 +108,12 @@ async def process_receipt(
         raw_ocr="\n".join(ocr_lines) or None,
         extraction_confidence=extracted.confidence,
         line_items=[item.model_dump() for item in extracted.line_items],
-        return_by=return_by(_parse_date(extracted.purchased_at), extracted.return_days),
+        return_by=return_by(
+            _parse_date(extracted.purchased_at),
+            extracted.return_days,
+            extracted.category,
+            extracted.total,
+        ),
     )
     session.add(receipt)
     await session.flush()

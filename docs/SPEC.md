@@ -65,7 +65,9 @@ biggest 5%+ rise among items bought in the last 45 days. Server:
 A receipt can carry a "Return by" date and a "Warranty until" date (quick
 picks: 14/30/90 days, 1/2/3 years from the purchase date). When a receipt
 prints a return window, extraction fills "Return by" in (`return_days` from the
-model + the purchase date). The iPhone schedules local notifications (3 days
+model + the purchase date) — only for Shopping or Other receipts of $25 or more;
+groceries, meals, rides and bills never get one on their own, and their
+receipts hide the section unless a date was set by hand. The iPhone schedules local notifications (3 days
 before and the morning of the last return day; 30 days before a warranty ends —
 `ReturnReminders`, no push server needed). The server emails the same
 reminders once each (`services/reminders.py`, hourly, replica-safe claims)

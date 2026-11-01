@@ -13,6 +13,10 @@ def test_return_window_from_the_receipt():
     assert return_by(date(2026, 10, 1), 30) == date(2026, 10, 31)
     assert return_by(date(2026, 10, 1), None) is None
     assert return_by(None, 30) is None
+    # Only things worth returning: not groceries, and not small purchases.
+    assert return_by(date(2026, 10, 1), 30, "shopping", "199.99") == date(2026, 10, 31)
+    assert return_by(date(2026, 10, 1), 30, "groceries", "199.99") is None
+    assert return_by(date(2026, 10, 1), 30, "shopping", "12.00") is None
 
 
 async def test_dates_are_saved_and_reminded_once(client, sessionmaker_, test_user):

@@ -79,7 +79,9 @@ def _extracted_to_out(ex: ExtractedReceipt) -> ExtractionOut:
         confidence=ex.confidence,
         return_by=(
             rb.isoformat()
-            if (rb := return_by(_parse_date(ex.purchased_at), ex.return_days))
+            if (
+                rb := return_by(_parse_date(ex.purchased_at), ex.return_days, ex.category, ex.total)
+            )
             else None
         ),
     )

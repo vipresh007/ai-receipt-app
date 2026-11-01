@@ -298,7 +298,11 @@ export default function ReceiptDetailPage() {
         </div>
       </Card>
 
-      {receipt && <ReturnWarranty receipt={receipt} />}
+      {/* Not for everyday spending (groceries, meals, rides, bills) unless a date was set. */}
+      {receipt &&
+        (!["groceries", "restaurants", "transport", "utilities"].includes(receipt.category_slug) ||
+          receipt.return_by ||
+          receipt.warranty_until) && <ReturnWarranty receipt={receipt} />}
 
       <Card className="space-y-lg">
         <div className="flex items-center justify-between gap-md">
