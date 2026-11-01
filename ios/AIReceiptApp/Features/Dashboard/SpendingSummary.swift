@@ -56,7 +56,7 @@ struct SpendingSummary {
             .sorted { $0.amount > $1.amount }
 
         let isCurrent = granularity.key(for: now, calendar: calendar) == granularity.key(for: today, calendar: calendar)
-        insights = Self.makeInsights(
+        var notes = Self.makeInsights(
             current: current,
             previous: previous,
             receipts: receipts,
@@ -67,6 +67,20 @@ struct SpendingSummary {
                 ? "this \(granularity.rawValue)"
                 : "in \(granularity.periodLabel(for: now, calendar: calendar))"
         )
+        // Something you buy often got pricier lately (now only, not for past periods).
+        if isCurrent, !notes.isEmpty, let rise = PriceTracker.biggestRise(in: PriceTracker.items(in: receipts), now: today),
+           let before = rise.previous, let change = rise.change {
+            let code = Locale.current.currency?.identifier ?? "USD"
+            let month = before.date.formatted(.dateTime.month(.wide))
+            notes.insert(
+                Insight(
+                    kind: .up,
+                    message: "\(rise.name) is \(rise.latest.unitPrice.formatted(.currency(code: code))) now, up \(Int((change * 100).rounded()))% from \(before.unitPrice.formatted(.currency(code: code))) in \(month)."
+                ),
+                at: min(notes.count, 2)
+            )
+        }
+        insights = notes
     }
 
     /// Total spend per period (month, quarter, or year) for the last

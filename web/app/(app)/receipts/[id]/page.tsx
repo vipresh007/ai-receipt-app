@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Users } from "lucide-react";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api";
-import type { ExtractionItem, ReceiptOut, Split } from "@/lib/types";
+import type { ExtractionItem, ReceiptOut, Split, TrackedItem } from "@/lib/types";
+import { earlierPrice } from "@/lib/prices";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,10 @@ export default function ReceiptDetailPage() {
     queryFn: () => apiGet<ReceiptOut>(`v1/receipts/${id}`),
   });
 
+  const { data: tracked } = useQuery({
+    queryKey: ["receipts", "prices"],
+    queryFn: () => apiGet<TrackedItem[]>("v1/receipts/prices"),
+  });
   const { data: split } = useQuery({
     ...LIVE,
     queryKey: ["split", receipt?.split_id],
@@ -244,8 +249,12 @@ export default function ReceiptDetailPage() {
           <div className="space-y-xs">
             <p className="text-caption text-text-tertiary">Items</p>
             <div className="space-y-sm">
-              {items.map((item, i) => (
-                <div key={i} className="flex items-center gap-sm">
+              {items.map((item, i) => {
+                const before = earlierPrice(tracked, item, receipt?.purchased_at ?? null);
+                const unit = Number(item.price) / Math.max(item.quantity ?? 1, 1);
+                return (
+                <div key={i}>
+                <div className="flex items-center gap-sm">
                   <Input
                     value={item.name}
                     onChange={(e) => updateItem(i, { name: e.target.value })}
@@ -263,7 +272,15 @@ export default function ReceiptDetailPage() {
                     className="w-24"
                   />
                 </div>
-              ))}
+                {before && (
+                  <p className={`mt-hair text-caption ${unit > Number(before.unit_price) ? "text-danger" : "text-success"}`}>
+                    {unit > Number(before.unit_price) ? "↑" : "↓"} was {money(before.unit_price)} at {before.merchant},{" "}
+                    {shortDate(before.date)}
+                  </p>
+                )}
+                </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -107,3 +107,22 @@ class RecurringGroupOut(BaseModel):
     occurrences: int
     last_purchased_at: date
     receipt_ids: list[UUID]
+
+
+class PricePurchaseOut(BaseModel):
+    date: str  # YYYY-MM-DD
+    merchant: str
+    unit_price: str
+    receipt_id: str
+
+
+class TrackedItemOut(BaseModel):
+    """Something you've bought on two or more receipts (services/prices.py)."""
+
+    key: str
+    name: str
+    latest_price: str
+    previous_price: str | None
+    previous_date: str | None
+    change: float | None  # 0.125 = +12.5%, latest vs the last different price
+    purchases: list[PricePurchaseOut]  # oldest first

@@ -316,3 +316,14 @@ export interface PublicPerson {
   currency: string;
   expense_count: number;
 }
+
+/** Something bought on two or more receipts (`GET /v1/receipts/prices`). */
+export interface TrackedItem {
+  key: string;
+  name: string;
+  latest_price: string;
+  previous_price: string | null;
+  previous_date: string | null;
+  change: number | null;
+  purchases: { date: string; merchant: string; unit_price: string; receipt_id: string }[];
+}

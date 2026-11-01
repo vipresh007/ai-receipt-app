@@ -42,6 +42,8 @@ struct ReceiptListView: View {
         Locale.current.currency?.identifier ?? "USD"
     }
 
+    private var trackedPrices: [TrackedItem] { PriceTracker.items(in: receipts) }
+
     private var recurringGroups: [RecurringGroup] {
         RecurringDetector.find(in: receipts, calendar: calendar)
     }
@@ -127,12 +129,22 @@ struct ReceiptListView: View {
 
     @ViewBuilder
     private var recurringSection: some View {
-        if !recurringGroups.isEmpty, searchText.isEmpty, categoryFilter == nil {
+        let prices = trackedPrices
+        if (!recurringGroups.isEmpty || !prices.isEmpty), searchText.isEmpty, categoryFilter == nil {
             Section {
-                NavigationLink {
-                    RecurringListView(groups: recurringGroups, currencyCode: currencyCode)
-                } label: {
-                    RecurringSummaryRow(groups: recurringGroups, currencyCode: currencyCode)
+                if !recurringGroups.isEmpty {
+                    NavigationLink {
+                        RecurringListView(groups: recurringGroups, currencyCode: currencyCode)
+                    } label: {
+                        RecurringSummaryRow(groups: recurringGroups, currencyCode: currencyCode)
+                    }
+                }
+                if !prices.isEmpty {
+                    NavigationLink {
+                        PriceListView(items: prices, currencyCode: currencyCode)
+                    } label: {
+                        PricesSummaryRow(items: prices)
+                    }
                 }
             }
             .listRowBackground(Color.clear)
@@ -210,6 +222,33 @@ private struct RecurringSummaryRow: View {
                 .foregroundStyle(Theme.Palette.accent)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Recurring")
+                    .font(.appCallout.weight(.medium))
+                    .foregroundStyle(Theme.Palette.text)
+                Text(subtitle)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+private struct PricesSummaryRow: View {
+    let items: [TrackedItem]
+
+    private var subtitle: String {
+        let up = items.filter { ($0.change ?? 0) > 0 }.count
+        let noun = items.count == 1 ? "item" : "items"
+        return up > 0 ? "\(items.count) \(noun) tracked · \(up) went up" : "\(items.count) \(noun) tracked"
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Space.md) {
+            Image(systemName: "tag.circle.fill")
+                .font(.title2)
+                .foregroundStyle(Theme.Palette.accent)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Prices")
                     .font(.appCallout.weight(.medium))
                     .foregroundStyle(Theme.Palette.text)
                 Text(subtitle)

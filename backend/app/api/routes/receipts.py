@@ -20,12 +20,14 @@ from app.schemas.receipt import (
     ExtractionItemOut,
     ExtractionOut,
     ImportIn,
+    PricePurchaseOut,
     ReceiptCreate,
     ReceiptOut,
     ReceiptUpdate,
     RecurringGroupOut,
+    TrackedItemOut,
 )
-from app.services import pdf, split_store
+from app.services import pdf, prices, split_store
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 from app.services.extraction import (
@@ -300,6 +302,38 @@ async def list_receipts(
         query = query.where(Receipt.total <= _to_decimal(max_amount))
     rows = await session.scalars(query.order_by(Receipt.created_at.desc()).limit(min(limit, 200)))
     return [_receipt_out(r) for r in rows]
+
+
+@router.get("/receipts/prices", response_model=list[TrackedItemOut])
+async def list_prices(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[TrackedItemOut]:
+    """Items you buy again and again, and what they cost each time."""
+    receipts = list(await session.scalars(select(Receipt).where(Receipt.user_id == user.id)))
+    out = []
+    for t in prices.tracked_items(receipts)[:300]:
+        prev = t.previous
+        out.append(
+            TrackedItemOut(
+                key=t.key,
+                name=t.name,
+                latest_price=f"{t.latest.unit_price:.2f}",
+                previous_price=f"{prev.unit_price:.2f}" if prev else None,
+                previous_date=prev.date.isoformat() if prev else None,
+                change=round(t.change, 4) if t.change is not None else None,
+                purchases=[
+                    PricePurchaseOut(
+                        date=p.date.isoformat(),
+                        merchant=p.merchant,
+                        unit_price=f"{p.unit_price:.2f}",
+                        receipt_id=p.receipt_id,
+                    )
+                    for p in t.purchases[-24:]
+                ],
+            )
+        )
+    return out
 
 
 @router.get("/receipts/recurring", response_model=list[RecurringGroupOut])

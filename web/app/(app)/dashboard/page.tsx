@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronLeft, ChevronRight, Plus, ScanLine } from "lucide-react";
 import { apiGet } from "@/lib/api";
-import type { Budget, CategoryTotal, Me, ReceiptOut, SpendingSummary, TrendPoint } from "@/lib/types";
+import type { Budget, CategoryTotal, Me, ReceiptOut, SpendingSummary, TrackedItem, TrendPoint } from "@/lib/types";
 import { spendingInsights } from "@/lib/insights";
+import { biggestRise } from "@/lib/prices";
 import {
   type Granularity,
   anchorFromPeriodKey,
@@ -86,6 +87,10 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(thisMonth);
   const [granularity, setGranularity] = useState<Granularity>("month");
   const me = useQuery({ queryKey: ["me"], queryFn: () => apiGet<Me>("v1/auth/me") });
+  const tracked = useQuery({
+    queryKey: ["receipts", "prices"],
+    queryFn: () => apiGet<TrackedItem[]>("v1/receipts/prices"),
+  });
   const firstName = me.data?.display_name?.split(" ")[0];
 
   // Allow deep-linking a month, e.g. from /months.
@@ -166,6 +171,16 @@ export default function DashboardPage() {
           unit: granularity,
         })
       : [];
+  // Something you buy often got pricier lately (only when viewing now).
+  const rise = isCurrentPeriod && insights.length > 0 ? biggestRise(tracked.data) : null;
+  if (rise && rise.previous_price && rise.previous_date && rise.change) {
+    const month = new Date(`${rise.previous_date}T12:00:00`).toLocaleDateString(undefined, { month: "long" });
+    insights.splice(Math.min(insights.length, 2), 0, {
+      id: `price-${rise.key}`,
+      kind: "up",
+      message: `${rise.name} is ${money(rise.latest_price)} now, up ${Math.round(rise.change * 100)}% from ${money(rise.previous_price)} in ${month}.`,
+    });
+  }
   const showInsights = insights.length > 0;
   const hasBudgets = granularity === "month" && !budgets.isLoading && (budgets.data?.length ?? 0) > 0;
   const hasSide = showInsights || hasBudgets;

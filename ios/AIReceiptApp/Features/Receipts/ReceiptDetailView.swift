@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct ReceiptDetailView: View {
@@ -6,6 +7,10 @@ struct ReceiptDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var loadingImage = false
+    @Query private var allReceipts: [Receipt]
+
+    /// Items you've bought before, for "was $3.99 on Jun 12" under each line.
+    private var tracked: [TrackedItem] { PriceTracker.items(in: allReceipts) }
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -67,19 +72,25 @@ struct ReceiptDetailView: View {
 
             if !receipt.items.isEmpty {
                 LedgerSection("Items") {
+                    let tracked = tracked
                     ForEach($receipt.items) { $item in
-                        HStack {
-                            TextField("Item", text: $item.name)
-                            Spacer()
-                            TextField(
-                                "Price",
-                                value: $item.priceMovingTotal($receipt.total),
-                                format: .currency(code: currencyCode)
-                            )
-                            .multilineTextAlignment(.trailing)
-                            .keyboardType(.decimalPad)
-                            .frame(width: 90)
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                TextField("Item", text: $item.name)
+                                Spacer()
+                                TextField(
+                                    "Price",
+                                    value: $item.priceMovingTotal($receipt.total),
+                                    format: .currency(code: currencyCode)
+                                )
+                                .multilineTextAlignment(.trailing)
+                                .keyboardType(.decimalPad)
+                                .frame(width: 90)
+                                .foregroundStyle(.secondary)
+                            }
+                            if let before = PriceTracker.earlier(for: item, on: receipt, in: tracked) {
+                                PriceWasNote(before: before, now: item, currencyCode: currencyCode)
+                            }
                         }
                     }
                     .onDelete { offsets in

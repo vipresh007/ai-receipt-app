@@ -46,8 +46,25 @@ enum SampleData {
             (0, 9, "Presto", 40, .transport), (0, 12, "Loblaws", 101.35, .groceries),
             (0, 16, "Enbridge Gas", 86.90, .utilities), (0, 20, "Sushi Kaji", 58.10, .restaurants),
         ]
+        // The same groceries every month, slowly getting pricier, so Prices
+        // and the "was $3.99" notes have something to show.
+        func groceries(_ monthsAgo: Int) -> [ReceiptLineItem] {
+            let step = Decimal(5 - monthsAgo)  // 0 five months ago … 5 now
+            return [
+                ReceiptLineItem(name: "Oat milk 1L", price: 3.99 + step * 0.10),
+                ReceiptLineItem(name: "Sourdough loaf", price: monthsAgo > 2 ? 5.99 : 6.50),
+                ReceiptLineItem(name: "Coffee beans 340g", price: monthsAgo > 1 ? 13.99 : 14.99),
+                ReceiptLineItem(name: "Bananas", price: 1.69),
+                ReceiptLineItem(name: "Greek yogurt 750g", price: monthsAgo == 3 ? 4.99 : 5.99),
+            ]
+        }
         for (monthsAgo, d, merchant, total, category) in rows {
-            context.insert(Receipt(merchant: merchant, date: day(monthsAgo, d), total: total, category: category))
+            context.insert(
+                Receipt(
+                    merchant: merchant, date: day(monthsAgo, d), total: total, category: category,
+                    items: category == .groceries ? groceries(monthsAgo) : []
+                )
+            )
         }
         try? context.save()
     }

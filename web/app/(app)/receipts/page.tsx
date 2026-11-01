@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { ChevronRight, Plus, RefreshCw, Search, Tag } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api";
-import type { ReceiptOut, RecurringGroup } from "@/lib/types";
+import type { ReceiptOut, RecurringGroup, TrackedItem } from "@/lib/types";
 import { CATEGORY_ORDER, categoryMeta } from "@/lib/categories";
 import { money, shortDate } from "@/lib/format";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -100,6 +100,11 @@ export default function ReceiptsPage() {
   });
 
   const groups = data ? groupByMonth(data) : [];
+  const { data: tracked } = useQuery({
+    queryKey: ["receipts", "prices"],
+    queryFn: () => apiGet<TrackedItem[]>("v1/receipts/prices"),
+  });
+  const pricesUp = (tracked ?? []).filter((t) => (t.change ?? 0) > 0).length;
   const monthlyRecurringTotal = (recurring ?? []).reduce((s, g) => s + Number(g.average_amount), 0);
 
   function toggleSelected(id: string) {
@@ -230,6 +235,24 @@ export default function ReceiptsPage() {
             ))}
           </ul>
         </Card>
+      )}
+
+      {!filtersActive && (tracked ?? []).length > 0 && (
+        <Link href="/receipts/prices" className="block">
+          <Card className="flex items-center gap-md hover:bg-surface-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent-muted text-accent">
+              <Tag size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle>Prices</CardTitle>
+              <p className="mt-hair text-caption text-text-secondary">
+                {tracked!.length} item{tracked!.length === 1 ? "" : "s"} tracked
+                {pricesUp > 0 && ` · ${pricesUp} went up`}
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-text-tertiary" />
+          </Card>
+        </Link>
       )}
 
       {isLoading && (
