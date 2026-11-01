@@ -17,42 +17,18 @@ struct RootView: View {
     }
 
     var body: some View {
-        TabView(selection: Binding(
-            get: { router.selection },
-            // The middle slot isn't a screen: it opens the Scan sheet.
-            set: { tab in
-                if tab == .scan { router.scanning = true } else { router.selection = tab }
-            }
-        )) {
-            DashboardView()
-                .tabItem { Label("Dashboard", systemImage: "chart.pie.fill") }
-                .tag(AppTab.dashboard)
-
-            ReceiptListView()
-                .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
-                .tag(AppTab.receipts)
-
-            // Not a screen: its gold camera icon opens the Scan sheet. Drawn
-            // as the tab's own icon so the tab bar lines it up like the rest.
-            Color.clear
-                .tabItem {
-                    Label {
-                        Text("Scan")
-                    } icon: {
-                        Image(uiImage: ScanTabIcon.image)
-                    }
-                }
-                .tag(AppTab.scan)
-
-
-            GroupsView()
-                .tabItem { Label("Shared", systemImage: "person.2.fill") }
-                .badge(activityBadge.unread)
-                .tag(AppTab.groups)
-
-            AccountView()
-                .tabItem { Label("Account", systemImage: "person.crop.circle") }
-                .tag(AppTab.account)
+        // Tally's own tab bar (`TallyTabBar`) instead of the system one: five
+        // equal slots, so the gold Scan camera sits dead centre and a selected
+        // tab's highlight never reaches its neighbours.
+        TabView(selection: $router.selection) {
+            DashboardView().tag(AppTab.dashboard).tallyTabRoot()
+            ReceiptListView().tag(AppTab.receipts).tallyTabRoot()
+            GroupsView().tag(AppTab.groups).tallyTabRoot()
+            AccountView().tag(AppTab.account).tallyTabRoot()
+        }
+        .overlay(alignment: .bottom) {
+            TallyTabBar(unread: activityBadge.unread) { router.scanning = true }
+                .ignoresSafeArea(.keyboard)
         }
         .tint(Theme.Palette.accent)
         .sheet(isPresented: $router.scanning) {
@@ -125,21 +101,101 @@ struct RootView: View {
 }
 
 
-/// The middle tab's icon: a gold circle with the camera, kept in its own
-/// colours (not tinted like the other tab icons).
-enum ScanTabIcon {
-    static let image: UIImage = {
-        let size = CGSize(width: 34, height: 34)
-        let rendered = UIGraphicsImageRenderer(size: size).image { _ in
-            UIColor(Theme.Palette.gold).setFill()
-            UIBezierPath(ovalIn: CGRect(origin: .zero, size: size)).fill()
-            let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
-            if let camera = UIImage(systemName: "camera.fill", withConfiguration: config)?
-                .withTintColor(UIColor(Theme.Palette.bg), renderingMode: .alwaysOriginal) {
-                let origin = CGPoint(x: (size.width - camera.size.width) / 2, y: (size.height - camera.size.height) / 2)
-                camera.draw(at: origin)
+private extension View {
+    /// A tab's screen: no system tab bar, and room at the bottom for ours.
+    func tallyTabRoot() -> some View {
+        self
+            .toolbar(.hidden, for: .tabBar)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Color.clear.frame(height: TallyTabBar.height + Theme.Space.sm)
             }
+    }
+}
+
+/// The bottom bar: Dashboard, Receipts, Scan (gold camera, opens the Scan
+/// sheet), Shared, Account. Every slot is the same width.
+struct TallyTabBar: View {
+    static let height: CGFloat = 64
+
+    @Environment(TabRouter.self) private var router
+    let unread: Int
+    let onScan: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            slot(.dashboard, "Dashboard", "chart.pie.fill")
+            slot(.receipts, "Receipts", "list.bullet.rectangle")
+            scanSlot
+            slot(.groups, "Shared", "person.2.fill", badge: unread)
+            slot(.account, "Account", "person.crop.circle")
         }
-        return rendered.withRenderingMode(.alwaysOriginal)
-    }()
+        .padding(.horizontal, Theme.Space.xs)
+        .frame(height: Self.height)
+        .background(Theme.Palette.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.Palette.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.3), radius: 14, y: 6)
+        .padding(.horizontal, Theme.Space.md)
+        .padding(.bottom, Theme.Space.xs)
+    }
+
+    private func slot(_ tab: AppTab, _ title: String, _ symbol: String, badge: Int = 0) -> some View {
+        let selected = router.selection == tab
+        return Button {
+            if !selected { UISelectionFeedbackGenerator().selectionChanged() }
+            router.selection = tab
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: symbol)
+                    .font(.system(size: 21, weight: .medium))
+                    .frame(height: 30)
+                    .overlay(alignment: .topTrailing) {
+                        if badge > 0 {
+                            Text(badge > 9 ? "9+" : "\(badge)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 16, minHeight: 16)
+                                .background(Theme.Palette.danger, in: Capsule())
+                                .offset(x: 10, y: -4)
+                        }
+                    }
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(selected ? Theme.Palette.gold : Theme.Palette.textSecondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.height - 10)
+            .background(selected ? Theme.Palette.surface2 : .clear, in: Capsule())
+            .padding(.horizontal, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(badge > 0 ? "\(title), \(badge) new" : title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var scanSlot: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onScan()
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.Palette.bg)
+                    .frame(width: 30, height: 30)
+                    .background(Theme.Palette.gold, in: Circle())
+                Text("Scan")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Theme.Palette.textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.height - 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Scan a receipt")
+    }
 }
