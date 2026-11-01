@@ -17,7 +17,13 @@ struct RootView: View {
     }
 
     var body: some View {
-        TabView(selection: $router.selection) {
+        TabView(selection: Binding(
+            get: { router.selection },
+            // The middle slot isn't a screen: it opens the Scan sheet.
+            set: { tab in
+                if tab == .scan { router.scanning = true } else { router.selection = tab }
+            }
+        )) {
             DashboardView()
                 .tabItem { Label("Dashboard", systemImage: "chart.pie.fill") }
                 .tag(AppTab.dashboard)
@@ -25,6 +31,11 @@ struct RootView: View {
             ReceiptListView()
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
                 .tag(AppTab.receipts)
+
+            // Holds the middle place for the gold camera drawn over it.
+            Color.clear
+                .tabItem { Text(" ") }
+                .tag(AppTab.scan)
 
 
             GroupsView()
@@ -37,6 +48,11 @@ struct RootView: View {
                 .tag(AppTab.account)
         }
         .tint(Theme.Palette.accent)
+        .overlay(alignment: .bottom) {
+            ScanTabButton { router.scanning = true }
+                .padding(.bottom, -5)
+        }
+        .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $router.scanning) {
             ScanFlowView(onSaved: { _ in router.scanning = false }, isMainScan: true)
                 .environment(router)
@@ -107,26 +123,23 @@ struct RootView: View {
 }
 
 
-/// The floating gold camera (bottom right of Dashboard and Receipts):
-/// opens the Scan sheet — take a photo, pick one or a PDF, or type it in.
-struct ScanFloatingButton: View {
-    @Environment(TabRouter.self) private var router
+/// The gold camera in the middle of the tab bar: sized to its own slot so it
+/// never covers the neighbouring tabs' selection, and opens the Scan sheet.
+struct ScanTabButton: View {
+    let action: () -> Void
 
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            router.scanning = true
+            action()
         } label: {
             Image(systemName: "camera.fill")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.Palette.bg)
-                .frame(width: 60, height: 60)
+                .frame(width: 46, height: 46)
                 .background(Theme.Palette.gold, in: Circle())
-                .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
         }
         .buttonStyle(.plain)
-        .padding(.trailing, Theme.Space.lg)
-        .padding(.bottom, Theme.Space.md)
         .accessibilityLabel("Scan a receipt")
     }
 }
