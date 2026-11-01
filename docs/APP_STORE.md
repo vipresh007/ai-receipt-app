@@ -137,18 +137,20 @@ is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-onl
 | # | File | Shows |
 |---|---|---|
 | 1 | `out/<size>/01-dashboard.png` | This month's total + trend (always first) |
-| 2 | `out/<size>/02-scan.png` | A receipt read into its fields (the core loop) |
+| 2 | `out/<size>/02-scan.png` | A receipt read into its fields |
 | 3 | `out/<size>/03-split.png` | Splitting a receipt item by item |
 | 4 | `out/<size>/04-group.png` | A group: who owes whom |
 | 5 | `out/<size>/05-shared.png` | The Shared tab: people and groups |
-| 6 | `out/<size>/06-insights.png` | Where it went + insights |
-| 7 | `out/<size>/07-receipts.png` | Receipts list (light ground) |
-| 8 | `out/<size>/08-history.png` | Month history (light ground) |
+| 6 | `out/<size>/06-prices.png` | Prices: what things cost now (1.2.0) |
+| 7 | `out/<size>/07-returns.png` | Return & warranty dates (1.2.0) |
+| 8 | `out/<size>/08-insights.png` | Where it went + insights |
+| 9 | `out/<size>/09-receipts.png` | Receipts list (light ground) |
+| 10 | `out/<size>/10-history.png` | Month history (light ground) |
 
 Every release refreshes these with the new build (recapture what changed) and
 keeps the dashboard first.
 
-Slides 1–6 sit on the dark ground and 7–8 on the light one: mostly dark, with
+Slides 1–8 sit on the dark ground and 9–10 on the light one: mostly dark, with
 the two light ones together at the end rather than alternating.
 
 The raw captures are in `brand/app-store/raw/`: iPhone 17 Pro Max simulator,

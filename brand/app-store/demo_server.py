@@ -127,6 +127,14 @@ async def main() -> None:
                 {"member_id": jordan_m["id"], "item_indexes": [1]},
             ]}))
 
+        # Something worth returning: a return window and a warranty.
+        await ok(await c.post("/v1/receipts", json={
+            "merchant": "Best Buy", "date": d(4), "total": "384.19", "tax": "44.20",
+            "category": "shopping", "currency": "CAD",
+            "items": [{"name": "Sony WH-1000XM6 headphones", "price": "299.99"},
+                      {"name": "Geek Squad protection", "price": "39.99"}],
+            "return_by": d(-26), "warranty_until": (TODAY.replace(year=TODAY.year + 1) - timedelta(days=4)).isoformat()}))
+
         # Sam paid back part of it.
         current["user"] = sam
         await ok(await c.post(f"/v1/groups/{g['id']}/settlements", json={

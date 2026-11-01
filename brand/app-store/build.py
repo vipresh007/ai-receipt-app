@@ -27,9 +27,11 @@ SLIDES = [
     ("03-split", "split-items.png", "dark", "Split it", "Split the bill,<br>item by item."),
     ("04-group", "group.png", "dark", "Groups", "Who owes whom,<br>always up to date."),
     ("05-shared", "shared.png", "dark", "Shared", "Trips, roommates,<br>friends. One balance."),
-    ("06-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
-    ("07-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),
-    ("08-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
+    ("06-prices", "prices.png", "dark", "Prices", "See what the things<br>you buy cost now."),
+    ("07-returns", "returns.png", "dark", "Returns", "Never miss a<br>return window."),
+    ("08-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
+    ("09-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),
+    ("10-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
 ]
 
 # App Store Connect slot → (width, height) in pixels.
