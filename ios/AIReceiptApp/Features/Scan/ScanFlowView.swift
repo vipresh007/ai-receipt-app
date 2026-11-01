@@ -12,6 +12,9 @@ struct ScanFlowView: View {
     /// Set when opened from somewhere else (a group's "Take a photo"): called
     /// with the saved receipt, and the screen gets a Cancel button.
     var onSaved: ((Receipt) -> Void)? = nil
+    /// The app's main Scan sheet (tab bar camera): reads receipts shared in
+    /// from other apps and may ask for a review after a save.
+    var isMainScan = false
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AuthManager.self) private var auth
@@ -110,7 +113,7 @@ struct ScanFlowView: View {
         }
         .onChange(of: router?.sharedFile, initial: true) { _, file in
             // Shared in from another app (the Tally share extension).
-            guard onSaved == nil, let file, stage == .idle else { return }
+            guard isMainScan, let file, stage == .idle else { return }
             router?.sharedFile = nil
             defer { try? FileManager.default.removeItem(at: file) }
             let image = file.pathExtension.lowercased() == "pdf"
@@ -413,6 +416,7 @@ struct ScanFlowView: View {
         }
         pendingServerID = nil
         reset()
+        if isMainScan { askForReviewIfDue() }
         if let onSaved {
             onSaved(receipt)
             return

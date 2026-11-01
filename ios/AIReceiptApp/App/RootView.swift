@@ -13,22 +13,29 @@ struct RootView: View {
     private func pickUpShared() {
         guard router.sharedFile == nil, let file = SharedInbox.next() else { return }
         router.sharedFile = file
-        router.selection = .scan
+        router.scanning = true
     }
 
     var body: some View {
-        TabView(selection: $router.selection) {
+        TabView(selection: Binding(
+            get: { router.selection },
+            // The middle slot isn't a screen: it opens the Scan sheet.
+            set: { tab in
+                if tab == .scan { router.scanning = true } else { router.selection = tab }
+            }
+        )) {
             DashboardView()
                 .tabItem { Label("Dashboard", systemImage: "chart.pie.fill") }
                 .tag(AppTab.dashboard)
 
-            ScanFlowView()
-                .tabItem { Label("Scan", systemImage: "camera.viewfinder") }
-                .tag(AppTab.scan)
-
             ReceiptListView()
                 .tabItem { Label("Receipts", systemImage: "list.bullet.rectangle") }
                 .tag(AppTab.receipts)
+
+            // Holds the middle place for the gold camera drawn over it.
+            Color.clear
+                .tabItem { Text(" ") }
+                .tag(AppTab.scan)
 
             GroupsView()
                 .tabItem { Label("Shared", systemImage: "person.2.fill") }
@@ -40,6 +47,15 @@ struct RootView: View {
                 .tag(AppTab.account)
         }
         .tint(Theme.Palette.accent)
+        .overlay(alignment: .bottom) {
+            ScanTabButton { router.scanning = true }
+                .padding(.bottom, 2)
+        }
+        .ignoresSafeArea(.keyboard)
+        .sheet(isPresented: $router.scanning) {
+            ScanFlowView(onSaved: { _ in router.scanning = false }, isMainScan: true)
+                .environment(router)
+        }
         .environment(router)
         .environment(activityBadge)
         .environment(live)
@@ -62,7 +78,7 @@ struct RootView: View {
         .onOpenURL { url in
             // From the widget: com.vipreshpatel.tally://scan | //dashboard.
             switch url.host() {
-            case "scan": router.selection = .scan
+            case "scan": router.scanning = true
             case "dashboard": router.selection = .dashboard
             default: break
             }
@@ -103,4 +119,27 @@ struct RootView: View {
         .environment(AuthManager())
         .environment(ActivityBadge())
         .environment(LiveEvents())
+}
+
+
+/// The gold camera in the middle of the tab bar: scan, pick a photo or PDF,
+/// or type a receipt in (the Scan sheet).
+struct ScanTabButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Theme.Palette.bg)
+                .frame(width: 58, height: 58)
+                .background(Theme.Palette.gold, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.Palette.bg, lineWidth: 3))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Scan a receipt")
+    }
 }

@@ -10,6 +10,8 @@ enum AppTab: Hashable {
 @Observable
 final class TabRouter {
     var selection: AppTab = .dashboard
+    /// The Scan sheet, opened by the gold camera in the middle of the tab bar.
+    var scanning = false
     /// A photo or PDF shared in from another app, for the Scan tab to read.
     var sharedFile: URL?
 }
