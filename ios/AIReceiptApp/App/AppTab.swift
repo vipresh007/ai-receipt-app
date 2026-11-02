@@ -12,6 +12,8 @@ final class TabRouter {
     var selection: AppTab = .dashboard
     /// The Scan sheet, opened by the gold camera in the middle of the tab bar.
     var scanning = false
+    /// Show the welcome screens again (Account → "Show the intro again").
+    var showIntro = false
     /// A photo or PDF shared in from another app, for the Scan tab to read.
     var sharedFile: URL?
 }

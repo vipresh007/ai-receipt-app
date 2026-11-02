@@ -34,7 +34,10 @@ struct RootView: View {
                 .ignoresSafeArea(.keyboard)
         }
         .tint(Theme.Palette.accent)
-        .fullScreenCover(isPresented: $showOnboarding) {
+        .fullScreenCover(isPresented: Binding(
+            get: { showOnboarding || router.showIntro },
+            set: { if !$0 { showOnboarding = false; router.showIntro = false } }
+        )) {
             OnboardingView { router.scanning = true }
         }
         .sheet(isPresented: $router.scanning) {

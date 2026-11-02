@@ -5,6 +5,7 @@ import SwiftUI
 struct AccountView: View {
     @Environment(AuthManager.self) private var auth
     @Environment(\.modelContext) private var modelContext
+    @Environment(TabRouter.self) private var router
 
     @State private var confirmingDelete = false
     @State private var deleteError: String?
@@ -19,6 +20,12 @@ struct AccountView: View {
                     case .anonymous:
                         anonymous
                     }
+
+                    Button("Show the intro again") { router.showIntro = true }
+                        .font(.appCaption)
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, Theme.Space.sm)
                 }
                 .padding(Theme.Space.lg)
             }
