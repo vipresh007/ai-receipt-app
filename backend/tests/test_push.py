@@ -106,3 +106,17 @@ async def test_me_works_for_accounts_from_before_notification_settings(
     assert r.json()["notify_prefs"]["comments.push"] is True
     r = await client.patch("/v1/auth/me", json={"notify_prefs": {"comments.push": False}})
     assert r.status_code == 200 and r.json()["notify_prefs"]["comments.push"] is False
+
+
+async def test_test_notification(client, apns):
+    r = await client.post("/v1/devices/test")
+    assert r.status_code == 409  # no phone registered yet
+    await client.post("/v1/devices", json={"token": "aa" * 32})
+    r = await client.post("/v1/devices/test")
+    assert r.status_code == 200 and r.json()["devices"] == 1
+    await push.drain()
+    assert apns.sent[-1][1]["aps"]["alert"]["body"].startswith("Notifications are working")
+
+
+async def test_test_notification_without_a_key(client):
+    assert (await client.post("/v1/devices/test")).status_code == 503

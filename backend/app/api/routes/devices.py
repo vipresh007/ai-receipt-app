@@ -2,14 +2,15 @@
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db import get_session
 from app.models import DeviceToken, User
+from app.services import push
 
 router = APIRouter()
 
@@ -34,6 +35,31 @@ async def register(
         row.environment = data.environment
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/test")
+async def send_test(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Push "Notifications are working" to this account's iPhones."""
+    if not push.configured():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Push notifications aren't set up on the server yet.",
+        )
+    devices = await session.scalar(
+        select(func.count(DeviceToken.id)).where(DeviceToken.user_id == user.id)
+    )
+    if not devices:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This iPhone hasn't registered yet. Allow notifications for Tally, then try again.",
+        )
+    await push.send(
+        session, [user.id], "Notifications are working. You'll hear about shared expenses here."
+    )
+    return {"devices": devices}
 
 
 @router.delete("/{token}", status_code=status.HTTP_204_NO_CONTENT)
