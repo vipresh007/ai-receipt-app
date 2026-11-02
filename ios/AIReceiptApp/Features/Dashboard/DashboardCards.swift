@@ -421,6 +421,9 @@ struct RecentReceiptsCard: View {
     var title = "Recent receipts"
     let receipts: [Receipt]
     let currencyCode: String
+    /// Everything in the period, when there's more than the card shows.
+    var all: [Receipt] = []
+    var periodLabel = ""
 
     var body: some View {
         AppCard {
@@ -438,6 +441,16 @@ struct RecentReceiptsCard: View {
                                 ReceiptDetailView(receipt: receipt)
                             } label: {
                                 row(receipt)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        if all.count > receipts.count {
+                            Divider().overlay(Theme.Palette.border)
+                            NavigationLink {
+                                PeriodReceiptsView(title: periodLabel, receipts: all, currencyCode: currencyCode)
+                            } label: {
+                                CardLinkLabel(title: "See all \(all.count) receipts in \(periodLabel)")
+                                    .padding(.top, Theme.Space.md)
                             }
                             .buttonStyle(.plain)
                         }
@@ -538,5 +551,56 @@ struct ComingUpCard: View {
         if Calendar.current.isDateInToday(date) { return "today" }
         if Calendar.current.isDateInTomorrow(date) { return "tomorrow" }
         return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+    }
+}
+
+
+/// Every receipt in one month, quarter or year (from the Dashboard's
+/// "See all" link), newest first.
+struct PeriodReceiptsView: View {
+    let title: String
+    let receipts: [Receipt]
+    let currencyCode: String
+
+    private var total: Decimal { receipts.reduce(Decimal(0)) { $0 + $1.spend } }
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(receipts) { receipt in
+                    NavigationLink {
+                        ReceiptDetailView(receipt: receipt)
+                    } label: {
+                        HStack(spacing: Theme.Space.md) {
+                            CategoryGlyph(category: receipt.category, size: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(receipt.merchant.isEmpty ? "Unknown merchant" : receipt.merchant)
+                                    .font(.appCallout.weight(.medium))
+                                    .foregroundStyle(Theme.Palette.text)
+                                    .lineLimit(1)
+                                Text("\(receipt.date.formatted(.dateTime.month(.abbreviated).day())) · \(receipt.category.displayName)")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
+                            Spacer()
+                            ReceiptAmount(receipt: receipt, currencyCode: currencyCode)
+                        }
+                    }
+                }
+                .listRowBackground(Color.clear)
+            } header: {
+                HStack {
+                    Text("\(receipts.count) receipts")
+                    Spacer()
+                    Text(total, format: .currency(code: currencyCode))
+                }
+                .font(.appCaption)
+                .textCase(nil)
+            }
+        }
+        .listStyle(.plain)
+        .ledgerBackground()
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

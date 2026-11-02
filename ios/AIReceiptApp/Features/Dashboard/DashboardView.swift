@@ -205,10 +205,13 @@ struct DashboardView: View {
                             RecentReceiptsCard(
                                 title: isCurrentPeriod ? "Recent receipts" : "Receipts",
                                 receipts: Array(periodReceipts.prefix(8)),
-                                currencyCode: currencyCode
+                                currencyCode: currencyCode,
+                                all: periodReceipts,
+                                periodLabel: granularity.periodLabel(for: anchor, calendar: calendar)
                             )
                         }
                         .padding(Theme.Space.lg)
+                        .padding(.bottom, TallyTabBar.height)  // the last card clears the tab bar
                         .contentShape(Rectangle())  // empty space swipes too
                         .coordinateSpace(.named("dashboard"))
                         // Swipe left/right at the top of the page: next/previous period.
