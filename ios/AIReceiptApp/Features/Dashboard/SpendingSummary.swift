@@ -105,7 +105,7 @@ struct SpendingSummary {
         return starts.compactMap { start -> MonthlyPoint? in
             guard let interval = granularity.interval(containing: start, calendar: calendar) else { return nil }
             let total = receipts
-                .filter { interval.contains($0.date) }
+                .filter { interval.holds($0.date) }
                 .reduce(Decimal(0)) { $0 + $1.spend }
             return MonthlyPoint(
                 monthStart: interval.start,
@@ -134,7 +134,7 @@ struct SpendingSummary {
                 let interval = calendar.dateInterval(of: .month, for: start)
             else { return nil }
             let total = receipts
-                .filter { interval.contains($0.date) }
+                .filter { interval.holds($0.date) }
                 .reduce(Decimal(0)) { $0 + $1.spend }
             return MonthlyPoint(monthStart: interval.start, total: total, label: formatter.string(from: start))
         }
@@ -162,7 +162,7 @@ struct SpendingSummary {
 
     private static func contains(_ interval: DateInterval?, _ date: Date) -> Bool {
         guard let interval else { return false }
-        return interval.contains(date)
+        return interval.holds(date)
     }
 
     private static func totals(_ list: [Receipt]) -> [ExpenseCategory: Decimal] {
@@ -246,7 +246,7 @@ struct SpendingSummary {
             guard let base = calendar.date(byAdding: .month, value: -monthsAgo, to: now),
                   let interval = calendar.dateInterval(of: .month, for: base) else { return 0 }
             return receipts
-                .filter { $0.category == category && interval.contains($0.date) }
+                .filter { $0.category == category && interval.holds($0.date) }
                 .reduce(Decimal(0)) { $0 + $1.spend }
         }
 

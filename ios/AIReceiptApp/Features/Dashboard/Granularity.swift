@@ -81,3 +81,11 @@ enum Granularity: String, CaseIterable, Identifiable {
         }
     }
 }
+
+
+extension DateInterval {
+    /// In this period: start ≤ date < end. (`contains` also counts the end,
+    /// which is the first moment of the next period, so a receipt dated the
+    /// 1st at midnight landed in two months.)
+    func holds(_ date: Date) -> Bool { date >= start && date < end }
+}

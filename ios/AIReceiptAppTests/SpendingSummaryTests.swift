@@ -157,4 +157,16 @@ final class SpendingSummaryTests: XCTestCase {
             "Expected a streak insight, got: \(summary.insights.map(\.message))"
         )
     }
+
+    /// Receipts from the server sit at midnight on their date; the 1st of a
+    /// month must count in that month only, never the one before.
+    func testFirstOfTheMonthAtMidnightCountsOnlyInItsOwnMonth() {
+        let firstOfJune = date(year: 2026, month: 6, day: 1)  // 00:00
+        let receipts = [receipt(40, .groceries, on: firstOfJune)]
+        let may = SpendingSummary(receipts: receipts, calendar: calendar, now: date(year: 2026, month: 5, day: 20))
+        let june = SpendingSummary(receipts: receipts, calendar: calendar, now: date(year: 2026, month: 6, day: 20))
+        XCTAssertEqual(may.currentMonthTotal, 0)
+        XCTAssertEqual(june.currentMonthTotal, 40)
+        XCTAssertEqual(june.previousMonthTotal, 0)
+    }
 }

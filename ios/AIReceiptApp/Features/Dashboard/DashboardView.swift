@@ -54,7 +54,7 @@ struct DashboardView: View {
 
     private var periodReceipts: [Receipt] {
         guard let interval = granularity.interval(containing: anchor, calendar: calendar) else { return [] }
-        return receipts.filter { interval.contains($0.date) }
+        return receipts.filter { interval.holds($0.date) }
     }
 
     private var periodStart: Date {
