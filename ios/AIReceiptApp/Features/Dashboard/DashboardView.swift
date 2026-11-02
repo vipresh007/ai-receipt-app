@@ -211,7 +211,6 @@ struct DashboardView: View {
                             )
                         }
                         .padding(Theme.Space.lg)
-                        .padding(.bottom, TallyTabBar.height)  // the last card clears the tab bar
                         .contentShape(Rectangle())  // empty space swipes too
                         .coordinateSpace(.named("dashboard"))
                         // Swipe left/right at the top of the page: next/previous period.

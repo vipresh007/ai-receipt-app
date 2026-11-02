@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var router = TabRouter()
     @State private var activityBadge = ActivityBadge()
     @State private var live = LiveEvents()
+    @State private var keyboard = KeyboardWatcher()
     /// First launch only (skipped for seeded/demo runs, e.g. screenshots).
     @State private var showOnboarding =
         !OnboardingView.hasSeen && !ProcessInfo.processInfo.arguments.contains("-seedSampleReceipts")
@@ -19,28 +20,45 @@ struct RootView: View {
         router.scanning = true
     }
 
+    /// One tab's screen: shown when selected, kept alive (and out of the way)
+    /// otherwise. Re-tapping the open tab rebuilds it (back to its main screen).
+    @ViewBuilder
+    private func tabPage<Content: View>(_ tab: AppTab, @ViewBuilder _ content: () -> Content) -> some View {
+        let shown = router.selection == tab
+        content()
+            .id(router.resets[tab, default: 0])
+            .opacity(shown ? 1 : 0)
+            .allowsHitTesting(shown)
+            .accessibilityHidden(!shown)
+            .zIndex(shown ? 1 : 0)
+    }
+
     var body: some View {
-        // Tally's own tab bar (`TallyTabBar`) instead of the system one: five
-        // equal slots, so the gold Scan camera sits dead centre and a selected
-        // tab's highlight never reaches its neighbours.
-        TabView(selection: $router.selection) {
-            DashboardView().id(router.resets[.dashboard, default: 0]).tag(AppTab.dashboard).tallyTabRoot()
-            ReceiptListView().id(router.resets[.receipts, default: 0]).tag(AppTab.receipts).tallyTabRoot()
-            GroupsView().id(router.resets[.groups, default: 0]).tag(AppTab.groups).tallyTabRoot()
-            AccountView().id(router.resets[.account, default: 0]).tag(AppTab.account).tallyTabRoot()
+        // Tally's own tab bar (`TallyTabBar`) instead of the system TabView:
+        // five equal slots, so the gold Scan camera sits dead centre. All four
+        // tabs stay alive, so each keeps its place when you switch away and back.
+        ZStack {
+            tabPage(.dashboard) { DashboardView() }
+            tabPage(.receipts) { ReceiptListView() }
+            tabPage(.groups) { GroupsView() }
+            tabPage(.account) { AccountView() }
         }
+        // Every scrolling screen in the app (and every screen pushed inside
+        // one) leaves room for the bar below its last row.
+        .contentMargins(.bottom, TallyTabBar.height + Theme.Space.lg, for: .scrollContent)
         .overlay(alignment: .bottom) {
-            VStack(spacing: Theme.Space.sm) {
-                if let toast = router.undo {
-                    UndoBar(toast: toast) {
-                        toast.onUndo()
-                        withAnimation(Theme.Motion.base) { router.undo = nil }
+            if !keyboard.isVisible {
+                VStack(spacing: Theme.Space.sm) {
+                    if let toast = router.undo {
+                        UndoBar(toast: toast) {
+                            toast.onUndo()
+                            withAnimation(Theme.Motion.base) { router.undo = nil }
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    TallyTabBar(unread: activityBadge.unread) { router.scanning = true }
                 }
-                TallyTabBar(unread: activityBadge.unread) { router.scanning = true }
             }
-            .ignoresSafeArea(.keyboard)
         }
         .tint(Theme.Palette.accent)
         .fullScreenCover(isPresented: Binding(
@@ -72,6 +90,10 @@ struct RootView: View {
                 router.selection = link.hasPrefix("receipts") ? .receipts : .groups
             }
             await PushNotifications.refresh()
+        }
+        .onChange(of: router.selection) { _, tab in
+            // Shared is where pushes matter: ask the first time it's opened.
+            if tab == .groups, auth.isSignedIn { Task { await PushNotifications.enable() } }
         }
         .onOpenURL { url in
             // From the widget: com.vipreshpatel.tally://scan | //dashboard.
@@ -120,14 +142,21 @@ struct RootView: View {
 }
 
 
-private extension View {
-    /// A tab's screen: no system tab bar, and room at the bottom for ours.
-    func tallyTabRoot() -> some View {
-        self
-            .toolbar(.hidden, for: .tabBar)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                Color.clear.frame(height: TallyTabBar.height + Theme.Space.sm)
-            }
+/// Hides the tab bar while the keyboard is up (it would otherwise ride on top
+/// of the keyboard).
+@MainActor
+@Observable
+final class KeyboardWatcher {
+    var isVisible = false
+
+    init() {
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.isVisible = true }
+        }
+        center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.isVisible = false }
+        }
     }
 }
 
