@@ -77,10 +77,38 @@ final class AuthManager {
             state = .anonymous
             return
         }
-        state = .signedIn(
-            name: defaults.string(forKey: Key.name),
-            email: defaults.string(forKey: Key.email)
-        )
+        state = .signedIn(name: storedProfile.name, email: storedProfile.email)
+        // A reinstall keeps the keychain token but can lose the profile: fetch it again.
+        if storedProfile.name == nil, storedProfile.email == nil {
+            Task { await refreshProfile() }
+        }
+    }
+
+    /// Name and email, kept in the keychain so they survive a reinstall
+    /// (older installs only wrote UserDefaults, hence the fallback).
+    private var storedProfile: (name: String?, email: String?) {
+        let name = KeychainStore.string(for: Key.name) ?? defaults.string(forKey: Key.name)
+        let email = KeychainStore.string(for: Key.email) ?? defaults.string(forKey: Key.email)
+        return (name?.isEmpty == false ? name : nil, email?.isEmpty == false ? email : nil)
+    }
+
+    private func storeProfile(name: String?, email: String?) {
+        defaults.set(name, forKey: Key.name)
+        defaults.set(email, forKey: Key.email)
+        for (value, key) in [(name, Key.name), (email, Key.email)] {
+            if let value, !value.isEmpty { _ = KeychainStore.set(value, for: key) } else { KeychainStore.delete(key) }
+        }
+    }
+
+    /// Ask Auth0 who this token belongs to and remember it.
+    func refreshProfile() async {
+        guard let domain = AppConfig.auth0Domain, let clientID = AppConfig.auth0ClientID,
+              let token = await accessToken(),
+              let info = try? await Auth0.authentication(clientId: clientID, domain: domain)
+                  .userInfo(withAccessToken: token).start()
+        else { return }
+        storeProfile(name: info.name, email: info.email)
+        if case .signedIn = state { state = .signedIn(name: info.name, email: info.email) }
     }
 
     /// A valid API access token, refreshed if needed. `nil` when signed out.
@@ -126,8 +154,7 @@ final class AuthManager {
             name = info.name
             email = info.email
         }
-        defaults.set(name, forKey: Key.name)
-        defaults.set(email, forKey: Key.email)
+        storeProfile(name: name, email: email)
         state = .signedIn(name: name, email: email)
         scansRemaining = nil
     }
@@ -183,8 +210,7 @@ final class AuthManager {
         }
         email = email ?? credential.email
 
-        defaults.set(name, forKey: Key.name)
-        defaults.set(email, forKey: Key.email)
+        storeProfile(name: name, email: email)
         state = .signedIn(name: name, email: email)
         scansRemaining = nil
     }
@@ -204,6 +230,7 @@ final class AuthManager {
         // security issue.
         await PushNotifications.unregister(self)
         try? credentialsManager?.clear()
+        storeProfile(name: nil, email: nil)
         defaults.removeObject(forKey: Key.name)
         defaults.removeObject(forKey: Key.email)
         state = .anonymous
