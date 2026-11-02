@@ -30,8 +30,17 @@ struct RootView: View {
             AccountView().tag(AppTab.account).tallyTabRoot()
         }
         .overlay(alignment: .bottom) {
-            TallyTabBar(unread: activityBadge.unread) { router.scanning = true }
-                .ignoresSafeArea(.keyboard)
+            VStack(spacing: Theme.Space.sm) {
+                if let toast = router.undo {
+                    UndoBar(toast: toast) {
+                        toast.onUndo()
+                        withAnimation(Theme.Motion.base) { router.undo = nil }
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                TallyTabBar(unread: activityBadge.unread) { router.scanning = true }
+            }
+            .ignoresSafeArea(.keyboard)
         }
         .tint(Theme.Palette.accent)
         .fullScreenCover(isPresented: Binding(
@@ -129,6 +138,9 @@ struct TallyTabBar: View {
     @Environment(TabRouter.self) private var router
     let unread: Int
     let onScan: () -> Void
+    /// Set on tap so the highlight moves at once, before the new screen's
+    /// first (heavier) render; cleared when the switch lands.
+    @State private var tapped: AppTab?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -148,10 +160,18 @@ struct TallyTabBar: View {
     }
 
     private func slot(_ tab: AppTab, _ title: String, _ symbol: String, badge: Int = 0) -> some View {
-        let selected = router.selection == tab
+        let selected = (tapped ?? router.selection) == tab
         return Button {
-            if !selected { UISelectionFeedbackGenerator().selectionChanged() }
-            router.selection = tab
+            guard !selected else { return }
+            UISelectionFeedbackGenerator().selectionChanged()
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { tapped = tab }
+            // Let the bar draw first; the screen swaps on the next turn.
+            DispatchQueue.main.async {
+                router.selection = tab
+                tapped = nil
+            }
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: symbol)
@@ -206,5 +226,33 @@ struct TallyTabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Scan a receipt")
+    }
+}
+
+
+/// "Deleted Loblaws · Undo", just above the tab bar.
+struct UndoBar: View {
+    let toast: UndoToast
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: Theme.Space.md) {
+            Image(systemName: "trash")
+                .foregroundStyle(Theme.Palette.textSecondary)
+            Text(toast.message)
+                .font(.appCallout)
+                .foregroundStyle(Theme.Palette.text)
+                .lineLimit(1)
+            Spacer(minLength: Theme.Space.sm)
+            Button("Undo", action: undo)
+                .font(.appCallout.weight(.semibold))
+                .foregroundStyle(Theme.Palette.gold)
+        }
+        .padding(.horizontal, Theme.Space.lg)
+        .padding(.vertical, Theme.Space.md)
+        .background(Theme.Palette.surface2, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.Palette.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+        .padding(.horizontal, Theme.Space.lg)
     }
 }

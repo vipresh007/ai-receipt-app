@@ -14,6 +14,14 @@ final class TabRouter {
     var scanning = false
     /// Show the welcome screens again (Account → "Show the intro again").
     var showIntro = false
+    /// A short-lived "Deleted X · Undo" bar shown above the tab bar.
+    var undo: UndoToast?
     /// A photo or PDF shared in from another app, for the Scan tab to read.
     var sharedFile: URL?
+}
+
+struct UndoToast: Identifiable {
+    let id = UUID()
+    let message: String
+    let onUndo: () -> Void
 }

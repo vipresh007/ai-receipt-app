@@ -37,6 +37,11 @@ struct ReceiptListView: View {
 
     @State private var searchText = ""
     @State private var categoryFilter: ExpenseCategory?
+    /// Swiped away but not deleted yet: hidden, with an Undo bar for a few
+    /// seconds; deleted for real when the bar goes.
+    @State private var pendingDelete: [Receipt] = []
+    @State private var undoTask: Task<Void, Never>?
+    @Environment(TabRouter.self) private var router
 
     private var currencyCode: String {
         Locale.current.currency?.identifier ?? "USD"
@@ -52,6 +57,7 @@ struct ReceiptListView: View {
     /// detection intentionally runs on the unfiltered list above.
     private var filteredReceipts: [Receipt] {
         receipts.filter { receipt in
+            if pendingDelete.contains(where: { $0.persistentModelID == receipt.persistentModelID }) { return false }
             if let categoryFilter, receipt.category != categoryFilter { return false }
             guard !searchText.isEmpty else { return true }
             if receipt.merchant.localizedCaseInsensitiveContains(searchText) { return true }
@@ -102,6 +108,7 @@ struct ReceiptListView: View {
             .refreshable {
                 await AccountSync.pull(auth: auth, context: modelContext)
             }
+            .onDisappear { commitPendingDelete() }
         }
     }
 
@@ -191,13 +198,49 @@ struct ReceiptListView: View {
     }
 
     private func delete(_ items: [Receipt], at offsets: IndexSet) {
-        let targets = offsets.map { items[$0] }
+        // Anything already waiting goes for real now; this swipe starts a new undo window.
+        commitPendingDelete()
+        let doomed = offsets.map { items[$0] }
+        withAnimation(Theme.Motion.base) {
+            pendingDelete = doomed
+            router.undo = UndoToast(
+                message: doomed.count == 1 ? "Deleted \(doomed[0].merchant)" : "Deleted \(doomed.count) receipts",
+                onUndo: { undoDelete() }
+            )
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        undoTask = Task {
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            commitPendingDelete()
+        }
+    }
+
+    private func undoDelete() {
+        undoTask?.cancel()
+        undoTask = nil
+        withAnimation(Theme.Motion.base) {
+            pendingDelete = []
+            router.undo = nil
+        }
+    }
+
+    private func commitPendingDelete() {
+        undoTask?.cancel()
+        undoTask = nil
+        let targets = pendingDelete
+        guard !targets.isEmpty else { return }
+        withAnimation(Theme.Motion.base) {
+            pendingDelete = []
+            router.undo = nil
+        }
         Task {
             for receipt in targets {
                 await AccountSync.delete(receipt, auth: auth, context: modelContext)
             }
         }
     }
+
 }
 
 private struct RecurringSummaryRow: View {
