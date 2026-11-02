@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     imap_port: int = 993
     imap_password: str = ""
 
+    # Signs unsubscribe links. Empty: derived from the email connection string,
+    # which is already secret and stable.
+    unsubscribe_secret: str = ""
+
     # Where reports of comments go (empty: kept in content_reports only).
     report_email: str = ""
 

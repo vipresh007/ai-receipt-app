@@ -19,7 +19,7 @@ from app.schemas.split import (
     PersonPatch,
     PersonPaymentIn,
 )
-from app.services import activity, people_store, split_store
+from app.services import activity, people_store, split_store, unsubscribe
 from app.services.mailer import Mailer, get_mailer
 
 router = APIRouter()
@@ -190,6 +190,11 @@ async def remind_person(
             session, [person.user_id], user, "reminder", f"sent a reminder: you owe them {money}"
         )
     elif person.email and mailer is not None:
+        if await unsubscribe.is_suppressed(session, person.email):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "They've asked not to get emails from Tally. Text them instead.",
+            )
         name = split_store.display_name_for(user)
         url = people_store.invite_url(person.invite_token)
         try:
@@ -199,6 +204,7 @@ async def remind_person(
                 text=f"Hi {person.display_name},\n\n{name} sent a friendly reminder: "
                 f"you owe them {money}.\n\nSee what it's for: {url}\n",
                 html=people_store.invite_email(name, person, overall, currency)["html"],
+                unsubscribe="all",
             )
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(
@@ -243,12 +249,17 @@ async def _send_invite(
     if person.user_id is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "They've already joined.")
     await people_store.check_invite_allowed(session, person)
+    if await unsubscribe.is_suppressed(session, person.email):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "They've asked not to get emails from Tally. Share the link instead.",
+        )
     summary = await people_store.person_out(session, user, person)
     message = people_store.invite_email(
         split_store.display_name_for(user), person, Decimal(summary.balance), summary.currency
     )
     try:
-        await mailer.send(to=person.email, **message)
+        await mailer.send(to=person.email, unsubscribe="all", **message)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "Couldn't send the email. Share the link instead."

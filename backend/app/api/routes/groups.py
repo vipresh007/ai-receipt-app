@@ -22,7 +22,7 @@ from app.schemas.split import (
     MemberPatch,
     SettlementIn,
 )
-from app.services import activity, people_store, split_store
+from app.services import activity, people_store, split_store, unsubscribe
 from app.services.mailer import Mailer, get_mailer
 
 router = APIRouter()
@@ -238,6 +238,11 @@ async def _send_member_invite(
             status.HTTP_429_TOO_MANY_REQUESTS,
             "That's the most invite emails for this group today. You can still send the link.",
         )
+    if await unsubscribe.is_suppressed(session, member.email):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "They've asked not to get emails from Tally. Send them the link instead.",
+        )
     inviter = split_store.display_name_for(user)[:60]
     url = split_store.member_invite_url(group, member)
     e = html.escape
@@ -266,6 +271,7 @@ async def _send_member_invite(
                 f"{e(inviter)} added your email. If you don't know them, ignore this email "
                 "and nothing else will be sent.</p></div>"
             ),
+            unsubscribe="all",
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(

@@ -107,3 +107,15 @@ Three onboarding screens (`Features/Onboarding/OnboardingView.swift`): scan,
 split, prices & returns, ending on "Scan your first receipt" (opens the Scan
 sheet) or "Maybe later". Shown once (`onboarding.seen`), skipped for seeded
 or demo launches so screenshots and tests aren't interrupted.
+
+## Unsubscribe
+
+Every email Tally sends to a person carries an Unsubscribe link in its footer
+and the `List-Unsubscribe` / `List-Unsubscribe-Post` headers (one-click, RFC
+8058), so mail apps show their own button. Links are signed per address and
+kind (`services/unsubscribe.py`). The footer link opens `/unsubscribe` on the
+web app, which asks before changing anything (mail scanners open links); the
+header's one-click POST goes to `/unsubscribe/one-click`. For an account,
+unsubscribing turns that kind of email off (or "Stop all Tally emails"); for an
+address without an account it stops everything, including future invites and
+reminders (`email_suppressions`). Turning email back on in the app lifts it.

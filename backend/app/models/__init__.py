@@ -19,6 +19,7 @@ from app.models.split import (
     SplitEvent,
     SplitParticipant,
 )
+from app.models.suppression import EmailSuppression
 from app.models.user import User
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "ContentReport",
     "DEFAULT_CATEGORY_SLUGS",
     "DeviceToken",
+    "EmailSuppression",
     "Expense",
     "Group",
     "GroupMember",

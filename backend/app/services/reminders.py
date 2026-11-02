@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, Receipt, User
-from app.services import notify_prefs
+from app.services import notify_prefs, unsubscribe
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -100,6 +100,7 @@ async def send_due(session: AsyncSession, today: date) -> int:
                 mailer
                 and user.email_verified
                 and notify_prefs.allowed(user, "return_reminder", "email")
+                and not await unsubscribe.is_suppressed(session, user.email)
             ):
                 message = {
                     "subject": line,
@@ -115,7 +116,7 @@ async def send_due(session: AsyncSession, today: date) -> int:
                     ),
                 }
                 try:
-                    await mailer.send(to=user.email, **message)
+                    await mailer.send(to=user.email, unsubscribe="returns", **message)
                 except Exception:  # noqa: BLE001 - the feed still has it
                     log.warning("reminder email failed", exc_info=True)
     await session.commit()

@@ -5,6 +5,7 @@ and amounts. Never the receipt image or anything else in the account.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,7 +20,7 @@ from app.schemas.split import (
     PublicPersonOut,
     PublicSplitOut,
 )
-from app.services import people_store, split_store
+from app.services import people_store, split_store, unsubscribe
 from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
@@ -163,3 +164,46 @@ async def public_person(
         currency=currency,
         expense_count=len(splits),
     )
+
+
+class UnsubscribeIn(BaseModel):
+    e: str
+    s: str
+    t: str
+    # From the confirm page: stop everything, not just this kind.
+    everything: bool = False
+
+
+def _masked(email: str) -> str:
+    name, _, domain = email.partition("@")
+    return f"{name[:1]}{'•' * max(len(name) - 1, 1)}@{domain}"
+
+
+@router.get("/unsubscribe")
+async def unsubscribe_info(
+    e: str, s: str, t: str, session: AsyncSession = Depends(get_session)
+) -> dict:
+    """What the link stops, for the confirm page. Changes nothing."""
+    email = unsubscribe.verify(e, s, t)
+    if email is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This unsubscribe link isn't valid.")
+    return {
+        "email": _masked(email),
+        "scope": s,
+        "what": unsubscribe.SCOPES[s],
+        "has_account": await unsubscribe.has_account(session, email),
+    }
+
+
+@router.post("/unsubscribe")
+async def unsubscribe_now(
+    data: UnsubscribeIn, session: AsyncSession = Depends(get_session)
+) -> dict:
+    """Confirm page and one-click (List-Unsubscribe-Post) both land here."""
+    email = unsubscribe.verify(data.e, data.s, data.t)
+    if email is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This unsubscribe link isn't valid.")
+    scope = "all" if data.everything else data.s
+    await unsubscribe.apply(session, email, scope)
+    await session.commit()
+    return {"done": True, "what": unsubscribe.SCOPES[scope]}

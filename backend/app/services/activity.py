@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import notify_prefs, push, realtime, safety
+from app.services import notify_prefs, push, realtime, safety, unsubscribe
 from app.services.mailer import get_mailer
 
 log = logging.getLogger(__name__)
@@ -79,11 +79,16 @@ async def notify(
     )
     if kind in EMAILED_KINDS:
         wanted = {u.id for u in people if notify_prefs.allowed(u, kind, "email")}
-        await _email(session, wanted, actor_name, text, link)
+        await _email(session, wanted, actor_name, text, link, notify_prefs.group_of(kind) or "all")
 
 
 async def _email(
-    session: AsyncSession, ids: set[uuid.UUID], actor_name: str, text: str, link: str
+    session: AsyncSession,
+    ids: set[uuid.UUID],
+    actor_name: str,
+    text: str,
+    link: str,
+    scope: str,
 ) -> None:
     mailer = get_mailer()
     if mailer is None or not ids:
@@ -95,7 +100,11 @@ async def _email(
         )
     )
     url = link or f"{get_settings().public_web_url}/groups"
+    users = list(users)
+    stopped = await unsubscribe.suppressed_among(session, [u.email for u in users])
     for user in users:
+        if user.email.strip().lower() in stopped:
+            continue
         last = _aware(user.last_notified_at)
         if last is not None and now - last < EMAIL_GAP:
             continue
@@ -104,8 +113,7 @@ async def _email(
         message = {
             "subject": line if len(line) <= 90 else line[:87] + "…",
             "text": f"{line}\n\nSee it in Tally: {url}\n\n"
-            "You get these because someone shares expenses with you on Tally. "
-            "Turn them off in Tally under Account.\n",
+            "You get these because someone shares expenses with you on Tally.\n",
             "html": (
                 '<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;'
                 'max-width:520px;margin:0 auto;color:#1E2321">'
@@ -114,9 +122,10 @@ async def _email(
                 "color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;"
                 'font-weight:600;display:inline-block">Open Tally</a></p>'
                 '<p style="font-size:13px;color:#5B5F59">You get these because someone shares '
-                "expenses with you on Tally. Turn them off in Tally under Account.</p></div>"
+                "expenses with you on Tally.</p></div>"
             ),
         }
+        message["unsubscribe"] = scope
         task = asyncio.create_task(_send(mailer, user.email, message))
         _sending.add(task)
         task.add_done_callback(_sending.discard)

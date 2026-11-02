@@ -25,7 +25,7 @@ from app.models import (
     User,
 )
 from app.schemas.auth import MeOut, MeSettingsIn
-from app.services import inbox, notify_prefs
+from app.services import inbox, notify_prefs, unsubscribe
 from app.services.blob_storage import BlobStorage
 
 router = APIRouter()
@@ -71,6 +71,8 @@ async def update_me(
     me = await session.get(User, user.id)
     if data.email_notifications is not None:
         me.email_notifications = data.email_notifications
+        if data.email_notifications:
+            await unsubscribe.resubscribe(session, me.email)
     if data.notify_prefs is not None:
         me.notify_prefs = notify_prefs.merged(me, data.notify_prefs)
     if data.interac is not None:
