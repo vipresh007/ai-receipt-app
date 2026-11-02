@@ -30,7 +30,7 @@ struct OnboardingView: View {
         ),
         Page(
             symbol: "tag.fill",
-            title: "Know what things cost,\nand when to take them back.",
+            title: "Know what things cost.\nReturn them in time.",
             body: "See prices creep up over time, and get a reminder before a return window closes."
         ),
     ]
@@ -49,27 +49,33 @@ struct OnboardingView: View {
             TabView(selection: $page) {
                 ForEach(Array(pages.enumerated()), id: \.offset) { index, item in
                     VStack(spacing: Theme.Space.xl) {
-                        Spacer()
+                        Spacer(minLength: 0)
                         Image(systemName: item.symbol)
                             .font(.system(size: 64, weight: .light))
                             .foregroundStyle(Theme.Palette.gold)
                             .frame(width: 160, height: 160)
                             .background(HeroPanelBackground(cornerRadius: 44))
                         VStack(spacing: Theme.Space.md) {
+                            // Same height on every page (titles run 2–3 lines),
+                            // so nothing jumps while paging.
                             Text(item.title)
                                 .font(.display(32, relativeTo: .title))
                                 .tracking(-0.8)
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(Theme.Palette.text)
+                                .lineLimit(2, reservesSpace: true)
+                                .minimumScaleFactor(0.85)
                             Text(item.body)
                                 .font(.appCallout)
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(Theme.Palette.textSecondary)
                                 .padding(.horizontal, Theme.Space.lg)
+                                .lineLimit(3, reservesSpace: true)
                         }
-                        Spacer()
-                        Spacer()
+                        Spacer(minLength: 0)
+                        Spacer(minLength: 0)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.horizontal, Theme.Space.lg)
                     .tag(index)
                 }
@@ -87,6 +93,8 @@ struct OnboardingView: View {
             }
             .padding(.bottom, Theme.Space.xl)
 
+            // The same height on every page ("Maybe later" is reserved but
+            // hidden until the last one), so paging never shifts the layout.
             VStack(spacing: Theme.Space.sm) {
                 if page < pages.count - 1 {
                     Button {
@@ -103,11 +111,13 @@ struct OnboardingView: View {
                         Label("Scan your first receipt", systemImage: "camera.fill")
                     }
                     .buttonStyle(.primary)
-                    Button("Maybe later") { finish() }
-                        .font(.appCallout)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .padding(.top, Theme.Space.xs)
                 }
+                Button("Maybe later") { finish() }
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .padding(.top, Theme.Space.xs)
+                    .opacity(page == pages.count - 1 ? 1 : 0)
+                    .disabled(page != pages.count - 1)
             }
             .padding(.horizontal, Theme.Space.lg)
             .padding(.bottom, Theme.Space.xl)
