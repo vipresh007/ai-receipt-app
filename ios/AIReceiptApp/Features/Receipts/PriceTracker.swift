@@ -39,16 +39,35 @@ struct TrackedItem: Identifiable, Hashable {
 
 enum PriceTracker {
     /// Lowercased, punctuation dropped (but "1.2kg" kept), spaces collapsed.
+    /// Names repeat a lot (the same groceries every week), so each is worked
+    /// out once.
     static func key(_ name: String) -> String {
+        if let known = keyCache[name] { return known }
         let lowered = name.lowercased()
         let kept = lowered.unicodeScalars.map { scalar -> Character in
             CharacterSet.alphanumerics.contains(scalar) || scalar == "." || scalar == "%" ? Character(scalar) : " "
         }
-        return String(kept).split(separator: " ").joined(separator: " ")
+        let key = String(kept).split(separator: " ").joined(separator: " ")
+        if keyCache.count > 5000 { keyCache.removeAll() }
+        keyCache[name] = key
+        return key
     }
 
-    /// Items bought on at least two different receipts, most recently bought first.
+    nonisolated(unsafe) private static var keyCache: [String: String] = [:]
+    nonisolated(unsafe) private static var lastItems: (signature: Int, items: [TrackedItem])?
+
+    /// Items bought on at least two different receipts, most recently bought
+    /// first. Screens ask for this on every redraw, so the answer is kept
+    /// until the receipts change.
     static func items(in receipts: [Receipt]) -> [TrackedItem] {
+        let signature = ReceiptsSignature.of(receipts)
+        if let last = lastItems, last.signature == signature { return last.items }
+        let found = computeItems(in: receipts)
+        lastItems = (signature, found)
+        return found
+    }
+
+    private static func computeItems(in receipts: [Receipt]) -> [TrackedItem] {
         var buckets: [String: [(TrackedItem.Purchase, String)]] = [:]
         for receipt in receipts {
             var seen: Set<String> = []
@@ -87,6 +106,23 @@ enum PriceTracker {
         return tracked
             .filter { $0.latest.date >= since && ($0.change ?? 0) >= 0.05 }
             .max { ($0.change ?? 0) < ($1.change ?? 0) }
+    }
+}
+
+/// A cheap fingerprint of the receipt list (count, and each one's date,
+/// total, share and item count), so derived numbers can be reused until
+/// something actually changes.
+enum ReceiptsSignature {
+    static func of(_ receipts: [Receipt]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(receipts.count)
+        for receipt in receipts {
+            hasher.combine(receipt.date)
+            hasher.combine(receipt.total)
+            hasher.combine(receipt.myShare)
+            hasher.combine(receipt.items.count)
+        }
+        return hasher.finalize()
     }
 }
 

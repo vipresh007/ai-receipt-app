@@ -8,8 +8,8 @@ struct DashboardView: View {
 
     /// A date inside the period currently being viewed.
     @State private var anchor: Date = .now
-    /// Where the hero card (and its scrubbable chart) sits, so a swipe there
-    /// scrubs the chart instead of changing the period.
+    /// Where the hero card sits: month swipes only count above it (greeting,
+    /// period picker, month row), never over the cards.
     @State private var heroFrame: CGRect = .zero
     @State private var granularity: Granularity = .month
     @State private var budgets: [ReceiptExtractionAPIClient.BudgetDTO] = []
@@ -28,9 +28,29 @@ struct DashboardView: View {
         Locale.current.currency?.identifier ?? "USD"
     }
 
+    /// Every card reads this; it's worked out once per change of receipts,
+    /// period or day, not once per card per redraw.
     private var summary: SpendingSummary {
-        SpendingSummary(receipts: receipts, calendar: calendar, now: anchor, granularity: granularity)
+        let key = SummaryKey(
+            receipts: ReceiptsSignature.of(receipts),
+            anchor: granularity.key(for: anchor, calendar: calendar),
+            granularity: granularity,
+            day: calendar.startOfDay(for: .now)
+        )
+        if let cached = Self.summaryCache, cached.key == key { return cached.summary }
+        let fresh = SpendingSummary(receipts: receipts, calendar: calendar, now: anchor, granularity: granularity)
+        Self.summaryCache = (key, fresh)
+        return fresh
     }
+
+    private struct SummaryKey: Equatable {
+        let receipts: Int
+        let anchor: DateComponents
+        let granularity: Granularity
+        let day: Date
+    }
+
+    nonisolated(unsafe) private static var summaryCache: (key: SummaryKey, summary: SpendingSummary)?
 
     private var periodReceipts: [Receipt] {
         guard let interval = granularity.interval(containing: anchor, calendar: calendar) else { return [] }
@@ -191,11 +211,11 @@ struct DashboardView: View {
                         .padding(Theme.Space.lg)
                         .contentShape(Rectangle())  // empty space swipes too
                         .coordinateSpace(.named("dashboard"))
-                        // Swipe left/right anywhere but the chart: next/previous period.
+                        // Swipe left/right at the top of the page: next/previous period.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 30, coordinateSpace: .named("dashboard"))
                                 .onEnded { value in
-                                    guard !heroFrame.contains(value.startLocation) else { return }
+                                    guard heroFrame != .zero, value.startLocation.y < heroFrame.minY else { return }
                                     let dx = value.translation.width, dy = value.translation.height
                                     guard abs(dx) > 60, abs(dx) > abs(dy) * 2 else { return }
                                     let step = dx < 0 ? 1 : -1

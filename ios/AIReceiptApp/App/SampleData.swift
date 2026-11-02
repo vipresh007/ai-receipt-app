@@ -13,6 +13,37 @@ enum SampleData {
     static let demoAccount = ProcessInfo.processInfo.arguments.contains("-demoAccount")
     static let demoAPI = URL(string: "http://127.0.0.1:8765")!
 
+    /// `-seedBusyJune`: add 100 June receipts with line items (load testing).
+    @MainActor
+    static func seedBusyJuneIfRequested(_ context: ModelContext) {
+        guard ProcessInfo.processInfo.arguments.contains("-seedBusyJune") else { return }
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: .now)
+        let juneStart = calendar.date(from: DateComponents(year: year, month: 6, day: 1))!
+        let juneEnd = calendar.date(byAdding: .month, value: 1, to: juneStart)!
+        let existing = (try? context.fetchCount(FetchDescriptor<Receipt>(
+            predicate: #Predicate { $0.date >= juneStart && $0.date < juneEnd }
+        ))) ?? 0
+        guard existing < 100 else { return }
+        let stores: [(String, ExpenseCategory)] = [
+            ("Loblaws", .groceries), ("Farm Boy", .groceries), ("Metro", .groceries), ("Costco", .groceries),
+            ("Tim Hortons", .restaurants), ("Pizzeria Libretto", .restaurants), ("Uber", .transport),
+            ("Shell", .transport), ("Indigo", .shopping), ("Shoppers Drug Mart", .health),
+        ]
+        let names = ["Oat milk 1L", "Sourdough loaf", "Bananas", "Greek yogurt 750g", "Coffee beans 340g",
+                     "Eggs dozen", "Chicken thighs 1kg", "Spinach 312g", "Pasta 900g", "Cheddar 400g"]
+        for i in 0..<100 {
+            let (store, category) = stores[i % stores.count]
+            let day = calendar.date(byAdding: .day, value: i % 30, to: juneStart)!
+            let lines = (0..<(3 + i % 5)).map { j in
+                ReceiptLineItem(name: names[(i + j) % names.count], price: Decimal(250 + (i * 37 + j * 91) % 1400) / 100)
+            }
+            let total = lines.reduce(Decimal(0)) { $0 + $1.price }
+            context.insert(Receipt(merchant: store, date: day, total: total, category: category, items: lines))
+        }
+        try? context.save()
+    }
+
     @MainActor
     static func seedIfRequested(_ context: ModelContext) {
         guard ProcessInfo.processInfo.arguments.contains(launchArgument) else { return }

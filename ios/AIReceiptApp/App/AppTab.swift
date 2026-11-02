@@ -18,6 +18,11 @@ final class TabRouter {
     var undo: UndoToast?
     /// A photo or PDF shared in from another app, for the Scan tab to read.
     var sharedFile: URL?
+    /// Bumped when a tab is tapped while already open: rebuilds that tab, so
+    /// it's back on its main screen (like any iPhone tab bar).
+    var resets: [AppTab: Int] = [:]
+
+    func reset(_ tab: AppTab) { resets[tab, default: 0] += 1 }
 }
 
 struct UndoToast: Identifiable {

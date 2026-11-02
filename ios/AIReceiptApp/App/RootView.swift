@@ -24,10 +24,10 @@ struct RootView: View {
         // equal slots, so the gold Scan camera sits dead centre and a selected
         // tab's highlight never reaches its neighbours.
         TabView(selection: $router.selection) {
-            DashboardView().tag(AppTab.dashboard).tallyTabRoot()
-            ReceiptListView().tag(AppTab.receipts).tallyTabRoot()
-            GroupsView().tag(AppTab.groups).tallyTabRoot()
-            AccountView().tag(AppTab.account).tallyTabRoot()
+            DashboardView().id(router.resets[.dashboard, default: 0]).tag(AppTab.dashboard).tallyTabRoot()
+            ReceiptListView().id(router.resets[.receipts, default: 0]).tag(AppTab.receipts).tallyTabRoot()
+            GroupsView().id(router.resets[.groups, default: 0]).tag(AppTab.groups).tallyTabRoot()
+            AccountView().id(router.resets[.account, default: 0]).tag(AppTab.account).tallyTabRoot()
         }
         .overlay(alignment: .bottom) {
             VStack(spacing: Theme.Space.sm) {
@@ -59,6 +59,7 @@ struct RootView: View {
         .task {
             #if DEBUG
             SampleData.seedIfRequested(modelContext)
+            SampleData.seedBusyJuneIfRequested(modelContext)
             #endif
             await AccountSync.pull(auth: auth, context: modelContext)
             await activityBadge.refresh(auth)
@@ -162,7 +163,11 @@ struct TallyTabBar: View {
     private func slot(_ tab: AppTab, _ title: String, _ symbol: String, badge: Int = 0) -> some View {
         let selected = (tapped ?? router.selection) == tab
         return Button {
-            guard !selected else { return }
+            guard !selected else {
+                // Already here: back to this tab's main screen.
+                router.reset(tab)
+                return
+            }
             UISelectionFeedbackGenerator().selectionChanged()
             var instant = Transaction()
             instant.disablesAnimations = true
