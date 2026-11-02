@@ -33,6 +33,8 @@ struct NotificationSettingsView: View {
     @State private var emails = true
     @State private var systemOff = false
     @State private var error: String?
+    @State private var testNote: String?
+    @State private var testing = false
 
     var body: some View {
         Form {
@@ -50,8 +52,22 @@ struct NotificationSettingsView: View {
                 ForEach(Self.kinds) { kind in
                     toggleRow(kind, key: "\(kind.id).push")
                 }
+                Button {
+                    Task { await sendTest() }
+                } label: {
+                    HStack {
+                        Label("Send a test notification", systemImage: "bell.badge")
+                        Spacer()
+                        if testing { ProgressView() }
+                    }
+                }
+                .disabled(testing)
             } header: {
                 header("On this iPhone")
+            } footer: {
+                if let testNote {
+                    Text(testNote).font(.appCaption)
+                }
             }
             .listRowBackground(Theme.Palette.surface)
 
@@ -126,6 +142,20 @@ struct NotificationSettingsView: View {
         emails = loaded.emailNotifications
         prefs = loaded.notifyPrefs ?? [:]
         UserDefaults.standard.set(prefs["returns.push"] ?? true, forKey: Self.localReturnsKey)
+    }
+
+    private func sendTest() async {
+        testing = true
+        defer { testing = false }
+        // Make sure this iPhone is registered first (asks for permission if needed).
+        await PushNotifications.enable()
+        await PushNotifications.upload()
+        do {
+            try await Splits.client(auth).sendTestNotification()
+            testNote = "Sent. It should arrive in a few seconds. If it doesn't, check Settings › Notifications › Tally."
+        } catch {
+            testNote = error.localizedDescription
+        }
     }
 
     private func save(_ body: API.MeSettingsWrite) async {

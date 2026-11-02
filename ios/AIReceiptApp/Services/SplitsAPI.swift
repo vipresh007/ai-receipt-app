@@ -149,6 +149,12 @@ extension ReceiptExtractionAPIClient {
         try Self.expectOK(http, data, "Couldn't turn on notifications")
     }
 
+    /// Ask the server to push "Notifications are working" to this account's iPhones.
+    func sendTestNotification() async throws {
+        let (data, http) = try await send(try splitsRequest("POST", "v1/devices/test", body: [String: String]()))
+        try Self.expectOK(http, data, "Couldn't send a test notification")
+    }
+
     func unregisterDevice(token: String) async throws {
         try await splitsSend("DELETE", "v1/devices/\(token)")
     }
