@@ -239,4 +239,6 @@ class Activity(Base):
     split_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     group_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     person_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    # What tapping it opens when it's about a receipt (emailed in, or split).
+    receipt_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

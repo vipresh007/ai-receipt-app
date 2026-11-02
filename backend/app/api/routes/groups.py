@@ -108,6 +108,7 @@ async def rename_group(
             "group_changed",
             f"turned {state} simplify debts in {group.name}",
             group_id=group.id,
+            body=f"{split_store.display_name_for(user)} turned {state} simplify debts",
         )
     await split_store.publish_group(session, group.id)
     await session.commit()
@@ -337,9 +338,15 @@ async def add_settlement(
         [payer.user_id, payee.user_id],
         user,
         "payment",
-        f"recorded that {payer.display_name} paid {payee.display_name} "
-        f"{split_store._money_text(amount, group.currency)} in {group.name}",
+        (
+            f"paid {payee.display_name} "
+            if payer.user_id == user.id
+            else f"recorded that {payer.display_name} paid {payee.display_name} "
+        )
+        + f"{split_store._money_text(amount, group.currency)} in {group.name}",
         group_id=group.id,
+        body=f"{payer.display_name} paid {payee.display_name} "
+        f"{split_store._money_text(amount, group.currency)}",
         link=f"{get_settings().public_web_url}/groups/{group.id}",
     )
     session.add(
@@ -409,7 +416,13 @@ async def join_group(
             )
         )
         await activity.notify(
-            session, set(others), user, "joined", f"joined {group.name}", group_id=group.id
+            session,
+            set(others),
+            user,
+            "joined",
+            f"joined {group.name}",
+            group_id=group.id,
+            body=f"{split_store.display_name_for(user)} joined the group",
         )
         await split_store.publish_group(session, group.id)
     await session.commit()
@@ -450,6 +463,8 @@ async def remind_member(
         f"sent a reminder: you owe them "
         f"{split_store._money_text(owes, group.currency)} in {group.name}",
         group_id=group.id,
+        title=f"Reminder from {split_store.display_name_for(user)}",
+        body=f"You owe {split_store._money_text(owes, group.currency)} in {group.name}",
         link=f"{get_settings().public_web_url}/groups/{group.id}",
     )
     await split_store.publish_group(session, group.id)

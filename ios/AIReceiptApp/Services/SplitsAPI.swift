@@ -345,6 +345,7 @@ extension ReceiptExtractionAPIClient {
         let splitId: String?
         let groupId: String?
         let personId: String?
+        let receiptId: String?
 
         var date: Date { ISO8601DateFormatter.tally(at) ?? .now }
     }

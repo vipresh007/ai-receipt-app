@@ -71,6 +71,12 @@ struct RootView: View {
             ScanFlowView(onSaved: { _ in router.scanning = false }, isMainScan: true)
                 .environment(router)
         }
+        .sheet(item: $router.opened) { target in
+            ActivityTargetSheet(target: target)
+                .environment(router)
+                .environment(activityBadge)
+                .environment(live)
+        }
         .environment(router)
         .environment(activityBadge)
         .environment(live)
@@ -86,8 +92,12 @@ struct RootView: View {
             WidgetSync.update(modelContext)
             pickUpShared()
             PushNotifications.auth = auth
-            PushNotifications.onOpen = { link in
-                router.selection = link.hasPrefix("receipts") ? .receipts : .groups
+            PushNotifications.onOpen = { link, target in
+                if let target {
+                    router.opened = target
+                } else {
+                    router.selection = link.hasPrefix("receipts") ? .receipts : .groups
+                }
             }
             await PushNotifications.refresh()
         }

@@ -53,7 +53,17 @@ async def test_activity_is_pushed_to_their_iphone(client, anon_client, test_user
     assert apns.sent, "no push went out"
     url, payload = apns.sent[-1]
     assert url == f"https://api.sandbox.push.apple.com/3/device/{token}"
-    assert payload["aps"]["alert"]["body"].startswith("T added")
+    alert = payload["aps"]["alert"]
+    # A clean line, no quote marks; the title says what it's about.
+    assert alert["title"] == "Shared expense"
+    assert alert["body"].endswith("added Dinner · your share $15.00")
+    # Tapping it opens that expense.
+    split_id = payload["target"]["split"]
+    assert split_id and "group" not in payload["target"]
+    act_as(sam)
+    feed = (await anon_client.get("/v1/activity")).json()["items"]
+    assert feed[0]["split_id"] == split_id
+    act_as(test_user)
 
 
 async def test_no_key_no_push(client, test_user, monkeypatch):

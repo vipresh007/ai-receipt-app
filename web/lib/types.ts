@@ -201,6 +201,7 @@ export interface ActivityItem {
   split_id: string | null;
   group_id: string | null;
   person_id: string | null;
+  receipt_id?: string | null;
 }
 
 export interface ActivityFeed {

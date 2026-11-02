@@ -18,6 +18,8 @@ final class TabRouter {
     var undo: UndoToast?
     /// A photo or PDF shared in from another app, for the Scan tab to read.
     var sharedFile: URL?
+    /// A tapped notification's receipt, expense, group or person.
+    var opened: ActivityTarget?
     /// Bumped when a tab is tapped while already open: rebuilds that tab, so
     /// it's back on its main screen (like any iPhone tab bar).
     var resets: [AppTab: Int] = [:]

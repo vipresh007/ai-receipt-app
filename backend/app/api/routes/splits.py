@@ -126,7 +126,7 @@ async def set_settled(
             set(people),
             user,
             "payment",
-            f'marked {row.display_name}\'s share of "{split.description}" {state}',
+            f"marked {row.display_name}'s share of {split.description} {state}",
             split_id=split.id,
             group_id=split.group_id,
         )
@@ -235,9 +235,11 @@ async def add_comment(
         set(rows),
         user,
         "comment",
-        f'commented on "{split.description}": {preview}',
+        f"commented on {split.description}: {preview}",
         split_id=split.id,
         group_id=split.group_id,
+        title=f"{split_store.display_name_for(user)} on {split.description}",
+        body=preview,
     )
     await session.commit()
     return await timeline(split_id, user, session)

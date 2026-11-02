@@ -9,6 +9,7 @@ from app.models import Activity, Receipt, User
 from app.services import inbox
 from tests.conftest import FakeExtractor
 from tests.test_pdf_receipts import tiny_pdf
+from tests.test_push import apns  # noqa: F401
 
 
 class Capturing(FakeExtractor):
@@ -58,7 +59,8 @@ async def test_personal_address_reads_the_pdf(sessionmaker_, test_user):
     assert extractor.calls[0]["ocr_lines"] == ["HYDRO ONE", "Due 96.40"]
     async with sessionmaker_() as session:
         assert (await session.scalars(select(Receipt))).first() is not None
-        assert "from your email" in (await session.scalars(select(Activity.text))).first()
+        line = (await session.scalars(select(Activity.text))).first()
+        assert line == "added Blue Bottle Coffee, $12.50 on Sep 1, from your email"
 
 
 async def test_your_own_address_needs_the_server_to_vouch(sessionmaker_, test_user):
@@ -92,3 +94,17 @@ async def test_me_shows_the_addresses_when_forwarding_is_on(client, monkeypatch)
     me = (await client.get("/v1/auth/me")).json()
     assert me["receipts_email"] == "receipts@dataeaver.ca"
     assert me["receipts_personal_email"].startswith("receipts+")
+
+
+async def test_the_push_reads_like_a_receipt(client, sessionmaker_, test_user, apns):  # noqa: F811
+    from app.services import push
+
+    await client.post("/v1/devices", json={"token": "bb" * 32})
+    await _user(sessionmaker_, inbox_token="feedface00")
+    raw = mail("receipts+feedface00@dataeaver.ca", "someone@else.com", html="<p>Total $12.50</p>")
+    async with sessionmaker_() as session:
+        assert await inbox.handle(session, raw, Capturing()) == "added"
+    await push.drain()
+    alert = apns.sent[-1][1]["aps"]["alert"]
+    assert alert["title"] == "Receipt added from your email"
+    assert alert["body"] == "Blue Bottle Coffee · $12.50 · Sep 1 · Restaurants"

@@ -43,30 +43,13 @@ struct ActivityView: View {
                 )
             } else {
                 List(items) { item in
-                    HStack(alignment: .top, spacing: Theme.Space.md) {
-                        Image(systemName: Self.icon(item.kind))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(item.read ? Theme.Palette.textTertiary : Theme.Palette.accent)
-                            .frame(width: 30, height: 30)
-                            .background(
-                                (item.read ? Theme.Palette.surface2 : Theme.Palette.accent.opacity(0.14)),
-                                in: Circle()
-                            )
-                        VStack(alignment: .leading, spacing: 2) {
-                            (Text(item.actorName).fontWeight(.semibold) + Text(" \(item.text)"))
-                                .font(.appCallout)
-                                .foregroundStyle(Theme.Palette.text)
-                            Text(item.date, format: .relative(presentation: .named))
-                                .font(.appCaption)
-                                .foregroundStyle(Theme.Palette.textTertiary)
-                        }
-                        if !item.read {
-                            Spacer(minLength: 0)
-                            Circle().fill(Theme.Palette.accent).frame(width: 8, height: 8).padding(.top, 6)
-                                .accessibilityLabel("New")
-                        }
+                    let target = ActivityTarget(item)
+                    NavigationLink {
+                        ActivityDestination(target: target)
+                    } label: {
+                        row(item)
                     }
-                    .padding(.vertical, 2)
+                    .disabled(target.isEmpty)
                     .listRowBackground(Theme.Palette.surface)
                 }
                 .ledgerBackground()
@@ -78,6 +61,33 @@ struct ActivityView: View {
         .task { await load() }
         .liveRefresh { await load() }
         .refreshable { await load() }
+    }
+
+    private func row(_ item: API.ActivityItemDTO) -> some View {
+        HStack(alignment: .top, spacing: Theme.Space.md) {
+            Image(systemName: Self.icon(item.kind))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(item.read ? Theme.Palette.textTertiary : Theme.Palette.accent)
+                .frame(width: 30, height: 30)
+                .background(
+                    (item.read ? Theme.Palette.surface2 : Theme.Palette.accent.opacity(0.14)),
+                    in: Circle()
+                )
+            VStack(alignment: .leading, spacing: 2) {
+                (Text(item.actorName).fontWeight(.semibold) + Text(" \(item.text)"))
+                    .font(.appCallout)
+                    .foregroundStyle(Theme.Palette.text)
+                Text(item.date, format: .relative(presentation: .named))
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+            }
+            if !item.read {
+                Spacer(minLength: 0)
+                Circle().fill(Theme.Palette.accent).frame(width: 8, height: 8).padding(.top, 6)
+                    .accessibilityLabel("New")
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     private func load() async {

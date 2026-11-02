@@ -35,15 +35,15 @@ enum ReturnReminders {
             let key = receipt.remoteID ?? String(receipt.createdAt.timeIntervalSince1970)
             if let last = receipt.returnBy {
                 if let early = at(Calendar.current.date(byAdding: .day, value: -3, to: last)), early > now {
-                    requests.append(request("\(prefix)return3.\(key)", "Return window closing", "You have until \(last.formatted(.dateTime.weekday(.wide).month().day())) to return your \(store) purchase.", early))
+                    requests.append(request("\(prefix)return3.\(key)", "Return window closing", "You have until \(last.formatted(.dateTime.weekday(.wide).month().day())) to return your \(store) purchase.", early, receipt.remoteID))
                 }
                 if let day = at(last), day > now {
-                    requests.append(request("\(prefix)return0.\(key)", "Last day to return", "Today's the last day to return your \(store) purchase.", day))
+                    requests.append(request("\(prefix)return0.\(key)", "Last day to return", "Today's the last day to return your \(store) purchase.", day, receipt.remoteID))
                 }
             }
             if let end = receipt.warrantyUntil,
                let early = at(Calendar.current.date(byAdding: .day, value: -30, to: end)), early > now {
-                requests.append(request("\(prefix)warranty.\(key)", "Warranty ending soon", "The warranty on your \(store) purchase ends \(end.formatted(.dateTime.month().day().year())).", early))
+                requests.append(request("\(prefix)warranty.\(key)", "Warranty ending soon", "The warranty on your \(store) purchase ends \(end.formatted(.dateTime.month().day().year())).", early, receipt.remoteID))
             }
         }
         // iOS keeps at most 64 pending; the soonest matter most.
@@ -57,11 +57,13 @@ enum ReturnReminders {
         return Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: day)
     }
 
-    private static func request(_ id: String, _ title: String, _ body: String, _ date: Date) -> UNNotificationRequest {
+    private static func request(_ id: String, _ title: String, _ body: String, _ date: Date, _ receiptID: String?) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
+        // Tapping it opens the receipt.
+        if let receiptID { content.userInfo = ["target": ["receipt": receiptID]] }
         let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         return UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false))
     }

@@ -95,9 +95,11 @@ async def _copy(session: AsyncSession, template: Split, when: date) -> None:
         accounts | {template.owner_user_id},
         None,
         "repeated",
-        f'"{template.description}" repeated for {when.strftime("%b %-d")}',
+        f"added {template.description} again for {when:%b} {when.day}",
         split_id=copy.id,
         group_id=copy.group_id,
+        body=f"{template.description} · {split_store._money_text(copy.total, copy.currency)} "
+        f"· {when:%b} {when.day}",
     )
 
 

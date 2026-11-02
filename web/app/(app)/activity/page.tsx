@@ -25,6 +25,7 @@ const ICONS: Record<string, typeof Bell> = {
 };
 
 function href(item: ActivityItem): string {
+  if (item.receipt_id) return `/receipts/${item.receipt_id}`;
   if (item.person_id) return `/people/${item.person_id}`;
   if (item.group_id) return `/groups/${item.group_id}`;
   return "/groups";

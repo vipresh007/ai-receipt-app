@@ -8,8 +8,9 @@ import UserNotifications
 @MainActor
 enum PushNotifications {
     private static let tokenKey = "com.tally.push.token"
-    /// Set by a tapped notification; RootView routes to it.
-    static var onOpen: ((String) -> Void)?
+    /// Set by a tapped notification; RootView opens what it's about (or,
+    /// without a target, the tab its link points at).
+    static var onOpen: ((String, ActivityTarget?) -> Void)?
 
     static var token: String? { UserDefaults.standard.string(forKey: tokenKey) }
 
@@ -87,6 +88,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
         let link = (info["link"] as? String) ?? (response.notification.request.identifier.hasPrefix("tally.reminder.") ? "receipts" : "")
-        await MainActor.run { PushNotifications.onOpen?(link) }
+        let target = ActivityTarget(push: info)
+        await MainActor.run { PushNotifications.onOpen?(link, target) }
     }
 }

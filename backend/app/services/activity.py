@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models import Activity, User
+from app.models import Activity, Group, User
 from app.services import notify_prefs, push, realtime, safety, unsubscribe
 from app.services.mailer import get_mailer
 
@@ -45,11 +45,26 @@ async def notify(
     split_id: uuid.UUID | None = None,
     group_id: uuid.UUID | None = None,
     person_id: uuid.UUID | None = None,
+    receipt_id: uuid.UUID | None = None,
     link: str = "",
+    title: str | None = None,
+    body: str | None = None,
 ) -> None:
     """Add `text` to each recipient's activity (never the actor's own) and,
-    for `EMAILED_KINDS`, email them. `text` reads after the actor's name."""
+    for `EMAILED_KINDS`, email them. `text` reads after the actor's name.
+
+    The push and email read as `title` / `body`: by default the group's name
+    (else "Tally") and "<actor> <text>". Taps open the receipt, expense,
+    group or person it's about."""
     actor_name = (actor.display_name or actor.email.split("@")[0]) if actor else "Tally"
+    if title is None:
+        group_name = (
+            await session.scalar(select(Group.name).where(Group.id == group_id))
+            if group_id
+            else None
+        )
+        title = group_name or ("Shared expense" if split_id else "Tally")
+    body = body or f"{actor_name} {text}"
     ids = {r for r in recipients if r is not None and (actor is None or r != actor.id)}
     if actor is not None and ids:
         # People who blocked the actor don't hear from them.
@@ -68,25 +83,33 @@ async def notify(
                 split_id=split_id,
                 group_id=group_id,
                 person_id=person_id,
+                receipt_id=receipt_id,
             )
         )
     people = (await session.scalars(select(User).where(User.id.in_(ids)))).all()
     await push.send(
         session,
         [u.id for u in people if notify_prefs.allowed(u, kind, "push")],
-        f"{actor_name} {text}",
+        body,
+        title=title,
         link=link,
+        target={
+            "receipt": receipt_id,
+            "split": split_id,
+            "group": group_id,
+            "person": person_id,
+            "kind": kind,
+        },
     )
     if kind in EMAILED_KINDS:
         wanted = {u.id for u in people if notify_prefs.allowed(u, kind, "email")}
-        await _email(session, wanted, actor_name, text, link, notify_prefs.group_of(kind) or "all")
+        await _email(session, wanted, body, link, notify_prefs.group_of(kind) or "all")
 
 
 async def _email(
     session: AsyncSession,
     ids: set[uuid.UUID],
-    actor_name: str,
-    text: str,
+    line: str,
     link: str,
     scope: str,
 ) -> None:
@@ -109,7 +132,6 @@ async def _email(
         if last is not None and now - last < EMAIL_GAP:
             continue
         user.last_notified_at = now
-        line = f"{actor_name} {text}"
         message = {
             "subject": line if len(line) <= 90 else line[:87] + "…",
             "text": f"{line}\n\nSee it in Tally: {url}\n\n"

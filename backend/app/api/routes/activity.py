@@ -24,6 +24,7 @@ class ActivityOut(BaseModel):
     split_id: str | None
     group_id: str | None
     person_id: str | None
+    receipt_id: str | None = None
 
 
 class ActivityFeedOut(BaseModel):
@@ -70,6 +71,7 @@ async def feed(
                 split_id=str(a.split_id) if a.split_id else None,
                 group_id=str(a.group_id) if a.group_id else None,
                 person_id=str(a.person_id) if a.person_id else None,
+                receipt_id=str(a.receipt_id) if a.receipt_id else None,
             )
             for a in rows
         ],

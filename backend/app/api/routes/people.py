@@ -138,6 +138,7 @@ async def add_payment(
     )
     summary = await people_store.person_out(session, user, person)
     money = split_store._money_text(amount, summary.currency)
+    name = split_store.display_name_for(user)
     await activity.notify(
         session,
         [person.user_id],
@@ -145,6 +146,8 @@ async def add_payment(
         "payment",
         f"recorded paying you {money}" if data.you_paid else f"recorded that you paid them {money}",
         person_id=person.id,
+        title="Payment",
+        body=f"{name} paid you {money}" if data.you_paid else f"You paid {name} {money}",
     )
     await session.commit()
     return await people_store.person_out(session, user, person, detail=True)
@@ -186,8 +189,15 @@ async def remind_person(
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You reminded them today already.")
     money = split_store._money_text(overall, currency)
     if person.user_id is not None:
+        name = split_store.display_name_for(user)
         await activity.notify(
-            session, [person.user_id], user, "reminder", f"sent a reminder: you owe them {money}"
+            session,
+            [person.user_id],
+            user,
+            "reminder",
+            f"sent a reminder: you owe them {money}",
+            title=f"Reminder from {name}",
+            body=f"You owe {name} {money}",
         )
     elif person.email and mailer is not None:
         if await unsubscribe.is_suppressed(session, person.email):

@@ -29,7 +29,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import notify_prefs, pdf, push
+from app.services import notify_prefs, pdf, push, split_store
 from app.services.azure_openai import ExtractionError
 from app.services.extraction import process_receipt
 
@@ -177,10 +177,27 @@ async def handle(session: AsyncSession, raw: bytes, extractor) -> str:
         )
     except ExtractionError:
         return "extraction failed"
-    text = f"added {receipt.merchant or 'a receipt'} ({receipt.total:.2f}) from your email"
-    session.add(Activity(user_id=user.id, actor_name="Tally", kind="emailed", text=text))
+    store = receipt.merchant or "A receipt"
+    amount = split_store._money_text(receipt.total, receipt.currency)
+    category = (receipt.category_slug or "other").replace("_", " ").capitalize()
+    day = receipt.purchased_at
+    when = f"{day:%b} {day.day}" if day else None
+    text = f"added {store}, {amount}" + (f" on {when}" if when else "") + ", from your email"
+    session.add(
+        Activity(
+            user_id=user.id, actor_name="Tally", kind="emailed", text=text, receipt_id=receipt.id
+        )
+    )
     if notify_prefs.allowed(user, "emailed", "push"):
-        await push.send(session, [user.id], f"Tally {text}", link=f"receipts/{receipt.id}")
+        # "Receipt added from your email" / "Uber · $15.94 · Nov 2 · Transport"
+        await push.send(
+            session,
+            [user.id],
+            " · ".join(part for part in (store, amount, when, category) if part),
+            title="Receipt added from your email",
+            link=f"receipts/{receipt.id}",
+            target={"receipt": receipt.id},
+        )
     await session.commit()
     return "added"
 

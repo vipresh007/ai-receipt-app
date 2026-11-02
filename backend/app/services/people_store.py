@@ -328,7 +328,13 @@ async def claim(session: AsyncSession, person: Person, user: User) -> Person:
         session.add(mirror)
     await session.flush()
     await activity.notify(
-        session, [person.owner_user_id], user, "joined", "accepted your invite", person_id=person.id
+        session,
+        [person.owner_user_id],
+        user,
+        "joined",
+        "accepted your invite",
+        person_id=person.id,
+        title="Invite accepted",
     )
     return mirror
 

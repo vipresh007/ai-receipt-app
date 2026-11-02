@@ -260,14 +260,14 @@ async def test_people_on_a_new_expense_get_an_email(
     await activity.drain()
     # One email (the second came within 10 minutes), to Sam's verified address.
     assert [m["to"] for m in mailer.sent] == ["sam@example.com"]
-    assert 'added "Dinner": your share is $15.00' in mailer.sent[0]["subject"]
+    assert "added Dinner · your share $15.00" in mailer.sent[0]["subject"]
 
     act_as(sam)
     await anon_client.patch("/v1/auth/me", json={"email_notifications": False})
     feed = (await anon_client.get("/v1/activity")).json()
     assert {a["text"] for a in feed["items"]} >= {
-        'added "Tea": your share is $4.00',
-        'added "Dinner": your share is $15.00',
+        "added Tea · your share $4.00",
+        "added Dinner · your share $15.00",
     }
 
 

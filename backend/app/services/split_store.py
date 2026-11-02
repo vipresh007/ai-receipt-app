@@ -459,7 +459,7 @@ def _changes(before: dict, after: dict, currency: str) -> list[str]:
 
     out: list[str] = []
     if before["description"] != after["description"]:
-        out.append(f'renamed it "{after["description"]}"')
+        out.append(f"renamed it {after['description']}")
     if before["total"] != after["total"]:
         out.append(f"changed the total from {money(before['total'])} to {money(after['total'])}")
     if before["date"] != after["date"]:
@@ -541,7 +541,7 @@ async def _log_and_notify(
                     [row.user_id],
                     actor,
                     "expense_added",
-                    f'added "{split.description}": your share is '
+                    f"added {split.description} · your share "
                     f"{_money_text(row.share, split.currency)}",
                     split_id=split.id,
                     group_id=split.group_id,
@@ -558,7 +558,7 @@ async def _log_and_notify(
         accounts,
         actor,
         "expense_edited",
-        f'changed "{split.description}": {text}',
+        f"changed {split.description}: {text}",
         split_id=split.id,
         group_id=split.group_id,
     )
@@ -656,7 +656,7 @@ async def delete_split(session: AsyncSession, split: Split, actor: User | None =
             {r.user_id for r in rows},
             actor,
             "expense_deleted",
-            f'deleted "{split.description}"',
+            f"deleted {split.description}",
             group_id=split.group_id,
         )
     await session.execute(sa_delete(SplitEvent).where(SplitEvent.split_id == split.id))

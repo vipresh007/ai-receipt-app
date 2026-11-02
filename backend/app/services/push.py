@@ -61,7 +61,13 @@ def _http() -> httpx.AsyncClient:
 
 
 async def send(
-    session: AsyncSession, user_ids: Iterable[uuid.UUID], body: str, *, link: str = ""
+    session: AsyncSession,
+    user_ids: Iterable[uuid.UUID],
+    body: str,
+    *,
+    link: str = "",
+    title: str = "Tally",
+    target: dict | None = None,
 ) -> None:
     """Queue a push to every device of these users (fire and forget)."""
     if not configured():
@@ -76,14 +82,26 @@ async def send(
     ).all()
     if not rows:
         return
-    task = asyncio.create_task(_deliver([(t, e) for t, e in rows], body[:180], link))
+    ids = {k: str(v) for k, v in (target or {}).items() if v}
+    task = asyncio.create_task(
+        _deliver([(t, e) for t, e in rows], body[:180], link, title[:60], ids)
+    )
     _sending.add(task)
     task.add_done_callback(_sending.discard)
 
 
-async def _deliver(devices: list[tuple[str, str]], body: str, link: str) -> None:
+async def _deliver(
+    devices: list[tuple[str, str]],
+    body: str,
+    link: str,
+    title: str = "Tally",
+    target: dict | None = None,
+) -> None:
     s = get_settings()
-    payload = {"aps": {"alert": {"title": "Tally", "body": body}, "sound": "default"}}
+    payload = {"aps": {"alert": {"title": title, "body": body}, "sound": "default"}}
+    # What a tap opens in the app: {"receipt": id, "split": id, "group": id, "person": id}.
+    if target:
+        payload["target"] = target
     if link:
         payload["link"] = link
     gone: list[str] = []
