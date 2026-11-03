@@ -86,7 +86,7 @@ function daysCovered(months: string[], isCurrent: boolean): number {
 }
 
 export default function DashboardPage() {
-  // Deep-linked month (e.g. from /months), else this month.
+  // Deep-linked month (?month=2026-06), else this month.
   const params = useSearchParams();
   const [month, setMonth] = useState(() => {
     const m = params.get("month");
@@ -318,12 +318,7 @@ export default function DashboardPage() {
         <div className="space-y-2xl">
           <div ref={categoriesRef}>
             <Card>
-              <div className="flex items-center justify-between">
-                <CardTitle>Where it went</CardTitle>
-                <Link href="/months" className="flex items-center gap-xs text-caption text-text-secondary hover:text-text">
-                  All months <ArrowRight size={13} />
-                </Link>
-              </div>
+              <CardTitle>Where it went</CardTitle>
               <div className="mt-xl">
                 {periodSummary.isLoading ? <Skeleton className="h-56 w-full" /> : <CategoryBreakdown data={byCategory} />}
               </div>

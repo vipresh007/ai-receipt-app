@@ -99,8 +99,8 @@ struct PeriodHeroCard: View {
 // MARK: - Trend chart
 
 /// The trend chart — used inside the hero panel (`.hero`: gold on ink,
-/// regardless of light/dark) and on the "All months" screen (`.standard`:
-/// follows the theme).
+/// regardless of light/dark) and on a category's page (`.standard`: follows
+/// the theme).
 ///
 /// Scrubbable: dragging across the plot shows that period's value, via
 /// `chartXSelection` (iOS 17+). While nothing is being touched, it falls back
@@ -223,11 +223,11 @@ func compactMoney(_ amount: Decimal, code: String) -> String {
 /// Where the period's money went: one proportional bar across the top, then a
 /// ranked list of categories with each one's share and total (matches the
 /// web's `CategoryBreakdown`).
-struct CategoryBreakdownCard<Accessory: View>: View {
+struct CategoryBreakdownCard<Destination: View>: View {
     let breakdown: [CategoryTotal]
     let currencyCode: String
-    /// Trailing header control, e.g. an "All months" link.
-    @ViewBuilder var accessory: () -> Accessory
+    /// What tapping a category opens: its receipts and its trend.
+    @ViewBuilder var destination: (ExpenseCategory) -> Destination
 
     private var rows: [CategoryTotal] { breakdown.filter { $0.amount > 0 } }
     private var total: Decimal { rows.reduce(0) { $0 + $1.amount } }
@@ -240,11 +240,7 @@ struct CategoryBreakdownCard<Accessory: View>: View {
     var body: some View {
         AppCard {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                HStack {
-                    SectionLabel("Where it went")
-                    Spacer()
-                    accessory()
-                }
+                SectionLabel("Where it went")
 
                 if rows.isEmpty {
                     Text("No spending in this period yet.")
@@ -255,7 +251,12 @@ struct CategoryBreakdownCard<Accessory: View>: View {
                     VStack(spacing: 0) {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
                             if index > 0 { Divider().overlay(Theme.Palette.border) }
-                            row(entry)
+                            NavigationLink {
+                                destination(entry.category)
+                            } label: {
+                                row(entry)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -311,8 +312,12 @@ struct CategoryBreakdownCard<Accessory: View>: View {
                         .frame(width: 36, alignment: .trailing)
                 }
             }
+            Image(systemName: "chevron.right")
+                .font(.appCaption.weight(.semibold))
+                .foregroundStyle(Theme.Palette.textTertiary)
         }
         .padding(.vertical, Theme.Space.md)
+        .contentShape(Rectangle())
     }
 }
 
@@ -346,7 +351,7 @@ struct BudgetsSummaryCard: View {
     }
 }
 
-/// "Manage →" / "All months →" — the small trailing link in a card header.
+/// "Manage →" — the small trailing link in a card header.
 struct CardLinkLabel: View {
     let title: String
 
@@ -561,11 +566,28 @@ struct PeriodReceiptsView: View {
     let title: String
     let receipts: [Receipt]
     let currencyCode: String
+    /// A trend above the list (a category's spending, period by period).
+    var chart: [MonthlyPoint] = []
+    var chartTitle = ""
+    var highlighted: Date = .now
 
     private var total: Decimal { receipts.reduce(Decimal(0)) { $0 + $1.spend } }
 
     var body: some View {
         List {
+            if chart.count > 1 {
+                Section {
+                    AppCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                            SectionLabel(chartTitle)
+                            SpendingBarChart(points: chart, highlighted: highlighted, currencyCode: currencyCode)
+                        }
+                    }
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.lg, bottom: Theme.Space.lg, trailing: Theme.Space.lg))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
             Section {
                 ForEach(receipts) { receipt in
                     NavigationLink {

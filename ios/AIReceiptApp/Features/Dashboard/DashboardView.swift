@@ -88,6 +88,23 @@ struct DashboardView: View {
         }
     }
 
+    /// One category: this period's receipts in it, under its own trend.
+    private func categoryPage(_ category: ExpenseCategory) -> some View {
+        let inCategory = receipts.filter { $0.category == category }
+        let period = granularity.periodLabel(for: anchor, calendar: calendar)
+        return PeriodReceiptsView(
+            title: "\(category.displayName) · \(period)",
+            receipts: periodReceipts.filter { $0.category == category },
+            currencyCode: currencyCode,
+            chart: SpendingSummary.periodTrend(
+                receipts: inCategory, calendar: calendar, now: .now,
+                granularity: granularity, periods: granularity == .month ? 12 : trendPeriods
+            ),
+            chartTitle: "\(category.displayName) by \(granularity.rawValue)",
+            highlighted: periodStart
+        )
+    }
+
     private var trendPoints: [MonthlyPoint] {
         SpendingSummary.periodTrend(
             receipts: receipts, calendar: calendar, now: anchor, granularity: granularity, periods: trendPeriods
@@ -95,8 +112,7 @@ struct DashboardView: View {
     }
 
     /// Move the dashboard to whatever period contains `date`, switching
-    /// granularity too if given (e.g. tapping a month row in "All months"
-    /// always means month granularity).
+    /// granularity too if given.
     private func jump(to date: Date, granularity newGranularity: Granularity? = nil) {
         withAnimation(Theme.Motion.base) {
             if let newGranularity { granularity = newGranularity }
@@ -175,22 +191,8 @@ struct DashboardView: View {
                             CategoryBreakdownCard(
                                 breakdown: summary.currentMonthByCategory,
                                 currencyCode: currencyCode
-                            ) {
-                                NavigationLink {
-                                    MonthlyHistoryView(
-                                        months: SpendingSummary.allMonths(
-                                            receipts: receipts, calendar: calendar
-                                        ),
-                                        currencyCode: currencyCode,
-                                        onSelect: { jump(to: $0, granularity: .month) },
-                                        chartPoints: SpendingSummary.periodTrend(
-                                            receipts: receipts, calendar: calendar, now: .now,
-                                            granularity: .month, periods: 12
-                                        )
-                                    )
-                                } label: {
-                                    CardLinkLabel(title: "All months")
-                                }
+                            ) { category in
+                                categoryPage(category)
                             }
 
                             if isCurrentPeriod, !ComingUpCard.items(in: receipts).isEmpty {
@@ -246,8 +248,8 @@ struct DashboardView: View {
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showingBudgets) { BudgetsView() }
-            // The greeting header is the page title; pushed screens (All
-            // months, receipt detail) still show their own bar.
+            // The greeting header is the page title; pushed screens (a
+            // category, receipt detail) still show their own bar.
             .toolbar(receipts.isEmpty ? .visible : .hidden, for: .navigationBar)
             .task(id: "\(granularity.rawValue)-\(periodMonthString)-\(auth.isSignedIn)") {
                 await loadBudgets()

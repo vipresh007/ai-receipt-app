@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Plus, RefreshCw, Search, Tag } from "lucide-react";
 import { apiDelete, apiGet } from "@/lib/api";
@@ -77,7 +78,11 @@ function useDebounced<T>(value: T, delayMs = 300): T {
 export default function ReceiptsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  // From the dashboard: /receipts?category=groceries.
+  const linked = useSearchParams().get("category") ?? "";
+  const [category, setCategory] = useState(() =>
+    (CATEGORY_ORDER as readonly string[]).includes(linked) ? linked : "",
+  );
   const debouncedSearch = useDebounced(search);
   const filtersActive = debouncedSearch !== "" || category !== "";
 
