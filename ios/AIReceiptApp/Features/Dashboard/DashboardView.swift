@@ -88,20 +88,35 @@ struct DashboardView: View {
         }
     }
 
-    /// One category: this period's receipts in it, under its own trend.
+    /// One category: this period's receipts in it, against the period
+    /// before and its usual spend.
     private func categoryPage(_ category: ExpenseCategory) -> some View {
-        let inCategory = receipts.filter { $0.category == category }
         let period = granularity.periodLabel(for: anchor, calendar: calendar)
+        let numbers = SpendingSummary.categoryComparison(
+            receipts: receipts, category: category, anchor: anchor, granularity: granularity, calendar: calendar
+        )
+        let previousStart = granularity.shift(periodStart, by: -1, calendar: calendar)
+        // "than October" (same year), "than December 2025", "than Q3".
+        let previousLabel = granularity == .month
+            && calendar.component(.year, from: previousStart) == calendar.component(.year, from: periodStart)
+            ? previousStart.formatted(.dateTime.month(.wide))
+            : granularity.periodLabel(for: previousStart, calendar: calendar)
+        func money(_ value: Decimal) -> String { value.formatted(.currency(code: currencyCode)) }
+        var comparison: (text: String, up: Bool)?
+        if numbers.previous > 0, numbers.current != numbers.previous {
+            let up = numbers.current > numbers.previous
+            comparison = ("\(money(abs(numbers.current - numbers.previous))) \(up ? "more" : "less") than \(previousLabel)", up)
+        }
+        var figures = [("Previous \(granularity.rawValue)", money(numbers.previous))]
+        if let average = numbers.average {
+            figures.append(("\(granularity.label)ly average", money(average)))
+        }
         return PeriodReceiptsView(
             title: "\(category.displayName) · \(period)",
             receipts: periodReceipts.filter { $0.category == category },
             currencyCode: currencyCode,
-            chart: SpendingSummary.periodTrend(
-                receipts: inCategory, calendar: calendar, now: .now,
-                granularity: granularity, periods: granularity == .month ? 12 : trendPeriods
-            ),
-            chartTitle: "\(category.displayName) by \(granularity.rawValue)",
-            highlighted: periodStart
+            comparison: comparison,
+            figures: figures
         )
     }
 

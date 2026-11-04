@@ -140,6 +140,39 @@ struct SpendingSummary {
         }
     }
 
+    /// One category in one period, against the period before and its usual
+    /// spend: the average over every finished period since its first receipt
+    /// (quiet periods count as zero). `average` is nil with no history yet.
+    static func categoryComparison(
+        receipts: [Receipt],
+        category: ExpenseCategory,
+        anchor: Date,
+        granularity: Granularity,
+        calendar: Calendar = .current
+    ) -> (current: Decimal, previous: Decimal, average: Decimal?) {
+        let mine = receipts.filter { $0.category == category }
+        func total(_ interval: DateInterval?) -> Decimal {
+            guard let interval else { return 0 }
+            return mine.filter { interval.holds($0.date) }.reduce(Decimal(0)) { $0 + $1.spend }
+        }
+        guard let current = granularity.interval(containing: anchor, calendar: calendar) else { return (0, 0, nil) }
+        let previousStart = granularity.shift(current.start, by: -1, calendar: calendar)
+        let previous = total(granularity.interval(containing: previousStart, calendar: calendar))
+
+        guard let first = mine.map(\.date).min(),
+              var cursor = granularity.interval(containing: first, calendar: calendar)?.start,
+              cursor < current.start else {
+            return (total(current), previous, nil)
+        }
+        var sum = Decimal(0), count = 0
+        while cursor < current.start {
+            sum += total(granularity.interval(containing: cursor, calendar: calendar))
+            count += 1
+            cursor = granularity.shift(cursor, by: 1, calendar: calendar)
+        }
+        return (total(current), previous, sum / Decimal(count))
+    }
+
     // MARK: - Helpers
 
     private static func contains(_ interval: DateInterval?, _ date: Date) -> Bool {

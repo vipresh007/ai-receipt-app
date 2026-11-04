@@ -92,6 +92,29 @@ final class SpendingSummaryTests: XCTestCase {
         XCTAssertLessThan(trend[0].monthStart, trend[3].monthStart)
     }
 
+    func testCategoryComparisonAveragesFinishedMonthsSinceTheFirst() {
+        let receipts = [
+            receipt(100, .groceries, on: date(year: 2026, month: 3, day: 5)),
+            // April: nothing (counts as zero)
+            receipt(50, .groceries, on: date(year: 2026, month: 5, day: 9)),
+            receipt(30, .groceries, on: date(year: 2026, month: 6, day: 2)),
+            receipt(999, .restaurants, on: date(year: 2026, month: 5, day: 9)),
+        ]
+        let june = SpendingSummary.categoryComparison(
+            receipts: receipts, category: .groceries,
+            anchor: date(year: 2026, month: 6, day: 15), granularity: .month, calendar: calendar
+        )
+        XCTAssertEqual(june.current, 30)
+        XCTAssertEqual(june.previous, 50)
+        XCTAssertEqual(june.average, 50)  // (100 + 0 + 50) / 3
+
+        let march = SpendingSummary.categoryComparison(
+            receipts: receipts, category: .groceries,
+            anchor: date(year: 2026, month: 3, day: 20), granularity: .month, calendar: calendar
+        )
+        XCTAssertNil(march.average)  // nothing before it
+    }
+
     func testCompactMoneyShortensThousands() {
         // Currency symbol is locale-dependent; assert the digits/shape only.
         XCTAssertTrue(compactMoney(320, code: "USD").contains("320"))

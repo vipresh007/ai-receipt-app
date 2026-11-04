@@ -98,9 +98,8 @@ struct PeriodHeroCard: View {
 
 // MARK: - Trend chart
 
-/// The trend chart — used inside the hero panel (`.hero`: gold on ink,
-/// regardless of light/dark) and on a category's page (`.standard`: follows
-/// the theme).
+/// The trend chart in the hero panel (`.hero`: gold on ink, regardless of
+/// light/dark; `.standard` follows the theme).
 ///
 /// Scrubbable: dragging across the plot shows that period's value, via
 /// `chartXSelection` (iOS 17+). While nothing is being touched, it falls back
@@ -566,21 +565,42 @@ struct PeriodReceiptsView: View {
     let title: String
     let receipts: [Receipt]
     let currencyCode: String
-    /// A trend above the list (a category's spending, period by period).
-    var chart: [MonthlyPoint] = []
-    var chartTitle = ""
-    var highlighted: Date = .now
+    /// Above the list: how it compares ("$12.40 less than October") and
+    /// figures such as last month and the monthly average.
+    var comparison: (text: String, up: Bool)?
+    var figures: [(label: String, value: String)] = []
 
     private var total: Decimal { receipts.reduce(Decimal(0)) { $0 + $1.spend } }
 
     var body: some View {
         List {
-            if chart.count > 1 {
+            if !figures.isEmpty {
                 Section {
                     AppCard {
-                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                            SectionLabel(chartTitle)
-                            SpendingBarChart(points: chart, highlighted: highlighted, currencyCode: currencyCode)
+                        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                            if let comparison {
+                                HStack(spacing: 5) {
+                                    Image(systemName: comparison.up ? "arrow.up.right" : "arrow.down.right")
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text(comparison.text)
+                                }
+                                .font(.appCallout.weight(.medium))
+                                .foregroundStyle(comparison.up ? Theme.Palette.danger : Theme.Palette.success)
+                            }
+                            HStack(alignment: .top, spacing: Theme.Space.lg) {
+                                ForEach(figures, id: \.label) { figure in
+                                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                                        Text(figure.label.uppercased())
+                                            .font(.mono(10, medium: true, relativeTo: .caption2))
+                                            .tracking(1.4)
+                                            .foregroundStyle(Theme.Palette.textTertiary)
+                                        Text(figure.value)
+                                            .font(.mono(15, relativeTo: .callout))
+                                            .foregroundStyle(Theme.Palette.text)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
                         }
                     }
                 }
