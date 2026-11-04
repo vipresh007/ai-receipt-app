@@ -145,7 +145,7 @@ is enough, and Apple scales it for the other iPhone sizes. The app is iPhone-onl
 | 7 | `out/<size>/07-returns.png` | Return & warranty dates (1.2.0) |
 | 8 | `out/<size>/08-insights.png` | Where it went + insights |
 | 9 | `out/<size>/09-receipts.png` | Receipts list (light ground) |
-| 10 | `out/<size>/10-history.png` | Month history (light ground) |
+| 10 | `out/<size>/10-categories.png` | A category, month by month (light ground) |
 
 Every release refreshes these with the new build (recapture what changed) and
 keeps the dashboard first.

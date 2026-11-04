@@ -31,7 +31,7 @@ SLIDES = [
     ("07-returns", "returns.png", "dark", "Returns", "Never miss a<br>return window."),
     ("08-insights", "insights.png", "dark", "Insights", "See where it went<br>and what changed."),
     ("09-receipts", "receipts.png", "light", "Receipts", "Every receipt,<br>one search away."),
-    ("10-history", "history.png", "light", "History", "Month over month,<br>at a glance."),
+    ("10-categories", "category.png", "light", "Categories", "Every category,<br>month by month."),
 ]
 
 # App Store Connect slot → (width, height) in pixels.
