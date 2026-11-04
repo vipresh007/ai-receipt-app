@@ -103,7 +103,8 @@ struct PeriodHeroCard: View {
 ///
 /// Scrubbable: dragging across the plot shows that period's value, via
 /// `chartXSelection` (iOS 17+). While nothing is being touched, it falls back
-/// to `highlighted`. With `onSelect`, tapping a period picks it.
+/// to `highlighted`. With `onSelect`, tapping a period (or dragging across and
+/// letting go) picks it.
 struct SpendingBarChart: View {
     enum Tone { case standard, hero }
 
@@ -113,12 +114,14 @@ struct SpendingBarChart: View {
     let currencyCode: String
     var tone: Tone = .standard
     var height: CGFloat = 150
-    /// Tapping a period: its start date.
+    /// A period was picked (tap, or drag and let go): its start date.
     var onSelect: ((Date) -> Void)?
 
     /// The x-axis is categorical (`point.label`), so that's the value type
     /// `chartXSelection` hands back.
     @State private var selectedLabel: String?
+    /// With `onSelect`: is the finger scrubbing sideways, or scrolling the page?
+    @State private var scrubbing: Bool?
 
     private var line: Color { tone == .hero ? Theme.Palette.gold : Theme.Palette.accent }
     private var tick: Color { tone == .hero ? Theme.Palette.heroTextSecondary : Theme.Palette.textTertiary }
@@ -202,18 +205,39 @@ struct SpendingBarChart: View {
         .frame(height: height)
         .chartXSelection(value: $selectedLabel)
         .chartOverlay { proxy in
-            // Tap a period to pick it (in a scroll view, the scrub above
-            // only starts after a press-and-hold).
+            // Tap a period, or drag sideways and let go, to pick it. (In a
+            // scroll view the built-in scrub needs a press-and-hold first.)
+            // Up/down drags are left to the page's scrolling.
             if let onSelect {
                 GeometryReader { geo in
+                    let point = { (location: CGPoint) -> MonthlyPoint? in
+                        guard let plot = proxy.plotFrame,
+                              let label: String = proxy.value(atX: location.x - geo[plot].origin.x) else { return nil }
+                        return points.first(where: { $0.label == label })
+                    }
                     Rectangle().fill(.clear).contentShape(Rectangle())
-                        .onTapGesture { location in
-                            guard let plot = proxy.plotFrame,
-                                  let label: String = proxy.value(atX: location.x - geo[plot].origin.x),
-                                  let point = points.first(where: { $0.label == label }) else { return }
-                            UISelectionFeedbackGenerator().selectionChanged()
-                            onSelect(point.monthStart)
-                        }
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { drag in
+                                    if scrubbing == nil {
+                                        let dx = abs(drag.translation.width), dy = abs(drag.translation.height)
+                                        if dy > 8, dy > dx { scrubbing = false } else if dx > 8 { scrubbing = true }
+                                    }
+                                    guard scrubbing == true, let hit = point(drag.location),
+                                          hit.label != selectedLabel else { return }
+                                    selectedLabel = hit.label
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                }
+                                .onEnded { drag in
+                                    defer {
+                                        scrubbing = nil
+                                        selectedLabel = nil
+                                    }
+                                    guard scrubbing != false, let hit = point(drag.location) else { return }
+                                    if scrubbing == nil { UISelectionFeedbackGenerator().selectionChanged() }
+                                    onSelect(hit.monthStart)
+                                }
+                        )
                 }
             }
         }
