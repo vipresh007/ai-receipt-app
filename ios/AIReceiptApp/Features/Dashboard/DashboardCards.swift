@@ -103,7 +103,7 @@ struct PeriodHeroCard: View {
 ///
 /// Scrubbable: dragging across the plot shows that period's value, via
 /// `chartXSelection` (iOS 17+). While nothing is being touched, it falls back
-/// to `highlighted`.
+/// to `highlighted`. With `onSelect`, tapping a period picks it.
 struct SpendingBarChart: View {
     enum Tone { case standard, hero }
 
@@ -113,6 +113,8 @@ struct SpendingBarChart: View {
     let currencyCode: String
     var tone: Tone = .standard
     var height: CGFloat = 150
+    /// Tapping a period: its start date.
+    var onSelect: ((Date) -> Void)?
 
     /// The x-axis is categorical (`point.label`), so that's the value type
     /// `chartXSelection` hands back.
@@ -199,6 +201,22 @@ struct SpendingBarChart: View {
         }
         .frame(height: height)
         .chartXSelection(value: $selectedLabel)
+        .chartOverlay { proxy in
+            // Tap a period to pick it (in a scroll view, the scrub above
+            // only starts after a press-and-hold).
+            if let onSelect {
+                GeometryReader { geo in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .onTapGesture { location in
+                            guard let plot = proxy.plotFrame,
+                                  let label: String = proxy.value(atX: location.x - geo[plot].origin.x),
+                                  let point = points.first(where: { $0.label == label }) else { return }
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            onSelect(point.monthStart)
+                        }
+                }
+            }
+        }
     }
 }
 
@@ -569,6 +587,11 @@ struct PeriodReceiptsView: View {
     /// figures such as last month and the monthly average.
     var comparison: (text: String, up: Bool)?
     var figures: [(label: String, value: String)] = []
+    /// A trend on top of the figures; tapping a period opens it.
+    var chart: [MonthlyPoint] = []
+    var chartTitle = ""
+    var highlighted: Date = .now
+    var onSelectPeriod: ((Date) -> Void)?
 
     private var total: Decimal { receipts.reduce(Decimal(0)) { $0 + $1.spend } }
 
@@ -578,6 +601,18 @@ struct PeriodReceiptsView: View {
                 Section {
                     AppCard {
                         VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                            if chart.count > 1 {
+                                VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                                    SectionLabel(chartTitle)
+                                    SpendingBarChart(
+                                        points: chart,
+                                        highlighted: highlighted,
+                                        currencyCode: currencyCode,
+                                        onSelect: onSelectPeriod
+                                    )
+                                }
+                                Divider().overlay(Theme.Palette.border)
+                            }
                             if let comparison {
                                 HStack(spacing: 5) {
                                     Image(systemName: comparison.up ? "arrow.up.right" : "arrow.down.right")
@@ -632,7 +667,7 @@ struct PeriodReceiptsView: View {
                 .listRowBackground(Color.clear)
             } header: {
                 HStack {
-                    Text("\(receipts.count) receipts")
+                    Text(receipts.count == 1 ? "1 receipt" : "\(receipts.count) receipts")
                     Spacer()
                     Text(total, format: .currency(code: currencyCode))
                 }
