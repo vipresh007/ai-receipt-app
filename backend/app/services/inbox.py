@@ -29,7 +29,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import get_settings
 from app.models import Activity, User
-from app.services import notify_prefs, pdf, push, split_store
+from app.services import duplicates, notify_prefs, pdf, push, split_store
 from app.services.azure_openai import ExtractionError
 from app.services.extraction import process_receipt
 
@@ -177,6 +177,11 @@ async def handle(session: AsyncSession, raw: bytes, extractor) -> str:
         )
     except ExtractionError:
         return "extraction failed"
+    existing = await duplicates.find(
+        session, user.id, receipt.merchant, receipt.purchased_at, receipt.total, exclude=receipt.id
+    )
+    if existing is not None:
+        return await _already_had(session, user, receipt, existing)
     store = receipt.merchant or "A receipt"
     amount = split_store._money_text(receipt.total, receipt.currency)
     category = (receipt.category_slug or "other").replace("_", " ").capitalize()
@@ -200,6 +205,38 @@ async def handle(session: AsyncSession, raw: bytes, extractor) -> str:
         )
     await session.commit()
     return "added"
+
+
+async def _already_had(session: AsyncSession, user: User, copy, existing) -> str:
+    """Forwarded a receipt that's already in Tally: don't add it twice. Keep
+    the one you have, taking a photo or items only the email had."""
+    took = await duplicates.merge(session, copy, existing)
+    store = existing.merchant or "A receipt"
+    amount = split_store._money_text(existing.total, existing.currency)
+    day = existing.purchased_at
+    when = f"{day:%b} {day.day}" if day else None
+    extra = f", added its {' and '.join(took)}" if took else ""
+    session.add(
+        Activity(
+            user_id=user.id,
+            actor_name="Tally",
+            kind="emailed",
+            text=f"already had {store}, {amount}" + (f" on {when}" if when else "") + extra,
+            receipt_id=existing.id,
+        )
+    )
+    if notify_prefs.allowed(user, "emailed", "push"):
+        # "Already in Tally" / "FreshCo · $30.72 · Oct 9 · added its photo"
+        await push.send(
+            session,
+            [user.id],
+            " · ".join(p for p in (store, amount, when, extra.removeprefix(", ")) if p),
+            title="Already in Tally",
+            link=f"receipts/{existing.id}",
+            target={"receipt": existing.id},
+        )
+    await session.commit()
+    return "duplicate"
 
 
 # ───────────────────────── polling the mailbox ─────────────────────────

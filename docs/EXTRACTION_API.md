@@ -87,6 +87,7 @@ shutter is disabled).
 | `401`  | Bearer token present but invalid/expired. |
 | `402`  | Anonymous device has used all its free scans — sign in to continue. |
 | (response) | `return_by` (YYYY-MM-DD or null) is added when the receipt prints a return window: the model reports `return_days` and the server counts from the purchase date. |
+| (response) | `duplicate_of` (signed in): `{ id, merchant, date, total, created_at }` of a receipt you already have with the same store, day and total, else null. The app offers to keep that one instead (`POST /v1/receipts/{id}/merge`). |
 | `422`  | `imageBase64` not valid base64, or empty, or a PDF that can't be opened. |
 | `429`  | Anonymous: too many calls from this client IP this hour (`anon_ip_hourly_limit`, default 60). Signed-in monthly limit is *planned*. |
 | `502`  | Azure OpenAI unavailable or returned nothing usable. |

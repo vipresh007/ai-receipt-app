@@ -121,7 +121,11 @@ Insights** (telemetry).
 `POST /v1/extract` (parse; persists for signed-in) plus the receipt CRUD
 (`GET/POST /v1/receipts`, `PATCH/DELETE /v1/receipts/{id}`, `GET
 /v1/receipts/{id}/image`, `PUT /v1/receipts/{id}/image` (a photo the phone kept), `POST
-/v1/receipts/import`) that iOS sync uses.
+/v1/receipts/import`) that iOS sync uses. The same receipt twice
+(`services/duplicates.py`, mirrored by iOS `DuplicateFinder`): scans get
+`duplicate_of`, `POST /v1/receipts/{id}/merge` folds a copy into the original,
+`GET /v1/receipts/duplicates` lists look-alikes, and a forwarded email of a
+receipt you have isn't added again.
 `GET /v1/receipts` also takes `month`, `q` (merchant + line-item search),
 `category`, `min_amount`/`max_amount`. Beyond the core loop: `GET
 /v1/receipts/recurring` (same-merchant-across-months detection, mirrored in

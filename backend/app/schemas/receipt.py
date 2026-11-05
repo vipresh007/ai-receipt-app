@@ -26,6 +26,16 @@ class ExtractionItemOut(BaseModel):
     quantity: int = 1
 
 
+class DuplicateOut(BaseModel):
+    """A receipt you already have that looks like this one."""
+
+    id: str
+    merchant: str
+    date: str | None = None  # YYYY-MM-DD
+    total: str
+    created_at: datetime | None = None
+
+
 class ExtractionOut(BaseModel):
     """Response body for POST /v1/extract — matches what the iOS
     `ReceiptExtractionAPIClient` decodes."""
@@ -43,6 +53,8 @@ class ExtractionOut(BaseModel):
     scans_remaining: int | None = None
     # YYYY-MM-DD, when the receipt prints a return window.
     return_by: str | None = None
+    # Signed in: a receipt you already have that looks like this one.
+    duplicate_of: DuplicateOut | None = None
 
 
 class ReceiptUpdate(BaseModel):
@@ -107,6 +119,10 @@ class ReceiptOut(BaseModel):
     # When it was added to the account, and last changed.
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class MergeIn(BaseModel):
+    into: UUID
 
 
 class RecurringGroupOut(BaseModel):

@@ -17,10 +17,12 @@ from app.db import get_session
 from app.models import AnonDevice, AnonRateLimit, Expense, Receipt, Split, User
 from app.schemas.extraction import ExtractedReceipt
 from app.schemas.receipt import (
+    DuplicateOut,
     ExtractionIn,
     ExtractionItemOut,
     ExtractionOut,
     ImportIn,
+    MergeIn,
     PricePurchaseOut,
     ReceiptCreate,
     ReceiptOut,
@@ -28,7 +30,7 @@ from app.schemas.receipt import (
     RecurringGroupOut,
     TrackedItemOut,
 )
-from app.services import pdf, prices, split_store
+from app.services import duplicates, pdf, prices, split_store
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 from app.services.extraction import (
@@ -190,7 +192,19 @@ async def extract(
         )
     except ExtractionError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
-    return receipt_to_extraction_out(receipt)
+    out = receipt_to_extraction_out(receipt)
+    existing = await duplicates.find(
+        session, user.id, receipt.merchant, receipt.purchased_at, receipt.total, exclude=receipt.id
+    )
+    if existing is not None:
+        out.duplicate_of = DuplicateOut(
+            id=str(existing.id),
+            merchant=existing.merchant,
+            date=existing.purchased_at.isoformat() if existing.purchased_at else None,
+            total=f"{existing.total:.2f}",
+            created_at=existing.created_at,
+        )
+    return out
 
 
 async def _persist_receipt(
@@ -394,6 +408,35 @@ async def list_recurring(
         )
         for g in find_recurring(receipts)
     ]
+
+
+@router.get("/receipts/duplicates", response_model=list[list[ReceiptOut]])
+async def list_duplicates(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[list[ReceiptOut]]:
+    """Receipts that look like the same one added twice (services/duplicates.py)."""
+    receipts = list(await session.scalars(select(Receipt).where(Receipt.user_id == user.id)))
+    return [[_receipt_out(r) for r in group] for group in duplicates.groups(receipts)]
+
+
+@router.post("/receipts/{receipt_id}/merge", response_model=ReceiptOut)
+async def merge_receipt(
+    receipt_id: UUID,
+    payload: MergeIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ReceiptOut:
+    """This receipt is a copy of `into`: keep `into` (taking a photo or items
+    only this one has) and remove this one."""
+    if payload.into == receipt_id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "That's the same receipt.")
+    copy = await _owned_receipt(session, user, receipt_id)
+    keep = await _owned_receipt(session, user, payload.into)
+    await duplicates.merge(session, copy, keep)
+    await session.commit()
+    await session.refresh(keep)
+    return _receipt_out(keep)
 
 
 @router.get("/receipts/{receipt_id}", response_model=ReceiptOut)
