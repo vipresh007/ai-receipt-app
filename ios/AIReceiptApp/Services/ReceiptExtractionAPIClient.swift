@@ -297,6 +297,7 @@ struct ReceiptExtractionAPIClient {
             let name: String
             let price: String
             let quantity: Int
+            var detail: String? = nil
         }
 
         enum CodingKeys: String, CodingKey {
@@ -351,7 +352,8 @@ struct ReceiptExtractionAPIClient {
                     .init(
                         name: $0.name,
                         price: NSDecimalNumber(decimal: $0.price).stringValue,
-                        quantity: max(1, $0.quantity)
+                        quantity: max(1, $0.quantity),
+                        detail: $0.detail
                     )
                 },
                 imageBase64: includeImage ? receipt.imageData?.base64EncodedString() : nil
@@ -429,12 +431,13 @@ struct ReceiptExtractionAPIClient {
             let name: String
             let price: String
             let quantity: Int?
+            let detail: String?
         }
 
         private var decodedItems: [ReceiptLineItem] {
             lineItems.compactMap {
                 guard let price = Decimal(string: $0.price) else { return nil }
-                return ReceiptLineItem(name: $0.name, price: price, quantity: max(1, $0.quantity ?? 1))
+                return ReceiptLineItem(name: $0.name, price: price, quantity: max(1, $0.quantity ?? 1), detail: $0.detail)
             }
         }
 
@@ -508,6 +511,7 @@ struct ReceiptExtractionAPIClient {
             let name: String
             let price: String
             let quantity: Int?
+            let detail: String?
         }
 
         func asDraft(imageData: Data?) -> ReceiptDraft {
@@ -524,7 +528,8 @@ struct ReceiptExtractionAPIClient {
                 return ReceiptLineItem(
                     name: item.name,
                     price: price,
-                    quantity: max(1, item.quantity ?? 1)
+                    quantity: max(1, item.quantity ?? 1),
+                    detail: item.detail
                 )
             }
             draft.imageData = imageData

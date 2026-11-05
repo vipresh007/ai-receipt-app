@@ -85,6 +85,19 @@ struct RootView: View {
         .environment(router)
         .environment(activityBadge)
         .environment(live)
+        .alert(
+            "Already in Tally",
+            isPresented: Binding(get: { router.duplicate != nil }, set: { if !$0 { router.duplicate = nil } }),
+            presenting: router.duplicate
+        ) { pair in
+            Button("Remove this copy", role: .destructive) {
+                Task { await AccountSync.merge(pair.copy, into: pair.existing, auth: auth, context: modelContext) }
+            }
+            Button("Keep both", role: .cancel) {}
+        } message: { pair in
+            let r = pair.existing
+            Text("You already had \(r.merchant.isEmpty ? "this receipt" : r.merchant) · \(r.date.formatted(.dateTime.month(.abbreviated).day())) · \(r.total.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD"))), added \(r.createdAt.formatted(.dateTime.month(.abbreviated).day())). Remove the new copy? The original keeps its photo and items.")
+        }
         .alert("Next time, just forward the email", isPresented: $router.emailTip) {
             Button("Copy address") { UIPasteboard.general.string = ReceiptsInbox.address }
             Button("OK", role: .cancel) {}

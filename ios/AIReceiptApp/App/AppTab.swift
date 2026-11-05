@@ -22,6 +22,8 @@ final class TabRouter {
     var opened: ActivityTarget?
     /// The one-time "next time, just forward the email" tip.
     var emailTip = false
+    /// A just-saved receipt that turned out to be one you already had.
+    var duplicate: DuplicatePair?
     /// Bumped when a tab is tapped while already open: rebuilds that tab, so
     /// it's back on its main screen (like any iPhone tab bar).
     var resets: [AppTab: Int] = [:]
@@ -33,4 +35,11 @@ struct UndoToast: Identifiable {
     let id = UUID()
     let message: String
     let onUndo: () -> Void
+}
+
+
+/// A receipt saved twice: `copy` was just added, `existing` was there first.
+struct DuplicatePair {
+    let copy: Receipt
+    let existing: Receipt
 }

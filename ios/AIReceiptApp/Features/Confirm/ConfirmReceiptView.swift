@@ -61,18 +61,26 @@ struct ConfirmReceiptView: View {
             if !draft.items.isEmpty {
                 LedgerSection("Items") {
                     ForEach($draft.items) { $item in
-                        HStack {
-                            TextField("Item", text: $item.name)
-                            Spacer()
-                            TextField(
-                                "Price",
-                                value: $item.priceMovingTotal($draft.total),
-                                format: .currency(code: currencyCode)
-                            )
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 90)
-                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                TextField("Item", text: $item.name)
+                                Spacer()
+                                TextField(
+                                    "Price",
+                                    value: $item.priceMovingTotal($draft.total),
+                                    format: .currency(code: currencyCode)
+                                )
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 90)
+                                .foregroundStyle(.secondary)
+                            }
+                            if let subtitle = item.subtitle(currencyCode: currencyCode) {
+                                Text(subtitle)
+                                    .font(.appCaption)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                                    .lineLimit(1)
+                            }
                         }
                     }
                     .onDelete { offsets in

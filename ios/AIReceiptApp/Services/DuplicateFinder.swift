@@ -1,8 +1,8 @@
 import Foundation
 
 /// The same receipt added twice: same store (loosely: "FRESHCO" = "FreshCo",
-/// "Eggholic" = "Eggholic- Indian Street Food (Brampton)"), same day, same
-/// total. Mirrors `backend/app/services/duplicates.py`; keep the rules in step.
+/// "Eggholic" = "Eggholic- Indian Street Food (Brampton)", "FreshCo" =
+/// "CHALO! FRESH CO"), same day, same total. Mirrors `backend/app/services/duplicates.py`; keep the rules in step.
 enum DuplicateFinder {
     static func storeKey(_ name: String) -> String {
         String(name.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) && $0.isASCII }
@@ -14,7 +14,7 @@ enum DuplicateFinder {
         guard !ka.isEmpty, !kb.isEmpty else { return false }
         if ka == kb { return true }
         let (short, long) = ka.count <= kb.count ? (ka, kb) : (kb, ka)
-        return short.count >= 4 && long.hasPrefix(short)
+        return short.count >= 4 && long.contains(short)
     }
 
     static func same(_ a: Receipt, _ b: Receipt, calendar: Calendar = .current) -> Bool {
@@ -22,11 +22,13 @@ enum DuplicateFinder {
     }
 
     /// A saved receipt that looks like this draft, if any (the earliest).
-    static func find(_ draft: ReceiptDraft, in receipts: [Receipt], calendar: Calendar = .current) -> Receipt? {
+    static func find(
+        _ draft: ReceiptDraft, in receipts: [Receipt], except: Receipt? = nil, calendar: Calendar = .current
+    ) -> Receipt? {
         guard draft.total > 0 else { return nil }
         return receipts
             .filter {
-                $0.total == draft.total && calendar.isDate($0.date, inSameDayAs: draft.date)
+                $0 !== except && $0.total == draft.total && calendar.isDate($0.date, inSameDayAs: draft.date)
                     && sameStore($0.merchant, draft.merchant)
             }
             .min { $0.createdAt < $1.createdAt }

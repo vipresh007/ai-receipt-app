@@ -380,6 +380,11 @@ struct ScanFlowView: View {
                 let auth = auth
                 Task { await AccountSync.pushUpdate(receipt, auth: auth) }
             }
+            // Saved before the full read: only now do store and date match a
+            // receipt you already had. Ask then.
+            if let existing = DuplicateFinder.find(merged, in: savedReceipts, except: receipt), let router {
+                router.duplicate = DuplicatePair(copy: receipt, existing: existing)
+            }
         case .discarded:
             // Signed-in extraction already created a row — remove it.
             if let id = result.serverID { deleteServerReceipt(id) }

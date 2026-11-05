@@ -271,6 +271,11 @@ export default function ReceiptDetailPage() {
                     className="w-24"
                   />
                 </div>
+                {(item.detail || (item.quantity ?? 1) > 1) && (
+                  <p className="mt-hair text-caption text-text-tertiary">
+                    {item.detail || `${item.quantity} × ${money(unit.toFixed(2), receipt?.currency)}`}
+                  </p>
+                )}
                 {before && (
                   <p className={`mt-hair text-caption ${unit > Number(before.unit_price) ? "text-danger" : "text-success"}`}>
                     {unit > Number(before.unit_price) ? "↑" : "↓"} was {money(before.unit_price)} at {before.merchant},{" "}

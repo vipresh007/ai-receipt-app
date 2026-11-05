@@ -16,6 +16,7 @@ final class DuplicateFinderTests: XCTestCase {
     func testSameStoreIsLooseAboutCasePunctuationAndBranchNames() {
         XCTAssertTrue(DuplicateFinder.sameStore("FRESHCO", "FreshCo"))
         XCTAssertTrue(DuplicateFinder.sameStore("Eggholic", "Eggholic- Indian Street Food (Brampton)"))
+        XCTAssertTrue(DuplicateFinder.sameStore("FreshCo", "CHALO! FRESH CO"))
         XCTAssertFalse(DuplicateFinder.sameStore("Loblaws", "Farm Boy"))
         XCTAssertFalse(DuplicateFinder.sameStore("Bar", "Barbara's Bakery"))
         XCTAssertFalse(DuplicateFinder.sameStore("", ""))

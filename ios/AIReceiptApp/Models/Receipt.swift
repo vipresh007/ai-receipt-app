@@ -74,12 +74,23 @@ struct ReceiptLineItem: Codable, Identifiable, Hashable {
     var name: String
     var price: Decimal
     var quantity: Int
+    /// Weight or count as printed, e.g. "1.035 kg @ $1.91/kg" (the server
+    /// splits it off the name: backend/app/services/items.py).
+    var detail: String? = nil
 
-    init(id: UUID = UUID(), name: String, price: Decimal, quantity: Int = 1) {
+    init(id: UUID = UUID(), name: String, price: Decimal, quantity: Int = 1, detail: String? = nil) {
         self.id = id
         self.name = name
         self.price = price
         self.quantity = quantity
+        self.detail = detail
+    }
+
+    /// The small line under the name: what was printed, else "2 × $0.99".
+    func subtitle(currencyCode: String) -> String? {
+        if let detail, !detail.isEmpty { return detail }
+        guard quantity > 1 else { return nil }
+        return "\(quantity) × \((price / Decimal(quantity)).formatted(.currency(code: currencyCode)))"
     }
 }
 

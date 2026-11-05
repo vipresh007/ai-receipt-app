@@ -110,10 +110,11 @@ struct ReceiptDetailView: View {
                                 .frame(width: 90)
                                 .foregroundStyle(.secondary)
                             }
-                            if item.quantity > 1 {
-                                Text("\(item.quantity) × \((item.price / Decimal(item.quantity)).formatted(.currency(code: currencyCode)))")
+                            if let subtitle = item.subtitle(currencyCode: currencyCode) {
+                                Text(subtitle)
                                     .font(.appCaption)
                                     .foregroundStyle(Theme.Palette.textTertiary)
+                                    .lineLimit(1)
                             }
                             if let before = PriceTracker.earlier(for: item, on: receipt, in: tracked) {
                                 PriceWasNote(before: before, now: item, currencyCode: currencyCode)

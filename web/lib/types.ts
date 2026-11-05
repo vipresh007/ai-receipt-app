@@ -11,8 +11,11 @@ export type CategorySlug =
 
 export interface ExtractionItem {
   name: string;
+  /** What the line adds to the bill. */
   price: string;
   quantity: number;
+  /** Weight or count as printed, e.g. "1.035 kg @ $1.91/kg". */
+  detail?: string | null;
 }
 
 export interface Extraction {
