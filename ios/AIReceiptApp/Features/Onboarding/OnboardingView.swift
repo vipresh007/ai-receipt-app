@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Three screens the first time Tally opens: what it does, ending on the
+/// Four screens the first time Tally opens: what it does, ending on the
 /// camera. Skippable, never shown again (`hasSeen`).
 struct OnboardingView: View {
     @AppStorage(OnboardingView.seenKey) static var hasSeen = false
@@ -22,6 +22,11 @@ struct OnboardingView: View {
             symbol: "camera.viewfinder",
             title: "Snap a receipt.\nTally reads every item.",
             body: "Store, date, total, tax and each line, filled in for you. No typing, no bank linking."
+        ),
+        Page(
+            symbol: "envelope.fill",
+            title: "Got it by email?\nJust forward it.",
+            body: "Send e-receipts from Uber, Amazon or anywhere to \(ReceiptsInbox.general) and they're added for you."
         ),
         Page(
             symbol: "person.2.fill",

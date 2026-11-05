@@ -43,6 +43,9 @@ struct ScanFlowView: View {
     @State private var pendingServerID: String?
     /// True while the confirm screen is a from-scratch entry (no scan).
     @State private var isManualEntry = false
+    /// Where the receipt came from, for the one-time "forward the email" tip.
+    @State private var source: Source = .camera
+    private enum Source { case camera, library, file, manual }
     /// Set while the confirm screen shows the quick read and the server's is on its way.
     @State private var pending: PendingScan?
     /// Why the server's read never arrived (the quick read stays editable).
@@ -98,7 +101,7 @@ struct ScanFlowView: View {
                 }
         }
         .sheet(isPresented: $showCamera) {
-            CameraPicker(onImage: handle)
+            CameraPicker(onImage: { source = .camera; handle($0) })
                 .ignoresSafeArea()
         }
         .sheet(isPresented: $showQuotaWall) {
@@ -111,6 +114,7 @@ struct ScanFlowView: View {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             if let image = PDFReceipt.image(from: url) {
+                source = .file
                 handle(image)
             } else {
                 errorMessage = "That PDF couldn't be opened."
@@ -124,13 +128,19 @@ struct ScanFlowView: View {
             let image = file.pathExtension.lowercased() == "pdf"
                 ? PDFReceipt.image(from: file)
                 : UIImage(contentsOfFile: file.path)
-            if let image { handle(image) } else { errorMessage = "That file couldn't be read." }
+            if let image {
+                source = .file
+                handle(image)
+            } else {
+                errorMessage = "That file couldn't be read."
+            }
         }
         .onChange(of: pickedItem) { _, newValue in
             guard let newValue else { return }
             Task {
                 if let data = try? await newValue.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
+                    source = .library
                     handle(image)
                 }
                 pickedItem = nil
@@ -220,6 +230,11 @@ struct ScanFlowView: View {
                 .font(.appCallout)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .padding(.top, Theme.Space.xs)
+
+                if auth.isSignedIn, let address = ReceiptsInbox.address {
+                    ForwardHint(address: address)
+                        .padding(.top, Theme.Space.sm)
+                }
             }
         }
         .padding(Theme.Space.lg)
@@ -232,6 +247,7 @@ struct ScanFlowView: View {
         refineNote = nil
         previewImage = nil
         isManualEntry = true
+        source = .manual
         withAnimation(Theme.Motion.spring) { stage = .confirming }
     }
 
@@ -407,6 +423,14 @@ struct ScanFlowView: View {
     }
 
     private func save() {
+        // Added an e-receipt by hand (a PDF, a screenshot, an online store):
+        // once, point out that forwarding the email does it for you.
+        if auth.isSignedIn, ReceiptsInbox.address != nil, !ReceiptsInbox.tipShown,
+           source == .file || source == .library || ReceiptsInbox.looksOnline(draft.merchant),
+           let router {
+            ReceiptsInbox.tipShown = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { router.emailTip = true }
+        }
         let receipt = draft.makeReceipt()
         receipt.remoteID = pendingServerID
         modelContext.insert(receipt)

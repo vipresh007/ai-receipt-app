@@ -20,6 +20,8 @@ final class TabRouter {
     var sharedFile: URL?
     /// A tapped notification's receipt, expense, group or person.
     var opened: ActivityTarget?
+    /// The one-time "next time, just forward the email" tip.
+    var emailTip = false
     /// Bumped when a tab is tapped while already open: rebuilds that tab, so
     /// it's back on its main screen (like any iPhone tab bar).
     var resets: [AppTab: Int] = [:]

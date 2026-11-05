@@ -13,6 +13,11 @@ struct RootView: View {
     @State private var showOnboarding =
         !OnboardingView.hasSeen && !ProcessInfo.processInfo.arguments.contains("-seedSampleReceipts")
 
+    private var signedInEmail: String? {
+        if case .signedIn(_, let email) = auth.state { return email }
+        return nil
+    }
+
     /// Something was shared into Tally while it was closed: read it on Scan.
     private func pickUpShared() {
         guard router.sharedFile == nil, let file = SharedInbox.next() else { return }
@@ -80,6 +85,12 @@ struct RootView: View {
         .environment(router)
         .environment(activityBadge)
         .environment(live)
+        .alert("Next time, just forward the email", isPresented: $router.emailTip) {
+            Button("Copy address") { UIPasteboard.general.string = ReceiptsInbox.address }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Forward e-receipts to \(ReceiptsInbox.address ?? ReceiptsInbox.general) from \(signedInEmail ?? "your Tally email") and they're added for you, no typing or screenshots.")
+        }
         .task {
             #if DEBUG
             SampleData.seedIfRequested(modelContext)
@@ -100,6 +111,7 @@ struct RootView: View {
                 }
             }
             await PushNotifications.refresh()
+            await ReceiptsInbox.refresh(auth)
         }
         .onChange(of: router.selection) { _, tab in
             // Shared is where pushes matter: ask the first time it's opened.
@@ -124,6 +136,7 @@ struct RootView: View {
         .onChange(of: auth.isSignedIn) { _, signedIn in
             if signedIn { live.start(auth) } else { live.stop() }
             if signedIn { Task { await PushNotifications.upload() } }
+            Task { await ReceiptsInbox.refresh(auth) }
         }
         .onChange(of: scenePhase) { _, phase in
             // Streams only while the app is in front (battery).
