@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 from app.models import Expense, Receipt, User
 from app.schemas.extraction import ExtractedReceipt
 from app.schemas.receipt import ExtractionItemOut, ExtractionOut
+from app.services import items
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 
@@ -107,7 +108,7 @@ async def process_receipt(
         image_blob_url=blob_url,
         raw_ocr="\n".join(ocr_lines) or None,
         extraction_confidence=extracted.confidence,
-        line_items=[item.model_dump() for item in extracted.line_items],
+        line_items=[items.tidy_line(item.model_dump()) for item in extracted.line_items],
         return_by=return_by(
             _parse_date(extracted.purchased_at),
             extracted.return_days,

@@ -14,6 +14,7 @@ from tests.test_push import apns  # noqa: F401
 def test_same_store_is_loose_about_case_punctuation_and_branch_names():
     assert duplicates.same_store("FRESHCO", "FreshCo")
     assert duplicates.same_store("Eggholic", "Eggholic- Indian Street Food (Brampton)")
+    assert duplicates.same_store("FreshCo", "CHALO! FRESH CO")
     assert not duplicates.same_store("Loblaws", "Farm Boy")
     assert not duplicates.same_store("Bar", "Barbara's Bakery")  # too short to be a prefix
     assert not duplicates.same_store("", "")

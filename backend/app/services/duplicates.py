@@ -1,6 +1,7 @@
 """The same receipt added twice: scanned and also emailed, forwarded twice,
 scanned twice. Same store (loosely: "FRESHCO" = "FreshCo", "Eggholic" =
-"Eggholic- Indian Street Food (Brampton)"), same day, same total.
+"Eggholic- Indian Street Food (Brampton)", "FreshCo" = "CHALO! FRESH CO"),
+same day, same total.
 
 Mirrored on iOS in `DuplicateFinder` (keep the matching rules in step)."""
 
@@ -27,7 +28,7 @@ def same_store(a: str | None, b: str | None) -> bool:
     if ka == kb:
         return True
     short, long = sorted((ka, kb), key=len)
-    return len(short) >= 4 and long.startswith(short)
+    return len(short) >= 4 and short in long
 
 
 async def find(

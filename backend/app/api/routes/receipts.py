@@ -30,7 +30,7 @@ from app.schemas.receipt import (
     RecurringGroupOut,
     TrackedItemOut,
 )
-from app.services import duplicates, pdf, prices, split_store
+from app.services import duplicates, items, pdf, prices, split_store
 from app.services.azure_openai import AzureOpenAIExtractor, ExtractionError
 from app.services.blob_storage import BlobStorage
 from app.services.extraction import (
@@ -75,10 +75,7 @@ def _extracted_to_out(ex: ExtractedReceipt) -> ExtractionOut:
         total=ex.total,
         tax=ex.tax,
         category=ex.category,
-        items=[
-            ExtractionItemOut(name=li.name, price=li.price, quantity=li.quantity)
-            for li in ex.line_items
-        ],
+        items=[ExtractionItemOut(**items.tidy_line(li.model_dump())) for li in ex.line_items],
         confidence=ex.confidence,
         return_by=(
             rb.isoformat()
@@ -234,7 +231,7 @@ async def _persist_receipt(
         category_slug=item.category or "other",
         image_blob_url=blob_url,
         extraction_confidence=item.confidence,
-        line_items=[li.model_dump() for li in item.items],
+        line_items=[items.tidy_line(li.model_dump(exclude_none=True)) for li in item.items],
         return_by=_parse_date(item.return_by),
         warranty_until=_parse_date(item.warranty_until),
     )
@@ -519,7 +516,9 @@ async def update_receipt(
     if "category" in fields:
         receipt.category_slug = fields["category"] or "other"
     if "items" in fields:
-        receipt.line_items = [li.model_dump() for li in (payload.items or [])]
+        receipt.line_items = [
+            items.tidy_line(li.model_dump(exclude_none=True)) for li in (payload.items or [])
+        ]
     if "return_by" in fields:
         receipt.return_by = _parse_date(fields["return_by"])
         receipt.return_reminded_at = None

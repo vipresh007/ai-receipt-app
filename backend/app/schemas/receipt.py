@@ -22,8 +22,10 @@ class ExtractionIn(BaseModel):
 
 class ExtractionItemOut(BaseModel):
     name: str
-    price: str  # decimal string
+    price: str  # decimal string (the line's total)
     quantity: int = 1
+    # Weight or count as printed, e.g. "1.035 kg @ $1.91/kg" (services/items.py).
+    detail: str | None = None
 
 
 class DuplicateOut(BaseModel):
