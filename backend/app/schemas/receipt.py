@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -104,6 +104,9 @@ class ReceiptOut(BaseModel):
     split_id: UUID | None = None
     return_by: date | None = None
     warranty_until: date | None = None
+    # When it was added to the account, and last changed.
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class RecurringGroupOut(BaseModel):

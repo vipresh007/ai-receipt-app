@@ -502,4 +502,6 @@ def _receipt_out(r: Receipt) -> ReceiptOut:
         split_id=r.split_id,
         return_by=r.return_by,
         warranty_until=r.warranty_until,
+        created_at=r.created_at,
+        updated_at=r.updated_at,
     )

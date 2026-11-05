@@ -22,6 +22,9 @@ _SYSTEM_PROMPT = (
     "Amounts are decimal strings using a period as the decimal separator, with "
     "no currency symbol and no thousands separators. Dates are YYYY-MM-DD. "
     "Choose the single best-fitting category from the allowed list. "
+    "For each line item, price is the line's total as printed; quantity is "
+    "how many were bought when the receipt shows it (e.g. '2 @ 1.99', '2 x', "
+    "'QTY 2', a count column), else 1. Items sold by weight keep quantity 1. "
     "If the receipt prints a return or exchange window (e.g. 'returns within 30 "
     "days'), set return_days to that number of days; otherwise null."
 )
