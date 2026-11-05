@@ -12,9 +12,18 @@ struct ConfirmReceiptView: View {
     var refineNote: String?
     var onSave: () -> Void
     var onDiscard: () -> Void
+    /// A saved receipt that looks like this one (same store, day and total).
+    var duplicate: Receipt?
+    var onOpenDuplicate: () -> Void = {}
+    var onKeepBoth: () -> Void = {}
 
     var body: some View {
         Form {
+            if let duplicate {
+                LedgerSection {
+                    duplicateNote(duplicate)
+                }
+            }
             if isRefining || refineNote != nil {
                 LedgerSection {
                     refineStatus
@@ -96,6 +105,36 @@ struct ConfirmReceiptView: View {
                     .disabled(!draft.isValid)
             }
         }
+    }
+
+    /// "Already in Tally: FreshCo · Oct 9 · $30.72, added Nov 5"
+    private func duplicateNote(_ existing: Receipt) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            Label {
+                Text("Already in Tally")
+                    .font(.appCallout.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.text)
+            } icon: {
+                Image(systemName: "doc.on.doc.fill")
+                    .foregroundStyle(Theme.Palette.warning)
+            }
+            Text(
+                "\(existing.merchant.isEmpty ? "A receipt" : existing.merchant) · "
+                    + "\(existing.date.formatted(.dateTime.month(.abbreviated).day())) · "
+                    + "\(existing.total.formatted(.currency(code: currencyCode))), "
+                    + "added \(existing.createdAt.formatted(.dateTime.month(.abbreviated).day()))"
+            )
+            .font(.appCallout)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            HStack(spacing: Theme.Space.sm) {
+                Button("Open existing", action: onOpenDuplicate)
+                    .buttonStyle(.borderedProminent)
+                Button("Save anyway", action: onKeepBoth)
+                    .buttonStyle(.bordered)
+            }
+            .font(.appCallout.weight(.medium))
+        }
+        .padding(.vertical, Theme.Space.xs)
     }
 
     /// A field the quick read didn't find, while the server's read is coming.

@@ -25,6 +25,14 @@ export interface Extraction {
   category: string;
   items: ExtractionItem[];
   confidence: number | null;
+  /** Signed in: a receipt you already have with the same store, day and total. */
+  duplicate_of?: {
+    id: string;
+    merchant: string;
+    date: string | null;
+    total: string;
+    created_at: string | null;
+  } | null;
 }
 
 export interface ReceiptOut {

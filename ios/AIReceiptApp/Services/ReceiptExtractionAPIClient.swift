@@ -116,6 +116,16 @@ struct ReceiptExtractionAPIClient {
     }
 
     /// The receipt's stored image bytes. Throws on 404 (no image) or error.
+    /// `id` is a copy of `into`: the server keeps `into` (taking a photo or
+    /// items only the copy had) and removes the copy.
+    func mergeReceipt(id: String, into: String) async throws -> ReceiptDTO {
+        var request = try authorized("v1/receipts/\(id)/merge", method: "POST")
+        request.httpBody = try JSONEncoder().encode(["into": into])
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't merge the receipts")
+        return try JSONDecoder().decode(ReceiptDTO.self, from: data)
+    }
+
     /// Attach a photo the phone kept to a receipt the server has none for.
     func uploadReceiptImage(id: String, imageData: Data) async throws -> ReceiptDTO {
         var request = try authorized("v1/receipts/\(id)/image", method: "PUT")

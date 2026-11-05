@@ -11,9 +11,13 @@ struct ActivityTarget: Hashable, Identifiable {
     var person: String?
     /// A comment: open the conversation rather than the receipt.
     var comments = false
+    /// A receipt on this phone (e.g. "Open existing" from a duplicate scan).
+    var local: PersistentIdentifier?
 
-    var id: String { [receipt, split, group, person].map { $0 ?? "-" }.joined(separator: "|") }
-    var isEmpty: Bool { receipt == nil && split == nil && group == nil && person == nil }
+    var id: String {
+        [receipt, split, group, person, local.map { "\($0.hashValue)" }].map { $0 ?? "-" }.joined(separator: "|")
+    }
+    var isEmpty: Bool { receipt == nil && split == nil && group == nil && person == nil && local == nil }
 
     init(receipt: String? = nil, split: String? = nil, group: String? = nil, person: String? = nil, comments: Bool = false) {
         self.receipt = receipt
@@ -92,6 +96,9 @@ struct ActivityDestination: View {
     }
 
     private func resolve() async {
+        if let local = target.local, let receipt = modelContext.model(for: local) as? Receipt {
+            return resolved = .receipt(receipt)
+        }
         if let id = target.receipt {
             if let receipt = local(remoteID: id) {
                 return resolved = .receipt(receipt)

@@ -137,8 +137,16 @@ struct ReceiptListView: View {
     @ViewBuilder
     private var recurringSection: some View {
         let prices = trackedPrices
-        if (!recurringGroups.isEmpty || !prices.isEmpty), searchText.isEmpty, categoryFilter == nil {
+        let duplicates = DuplicateFinder.groups(in: receipts).count
+        if (!recurringGroups.isEmpty || !prices.isEmpty || duplicates > 0), searchText.isEmpty, categoryFilter == nil {
             Section {
+                if duplicates > 0 {
+                    NavigationLink {
+                        DuplicatesView(currencyCode: currencyCode)
+                    } label: {
+                        DuplicatesSummaryRow(count: duplicates)
+                    }
+                }
                 if !recurringGroups.isEmpty {
                     NavigationLink {
                         RecurringListView(groups: recurringGroups, currencyCode: currencyCode)

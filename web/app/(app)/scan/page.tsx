@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
+import { DuplicateNote } from "@/components/duplicates";
 
 type Stage =
   | { name: "idle" }
@@ -147,6 +148,8 @@ export default function ScanPage() {
             <CheckCircle2 size={20} />
             <p className="text-headline text-text">Saved</p>
           </div>
+
+          <DuplicateNote result={stage.result} />
 
           <dl className="grid grid-cols-2 gap-md text-callout">
             <Field label="Merchant" value={stage.result.merchant || "—"} />

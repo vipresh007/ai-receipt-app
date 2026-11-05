@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReceiptRow, SelectableReceiptRow } from "@/components/receipt-row";
+import { DuplicatesCard } from "@/components/duplicates";
 
 function monthKey(iso: string | null): string {
   return iso && iso.length >= 7 ? iso.slice(0, 7) : "0000-00";
@@ -204,6 +205,8 @@ export default function ReceiptsPage() {
           ))}
         </select>
       </div>
+
+      {!filtersActive && <DuplicatesCard />}
 
       {!filtersActive && (recurring ?? []).length > 0 && (
         <Card>

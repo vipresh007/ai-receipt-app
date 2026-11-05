@@ -167,6 +167,30 @@ enum AccountSync {
         await auth.signOut()
     }
 
+    /// `copy` is the same receipt as `keep`: keep `keep`, taking a photo,
+    /// items or return date only the copy had, and remove the copy (here and
+    /// on the account).
+    @MainActor
+    static func merge(_ copy: Receipt, into keep: Receipt, auth: AuthManager, context: ModelContext) async {
+        let tookPhoto = keep.imageData == nil && copy.imageData != nil
+        if tookPhoto { keep.imageData = copy.imageData }
+        if keep.items.isEmpty, !copy.items.isEmpty { keep.items = copy.items }
+        if keep.returnBy == nil { keep.returnBy = copy.returnBy }
+        keep.updatedAt = .now
+        if let copyID = copy.remoteID, let keepID = keep.remoteID, let client = await client(auth: auth) {
+            _ = try? await client.mergeReceipt(id: copyID, into: keepID)
+            context.delete(copy)
+            await pushUpdate(keep, auth: auth)
+            if tookPhoto, let data = keep.imageData {
+                _ = try? await client.uploadReceiptImage(id: keepID, imageData: data)
+            }
+        } else {
+            await delete(copy, auth: auth, context: context)
+            await pushUpdate(keep, auth: auth)
+        }
+        try? context.save()
+    }
+
     /// Delete locally and, if it's synced, on the account too.
     @MainActor
     static func delete(_ receipt: Receipt, auth: AuthManager, context: ModelContext) async {

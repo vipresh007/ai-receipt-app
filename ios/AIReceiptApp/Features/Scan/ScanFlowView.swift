@@ -1,5 +1,6 @@
 import PhotosUI
 import StoreKit
+import SwiftData
 import SwiftUI
 
 /// Capture flow: pick an image (camera or library) → read it → confirm and save.
@@ -17,6 +18,10 @@ struct ScanFlowView: View {
     var isMainScan = false
 
     @Environment(\.modelContext) private var modelContext
+    /// Saved receipts, to notice one being added twice.
+    @Query private var savedReceipts: [Receipt]
+    /// "Save anyway" on the duplicate note.
+    @State private var keepBoth = false
     @Environment(AuthManager.self) private var auth
     @Environment(\.dismiss) private var dismiss
     @Environment(TabRouter.self) private var router: TabRouter?
@@ -149,7 +154,12 @@ struct ScanFlowView: View {
                 isRefining: pending != nil,
                 refineNote: refineNote,
                 onSave: save,
-                onDiscard: discard
+                onDiscard: discard,
+                duplicate: keepBoth ? nil : DuplicateFinder.find(draft, in: savedReceipts),
+                onOpenDuplicate: {
+                    if let existing = DuplicateFinder.find(draft, in: savedReceipts) { openExisting(existing) }
+                },
+                onKeepBoth: { withAnimation(Theme.Motion.base) { keepBoth = true } }
             )
                 .transition(.move(edge: .trailing).combined(with: .opacity))
         }
@@ -446,6 +456,44 @@ struct ScanFlowView: View {
         reset()
     }
 
+    /// It's a receipt you already have: keep that one (taking this scan's
+    /// photo or items if it had none), drop this one, and open the original.
+    private func openExisting(_ existing: Receipt) {
+        pending?.outcome = .discarded  // a server read still coming: its row goes
+        let tookPhoto = existing.imageData == nil && draft.imageData != nil
+        let tookItems = existing.items.isEmpty && !draft.items.isEmpty
+        if tookPhoto { existing.imageData = draft.imageData }
+        if tookItems { existing.items = draft.items }
+        if tookPhoto || tookItems { existing.updatedAt = .now }
+        try? modelContext.save()
+
+        let serverCopy = pendingServerID
+        pendingServerID = nil
+        let auth = auth
+        Task {
+            let client = await ReceiptExtractionService.makeAuthorizedClient(auth: auth)
+            if let copyID = serverCopy, let keepID = existing.remoteID {
+                _ = try? await client?.mergeReceipt(id: copyID, into: keepID)
+            } else if let copyID = serverCopy {
+                try? await client?.deleteReceipt(id: copyID)
+            }
+            if tookItems { await AccountSync.pushUpdate(existing, auth: auth) }
+            if tookPhoto, let keepID = existing.remoteID, let data = existing.imageData {
+                _ = try? await client?.uploadReceiptImage(id: keepID, imageData: data)
+            }
+        }
+
+        reset()
+        if isMainScan, let router {
+            router.scanning = false
+            var target = ActivityTarget()
+            target.local = existing.persistentModelID
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { router.opened = target }
+            return
+        }
+        onSaved?(existing)
+    }
+
     private func deleteServerReceipt(_ id: String) {
         let auth = auth
         Task {
@@ -455,6 +503,7 @@ struct ScanFlowView: View {
     }
 
     private func reset() {
+        keepBoth = false
         draft = ReceiptDraft()
         pending = nil
         refineNote = nil
