@@ -7,6 +7,10 @@ struct ReceiptDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var loadingImage = false
+    @State private var showingPhoto = false
+    /// The receipt as it was when opened: leaving without a change doesn't
+    /// count as an edit (or call the server).
+    @State private var opened: Data?
     @Query private var allReceipts: [Receipt]
 
     /// Items you've bought before, for "was $3.99 on Jun 12" under each line.
@@ -20,11 +24,29 @@ struct ReceiptDetailView: View {
         Form {
             if let data = receipt.imageData, let image = UIImage(data: data) {
                 LedgerSection {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 260)
+                    Button {
+                        showingPhoto = true
+                    } label: {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity)
+                            .frame(maxHeight: 260)
+                            .overlay(alignment: .bottomTrailing) {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(7)
+                                    .background(.black.opacity(0.45), in: Circle())
+                                    .padding(6)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Receipt photo")
+                    .accessibilityHint("Opens it full screen to zoom")
+                }
+                .fullScreenCover(isPresented: $showingPhoto) {
+                    ReceiptPhotoViewer(image: image)
                 }
             } else if loadingImage {
                 LedgerSection {
@@ -88,6 +110,11 @@ struct ReceiptDetailView: View {
                                 .frame(width: 90)
                                 .foregroundStyle(.secondary)
                             }
+                            if item.quantity > 1 {
+                                Text("\(item.quantity) × \((item.price / Decimal(item.quantity)).formatted(.currency(code: currencyCode)))")
+                                    .font(.appCaption)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
                             if let before = PriceTracker.earlier(for: item, on: receipt, in: tracked) {
                                 PriceWasNote(before: before, now: item, currencyCode: currencyCode)
                             }
@@ -107,19 +134,51 @@ struct ReceiptDetailView: View {
             }
 
             ReceiptSplitSection(receipt: receipt)
+
+            Section {
+            } footer: {
+                Text(timesText)
+                    .font(.appCaption)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
         .ledgerBackground()
         .navigationTitle(receipt.merchant)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadImageIfNeeded() }
+        .onAppear { if opened == nil { opened = snapshot } }
         .onChange(of: receipt.returnBy) { _, _ in Task { await rescheduleReminders() } }
         .onChange(of: receipt.warrantyUntil) { _, _ in Task { await rescheduleReminders() } }
         .onDisappear {
             // SwiftData autosaves the edits locally; mirror them to the account.
+            guard snapshot != opened else { return }
+            receipt.updatedAt = .now
+            opened = snapshot
             let receipt = receipt
             let auth = auth
             Task { await AccountSync.pushUpdate(receipt, auth: auth) }
         }
+    }
+
+    private var snapshot: Data? {
+        try? JSONEncoder().encode(ReceiptExtractionAPIClient.ReceiptWrite(from: receipt, includeImage: false))
+    }
+
+    /// "Added Nov 5, 2026 at 10:31 AM · Edited Nov 5 at 10:36 AM"
+    private var timesText: String {
+        func when(_ date: Date, year: Bool) -> String {
+            let day = year
+                ? date.formatted(.dateTime.month(.abbreviated).day().year())
+                : date.formatted(.dateTime.month(.abbreviated).day())
+            return "\(day) at \(date.formatted(date: .omitted, time: .shortened))"
+        }
+        var text = "Added \(when(receipt.createdAt, year: true))"
+        if let edited = receipt.updatedAt, edited.timeIntervalSince(receipt.createdAt) > 60 {
+            let sameYear = Calendar.current.isDate(edited, equalTo: receipt.createdAt, toGranularity: .year)
+            text += " · Edited \(when(edited, year: !sameYear))"
+        }
+        return text
     }
 
     private func rescheduleReminders() async {

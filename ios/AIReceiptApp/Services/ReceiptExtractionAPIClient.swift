@@ -116,6 +116,15 @@ struct ReceiptExtractionAPIClient {
     }
 
     /// The receipt's stored image bytes. Throws on 404 (no image) or error.
+    /// Attach a photo the phone kept to a receipt the server has none for.
+    func uploadReceiptImage(id: String, imageData: Data) async throws -> ReceiptDTO {
+        var request = try authorized("v1/receipts/\(id)/image", method: "PUT")
+        request.httpBody = try JSONEncoder().encode(["image_base64": imageData.base64EncodedString()])
+        let (data, http) = try await send(request)
+        try Self.expectOK(http, data, "Couldn't upload the receipt photo")
+        return try JSONDecoder().decode(ReceiptDTO.self, from: data)
+    }
+
     func receiptImage(id: String) async throws -> Data {
         let request = try authorized("v1/receipts/\(id)/image", method: "GET")
         let (data, http) = try await send(request)
@@ -388,9 +397,13 @@ struct ReceiptExtractionAPIClient {
         let splitID: String?
         let returnBy: String?
         let warrantyUntil: String?
+        let createdAt: String?
+        let updatedAt: String?
 
         enum CodingKeys: String, CodingKey {
             case id, merchant, total, tax, currency
+            case createdAt = "created_at"
+            case updatedAt = "updated_at"
             case returnBy = "return_by"
             case warrantyUntil = "warranty_until"
             case myShare = "my_share"
@@ -431,7 +444,14 @@ struct ReceiptExtractionAPIClient {
             receipt.splitID = splitID
             receipt.returnBy = ReceiptExtractionAPIClient.isoDay(returnBy)
             receipt.warrantyUntil = ReceiptExtractionAPIClient.isoDay(warrantyUntil)
+            applyTimes(to: receipt)
             return receipt
+        }
+
+        /// The account's added / last-edited times (the server's are the truth).
+        func applyTimes(to receipt: Receipt) {
+            if let added = createdAt.flatMap(ISO8601DateFormatter.tally) { receipt.createdAt = added }
+            if let edited = updatedAt.flatMap(ISO8601DateFormatter.tally) { receipt.updatedAt = edited }
         }
 
         /// Overwrite a local row with the server's values (keeps local image).
@@ -447,6 +467,7 @@ struct ReceiptExtractionAPIClient {
             receipt.splitID = splitID
             receipt.returnBy = ReceiptExtractionAPIClient.isoDay(returnBy)
             receipt.warrantyUntil = ReceiptExtractionAPIClient.isoDay(warrantyUntil)
+            applyTimes(to: receipt)
         }
     }
 

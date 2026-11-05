@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import Text, cast, or_, select
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -425,6 +426,33 @@ async def receipt_image(
         media_type="image/jpeg",
         headers={"Cache-Control": "private, max-age=86400"},
     )
+
+
+class ImageIn(BaseModel):
+    image_base64: str = Field(max_length=15_000_000)
+
+
+@router.put("/receipts/{receipt_id}/image", response_model=ReceiptOut)
+async def put_receipt_image(
+    receipt_id: UUID,
+    payload: ImageIn,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ReceiptOut:
+    """Attach the photo a phone kept to a receipt the server has none for
+    (scans whose upload failed), so the web and other devices show it."""
+    receipt = await _owned_receipt(session, user, receipt_id)
+    settings = get_settings()
+    if not settings.blob_configured:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Photo storage isn't set up.")
+    if receipt.image_blob_url:
+        return _receipt_out(receipt)
+    receipt.image_blob_url = await BlobStorage(settings).upload_receipt_image(
+        user_id=user.id, request_id=uuid4().hex, data=_decode_image(payload.image_base64)
+    )
+    await session.commit()
+    await session.refresh(receipt)
+    return _receipt_out(receipt)
 
 
 @router.patch("/receipts/{receipt_id}", response_model=ReceiptOut)

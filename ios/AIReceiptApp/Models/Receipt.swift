@@ -10,7 +10,9 @@ final class Receipt {
     var total: Decimal
     var tax: Decimal
     var note: String
+    /// When it was added (to the account, once synced) and last edited.
     var createdAt: Date
+    var updatedAt: Date? = nil
 
     /// Server receipt id once this row is backed by the account (`nil` = local
     /// only, i.e. anonymous or not yet synced). See `AccountSync`.

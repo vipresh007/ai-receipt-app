@@ -43,6 +43,9 @@ export interface ReceiptOut {
   split_id?: string | null;
   return_by?: string | null;
   warranty_until?: string | null;
+  /** When it was added to the account, and last changed. */
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface CategoryTotal {

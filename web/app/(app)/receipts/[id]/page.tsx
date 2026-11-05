@@ -177,12 +177,15 @@ export default function ReceiptDetailPage() {
 
       {receipt.image_blob_url && (
         <Card className="overflow-hidden p-0">
-          {/* eslint-disable-next-line @next/next/no-img-element -- proxied, non-optimizable API bytes */}
-          <img
-            src={`/api/proxy/v1/receipts/${id}/image`}
-            alt=""
-            className="max-h-80 w-full object-contain bg-surface-2"
-          />
+          {/* Full size in a new tab, where the browser zooms. */}
+          <a href={`/api/proxy/v1/receipts/${id}/image`} target="_blank" rel="noopener" title="Open full size">
+            {/* eslint-disable-next-line @next/next/no-img-element -- proxied, non-optimizable API bytes */}
+            <img
+              src={`/api/proxy/v1/receipts/${id}/image`}
+              alt="Receipt photo"
+              className="max-h-80 w-full cursor-zoom-in object-contain bg-surface-2"
+            />
+          </a>
         </Card>
       )}
 
@@ -332,6 +335,29 @@ export default function ReceiptDetailPage() {
           </p>
         )}
       </Card>
+
+      {receipt.created_at && <p className="text-center text-caption text-text-tertiary">{addedText(receipt)}</p>}
     </div>
   );
+}
+
+/** "Added Nov 5, 2026, 10:31 AM · Edited Nov 5, 10:36 AM" */
+function addedText(r: ReceiptOut): string {
+  const added = new Date(r.created_at!);
+  const fmt = (d: Date, year: boolean) =>
+    d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      ...(year ? { year: "numeric" } : {}),
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  let text = `Added ${fmt(added, true)}`;
+  if (r.updated_at) {
+    const edited = new Date(r.updated_at);
+    if (edited.getTime() - added.getTime() > 60_000) {
+      text += ` · Edited ${fmt(edited, edited.getFullYear() !== added.getFullYear())}`;
+    }
+  }
+  return text;
 }

@@ -6,8 +6,8 @@ import SwiftData
 /// v1 model (see `docs/AUTH.md`): the backend is the source of truth for the
 /// receipt list. `pull()` reconciles it into SwiftData; local edits/deletes are
 /// pushed as they happen. There's no offline write queue — a push that fails is
-/// dropped and the next `pull()` re-aligns from the server. Receipt images stay
-/// on the device that scanned them; pulled-from-server rows have no local image.
+/// dropped and the next `pull()` re-aligns from the server. Pulled rows fetch
+/// their image on first open; a photo the server never got is sent up on pull.
 enum AccountSync {
     // MARK: - Sign-in migration
 
@@ -74,6 +74,18 @@ enum AccountSync {
             context.insert(dto.makeReceipt())
         }
         try? context.save()
+
+        // Photos this phone kept that never reached the account (their upload
+        // failed): send them up, a few per pull, so the web and other devices
+        // show them too.
+        let missing = locals.filter { receipt in
+            guard receipt.imageData != nil, let id = receipt.remoteID, let dto = remoteByID[id] else { return false }
+            return dto.imageBlobURL == nil
+        }
+        for receipt in missing.prefix(5) {
+            guard let id = receipt.remoteID, let data = receipt.imageData else { continue }
+            _ = try? await client.uploadReceiptImage(id: id, imageData: data)
+        }
     }
 
     // MARK: - Push
@@ -91,6 +103,7 @@ enum AccountSync {
         // A split receipt's shares follow its new total and items.
         receipt.myShare = dto.myShare.flatMap { Decimal(string: $0) }
         receipt.splitID = dto.splitID
+        dto.applyTimes(to: receipt)
     }
 
     /// Create a not-yet-synced local receipt on the account (manual entry — a
