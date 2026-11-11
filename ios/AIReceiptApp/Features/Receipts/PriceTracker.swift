@@ -110,8 +110,8 @@ enum PriceTracker {
 }
 
 /// A cheap fingerprint of the receipt list (count, and each one's date,
-/// total, share and item count), so derived numbers can be reused until
-/// something actually changes.
+/// total, share, item count and category), so derived numbers can be reused
+/// until something actually changes.
 enum ReceiptsSignature {
     static func of(_ receipts: [Receipt]) -> Int {
         var hasher = Hasher()
@@ -121,6 +121,7 @@ enum ReceiptsSignature {
             hasher.combine(receipt.total)
             hasher.combine(receipt.myShare)
             hasher.combine(receipt.items.count)
+            hasher.combine(receipt.category)  // re-categorizing moves "Where it went"
         }
         return hasher.finalize()
     }

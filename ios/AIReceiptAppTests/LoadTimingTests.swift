@@ -28,6 +28,11 @@ final class LoadTimingTests: XCTestCase {
         return out
     }
 
+    /// Limits are for a dev Mac; CI's simulator is slower (ci.yml sets 3).
+    var scale: Double {
+        Double(ProcessInfo.processInfo.environment["TIMING_SCALE"] ?? "") ?? 1
+    }
+
     private func ms(_ label: String, _ work: () -> Void) -> Double {
         let start = CFAbsoluteTimeGetCurrent()
         work()
@@ -50,10 +55,10 @@ final class LoadTimingTests: XCTestCase {
         // What a redraw costs once those are cached: the fingerprint check.
         let check = ms("ReceiptsSignature x8") { for _ in 0..<8 { _ = ReceiptsSignature.of(receipts) } }
         print(String(format: "TIMING trend %.1f ms, recurring %.1f ms, prices %.1f ms", trend, recurring, prices))
-        XCTAssertLessThan(check, 16)
-        XCTAssertLessThan(summary, 50)
-        XCTAssertLessThan(prices, 50)
-        XCTAssertLessThan(recurring, 50)
+        XCTAssertLessThan(check, 16 * scale)
+        XCTAssertLessThan(summary, 50 * scale)
+        XCTAssertLessThan(prices, 50 * scale)
+        XCTAssertLessThan(recurring, 50 * scale)
     }
 }
 
@@ -67,7 +72,7 @@ extension LoadTimingTests {
         let eight = (CFAbsoluteTimeGetCurrent() - start) * 1000
         print(String(format: "TIMING PriceTracker.items x8 (cached): %.1f ms", eight))
         XCTAssertFalse(again.isEmpty)
-        XCTAssertLessThan(eight, 16)
+        XCTAssertLessThan(eight, 16 * scale)
 
         // A change (one receipt's total) is seen at once.
         receipts[0].total += 1

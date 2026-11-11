@@ -75,6 +75,10 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
       - name: Build & test
+        env:
+          # The hosted simulator runs ~3x slower than a dev Mac: LoadTimingTests
+          # scales its limits by this (TEST_RUNNER_ vars reach the tests).
+          TEST_RUNNER_TIMING_SCALE: "3"
         run: |
           xcodebuild test -quiet \
             -project AIReceiptApp.xcodeproj \
