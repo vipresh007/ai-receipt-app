@@ -39,8 +39,15 @@ function dismiss() {
 
 let hidden = false;
 
-/** "Tally for iPhone" prompt at the top of the web app on iOS. */
-export function AppDownloadBanner() {
+/** "Tally for iPhone" prompt at the top of the web app on iOS (and of the
+ * pages people open from a link someone sent them, with their own pitch). */
+export function AppDownloadBanner({
+  title = "Tally for iPhone",
+  subtitle = "Faster scanning, right from your camera",
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
   const show = useSyncExternalStore(
     subscribe,
     () => !hidden && shouldShow(),
@@ -54,8 +61,8 @@ export function AppDownloadBanner() {
         <TallyMark size={17} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-callout font-semibold">Tally for iPhone</p>
-        <p className="truncate text-caption text-text-secondary">Faster scanning, right from your camera</p>
+        <p className="truncate text-callout font-semibold">{title}</p>
+        <p className="truncate text-caption text-text-secondary">{subtitle}</p>
       </div>
       <a
         href={APP_STORE_URL}

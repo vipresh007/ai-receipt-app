@@ -41,7 +41,7 @@ export default async function SharePage({
   const payer = split.payer_name;
 
   return (
-    <PublicShell>
+    <PublicShell promo>
       <section className="space-y-sm">
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
           {split.group_name ?? "Split"} · {shortDate(split.date)}

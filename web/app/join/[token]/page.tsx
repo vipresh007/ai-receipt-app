@@ -43,7 +43,7 @@ export default async function JoinPage({
   const returnTo = `/join/${encodeURIComponent(token)}${forMember ? `?member=${forMember}` : ""}`;
 
   return (
-    <PublicShell>
+    <PublicShell promo>
       <section className="space-y-sm">
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
           You&apos;re invited

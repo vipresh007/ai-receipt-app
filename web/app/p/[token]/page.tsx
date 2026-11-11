@@ -37,7 +37,7 @@ export default async function PersonInvitePage({ params }: { params: Promise<{ t
   const returnTo = `/p/${encodeURIComponent(token)}`;
 
   return (
-    <PublicShell>
+    <PublicShell promo>
       <section className="space-y-sm">
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
           Hi {invite.name}
